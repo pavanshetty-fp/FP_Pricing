@@ -2,6 +2,17 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.15 — 2026-11-13
+
+Built from commit `aeadb2b`.
+
+- **Asset 360 (Master Data):** the first tab is **Overview**, holding every table the Lovable asset page has: movement orders, deliveries, service orders, agreement and maintenance, compliance and leak checks, equipment, billing. Asset journey and Asset activity log stay as their own tabs.
+- **Overview keeps the four figures** (tank level, capacity, deliveries, monitor) on screen while the tables scroll. Scroll down over the figures to hide them; scroll up at the top of the tables to bring them back. The other tabs scroll as before.
+- **One status chip**, On rent or Available. Under the name sit two groups: what and where │ ownership and condition.
+- **Monitor link** is its own card at the bottom of the right column; Unlink asks first.
+- **Assets list:** a new Ship-to column (name and address), Deliveries at a fixed width, the rest sharing the space evenly. "Not linked" shows a broken-link icon.
+- **Right column on every 360 page** ends with a whole card; nothing is cut at the bottom.
+
 ## v1.14 — 2026-11-13
 
 Built from commit `6278dbd`.

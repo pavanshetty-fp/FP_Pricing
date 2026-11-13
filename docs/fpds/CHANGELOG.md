@@ -2,6 +2,12 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.14 — 2026-11-13
+
+Built from commit `6278dbd`.
+
+- **Banners move to the top of every list**, right under the page title and above the views row, saved views, Create and Export. They sit 8px from the title and 8px from what follows. Chosen from three versions tried on Sales Orders; applies to Sales, Service Work and the Customer Portal's Orders and Invoices (UX-140).
+
 ## v1.13 — 2026-11-13
 
 Built from commit `e8d2ce4`.

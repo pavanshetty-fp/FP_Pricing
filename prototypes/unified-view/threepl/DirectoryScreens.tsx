@@ -290,8 +290,8 @@ export function customerConfig(
 
     facets: [
       { key: "status", label: "Status", options: ["active", "inactive", "archived"], valueOf: (c) => c.status },
-      { key: "credit", label: "Credit Status", options: [...CREDIT_STATUSES], valueOf: (c) => c.creditStatus },
-      { key: "terms", label: "Payment Terms", options: [...PAYMENT_TERMS], valueOf: (c) => c.paymentTerms },
+      { key: "credit", label: "Credit status", options: [...CREDIT_STATUSES], valueOf: (c) => c.creditStatus },
+      { key: "terms", label: "Payment terms", options: [...PAYMENT_TERMS], valueOf: (c) => c.paymentTerms },
       { key: "state", label: "State", options: STATE_CODES, searchable: true, valueOf: (c) => c.state ?? "" },
       { key: "city", label: "City", options: CITY_NAMES, searchable: true, valueOf: (c) => c.city ?? "" },
       {
@@ -357,7 +357,7 @@ export function customerConfig(
       "Available Credit": creditAvailable(c) ?? "",
       Terms: c.paymentTerms,
       "Primary POC": blank(c.mainContactName),
-      "Ship-Tos": shipToNames(c).join(" | "),
+      "Ship-tos": shipToNames(c).join(" | "),
       "Customer Instruction": blank(c.customerInstruction),
       Tags: c.tags.join(" | "),
     }),
@@ -450,14 +450,14 @@ export function vendorConfig(
     searchPlaceholder: "Search vendors, contacts, cities, states, products…",
     sortRows: sortVendors,
     dimensions: [
-      { key: "lines", label: "Business Line", multi: true, valuesOf: (v: Vendor) => v.businessLines },
+      { key: "lines", label: "Business line", multi: true, valuesOf: (v: Vendor) => v.businessLines },
       /* No `hides` on either: compliance now lives under the vendor's name and
          state inside Address, and hiding those columns while grouped would
          take the name and the street away with them. */
       { key: "compliance", label: "Compliance", order: [...COMPLIANCE_STATUSES], valuesOf: (v: Vendor) => [v.complianceStatus] },
-      { key: "state", label: "Home State", valuesOf: (v: Vendor) => (v.state ? [v.state] : []) },
+      { key: "state", label: "Home state", valuesOf: (v: Vendor) => (v.state ? [v.state] : []) },
       { key: "availability", label: "Availability", order: [...AVAILABILITY_STATUSES], valuesOf: (v: Vendor) => [v.availabilityStatus] },
-      { key: "safety", label: "Safety Band", order: [...SAFETY_BANDS], valuesOf: (v: Vendor) => [safetyBand(v.safetyScore)] },
+      { key: "safety", label: "Safety band", order: [...SAFETY_BANDS], valuesOf: (v: Vendor) => [safetyBand(v.safetyScore)] },
     ],
     /* NOTHING SUMS. A safety score is a property of one vendor, and a summed
        distance is meaningless — so the footer counts and claims nothing. */
@@ -609,10 +609,10 @@ export function vendorConfig(
     facets: [
       { key: "status", label: "Active", options: ["Active", "Inactive"], valueOf: (v) => (v.active ? "Active" : "Inactive") },
       { key: "compliance", label: "Compliance", options: [...COMPLIANCE_STATUSES], valueOf: (v) => v.complianceStatus },
-      { key: "lines", label: "Business Lines", options: [...BUSINESS_LINES], valueOf: (v) => v.businessLines },
-      { key: "serviceState", label: "Service State", options: Object.values(STATE_NAMES), searchable: true, valueOf: (v) => v.serviceStates },
+      { key: "lines", label: "Business lines", options: [...BUSINESS_LINES], valueOf: (v) => v.businessLines },
+      { key: "serviceState", label: "Service state", options: Object.values(STATE_NAMES), searchable: true, valueOf: (v) => v.serviceStates },
       { key: "availability", label: "Availability", options: [...AVAILABILITY_STATUSES], valueOf: (v) => v.availabilityStatus },
-      { key: "safety", label: "Safety Score", options: [...SAFETY_BANDS], valueOf: (v) => safetyBand(v.safetyScore) },
+      { key: "safety", label: "Safety score", options: [...SAFETY_BANDS], valueOf: (v) => safetyBand(v.safetyScore) },
       { key: "distance", label: "Distance", options: [...DISTANCE_BANDS], valueOf: (v) => distanceBand(v.distanceMi) },
       {
         key: "flags",
@@ -928,7 +928,7 @@ export function productConfig(
     facets: [
       { key: "status", label: "Status", options: ["active", "inactive", "archived"], valueOf: (p) => p.status },
       { key: "category", label: "Category", options: [...PRODUCT_CATEGORIES], valueOf: (p) => p.category },
-      { key: "unit", label: "Unit of Measure", options: [...UNITS_OF_MEASURE], valueOf: (p) => p.unit },
+      { key: "unit", label: "Unit of measure", options: [...UNITS_OF_MEASURE], valueOf: (p) => p.unit },
       { key: "topOff", label: "TopOff", options: ["Supported", "Not supported"], valueOf: (p) => (p.topOffSupported ? "Supported" : "Not supported") },
       {
         key: "config",
@@ -1205,9 +1205,9 @@ export function assetConfig(
     },
 
     facets: [
-      { key: "status", label: "Record Status", options: ["active", "inactive", "archived"], valueOf: (a) => a.status },
+      { key: "status", label: "Record status", options: ["active", "inactive", "archived"], valueOf: (a) => a.status },
       { key: "availability", label: "Availability", options: [...RENTAL_STATUSES], valueOf: (a) => a.availabilityStatus },
-      { key: "type", label: "Asset Type", options: [...RENTAL_TYPES], valueOf: (a) => a.assetType },
+      { key: "type", label: "Asset type", options: [...RENTAL_TYPES], valueOf: (a) => a.assetType },
       { key: "maintenance", label: "Maintenance", options: [...MAINTENANCE_STATUSES], valueOf: (a) => a.maintenanceStatus },
       {
         key: "customer",

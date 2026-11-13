@@ -741,7 +741,7 @@ export function QuoteSheet({ quote, open, creating, onOpenChange, onOpenOrder }:
         onOpenChange={(o) => (o ? onOpenChange(o) : close())}
         mode={creating ? "create" : "edit"}
         editTitle={`Quote #: ${quote.quoteNo}`}
-        createTitle="Create Quote"
+        createTitle="Create quote"
         createAction="Send quote"
         /* AUTOSAVED, so Cancel is a promise the sheet cannot keep. */
         showCancel={false}

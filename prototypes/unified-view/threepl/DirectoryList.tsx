@@ -567,7 +567,7 @@ export function DirectoryList<Row, K extends string>({
         {...displayViewsFor({ board: false, map: Boolean(renderMap) }, view, setView)}
         onExport={exportRow ? () => setExporting(true) : undefined}
         onCreateOrder={onCreate}
-        ctaLabel={createLabel ?? `Add New ${noun[0].toUpperCase()}${noun.slice(1)}`}
+        ctaLabel={createLabel ?? `Create ${noun}`}
         ctaDisabledReason={canWrite ? undefined : `You do not have permission to add a ${noun}`}
       />
       </HeadFold>
@@ -735,7 +735,7 @@ export function DirectoryList<Row, K extends string>({
               {applied.length === 0 && !typed && onCreate && canWrite && (
                 <Button size="sm" onClick={onCreate}>
                   <Plus />
-                  {createLabel ?? `Add New ${noun[0].toUpperCase()}${noun.slice(1)}`}
+                  {createLabel ?? `Create ${noun}`}
                 </Button>
               )}
             </Empty>

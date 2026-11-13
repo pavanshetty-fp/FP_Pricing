@@ -120,7 +120,7 @@ export function ShipToSheet({
         open
         onOpenChange={(o) => !o && onClose()}
         mode="edit"
-        editTitle={`${s.locationName} · Ship-to 360`}
+        editTitle={`${s.locationName} · Ship-to`}
         createTitle=""
         createAction=""
         showCancel={false}

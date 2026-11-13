@@ -3111,7 +3111,7 @@ export function BrokerOrderSheet({
           /* THE BANNER CARRIES THE REASON NOW. It has room for the whole list
              and a way to step through it; the clause beside the button had
              room for one of the three and no way to say there were others. */
-          label: "Create Order",
+          label: "Create order",
           onSelect: createSteps.length === 0 ? createOrder : () => {},
           blocked: createSteps.length > 0,
         }
@@ -3818,7 +3818,7 @@ export function BrokerOrderSheet({
                       label="Requested"
                       total={
                         l.topOff
-                          ? "Top-off"
+                          ? "Top off"
                           : `${(l.gal ?? 0).toLocaleString()} gal`
                       }
                     />
@@ -4300,8 +4300,8 @@ export function BrokerOrderSheet({
          old POC section, gone now that POC details is a card. */
       mode={inCreation ? "create" : mode}
       editTitle={`Order #: ${order?.orderNo ?? ""}`}
-      createTitle="Create Delivery Order"
-      createAction="Create Order"
+      createTitle="Create delivery order"
+      createAction="Create order"
       canSubmit={canSubmit}
       /* AUTOSAVED, so Cancel is a promise the sheet cannot keep — it would
          claim to undo what has already been kept. Close is the honest exit. */
@@ -4329,7 +4329,7 @@ export function BrokerOrderSheet({
           flags={[
             {
               id: "urgent",
-              label: "Mark as an Urgent Order",
+              label: "Mark as an urgent order",
               checked: draft.urgent,
               onChange: (v) => set("urgent", v),
               /* LOCKED ONCE A VENDOR IS ASSIGNED (Pavan, 2026-10-06). */
@@ -4337,7 +4337,7 @@ export function BrokerOrderSheet({
             },
             {
               id: "signature",
-              label: "Get signature on Delivery",
+              label: "Get signature on delivery",
               checked: draft.signatureOnDelivery,
               onChange: (v) => set("signatureOnDelivery", v),
               disabled: draft.status === "Assigned",
@@ -4683,7 +4683,7 @@ export function BrokerOrderSheet({
       {!locked && (
         <>
       <FormStep label={CREATE_STEPS.order}>
-      <SheetSection title="Job Type">
+      <SheetSection title="Job type">
         <RadioGroup
           className="flex gap-6"
           value={draft.jobType}
@@ -4704,7 +4704,7 @@ export function BrokerOrderSheet({
 
       <SheetSection
         id={SECTION_BASICS}
-        title="Basic Details"
+        title="Basic details"
       >
         {/* The selects and the facts they produce are ONE unit, so they sit
             4px apart while the section's own rhythm stays 20px. A full field
@@ -4743,7 +4743,7 @@ export function BrokerOrderSheet({
               )}
             />
           </SheetField>
-          <SheetField label="ShipTo" required>
+          <SheetField label="Ship-to" required>
             {/* A customer can have anywhere from ten to a hundred ship-tos, so
                 this is the field that most needs typing rather than scrolling. */}
             <Combobox
@@ -4756,7 +4756,7 @@ export function BrokerOrderSheet({
                 )
               }
               options={shipTos}
-              placeholder="Select ShipTo"
+              placeholder="Select ship-to"
               searchPlaceholder="Search ship-tos…"
               emptyText="No ship-to found."
               optionAction={(name) => (
@@ -4810,7 +4810,7 @@ export function BrokerOrderSheet({
           <SheetField label="PO number">
             <Input
               value={draft.poNumber}
-              placeholder="Enter PO Number"
+              placeholder="Enter PO number"
               onChange={(e) => set("poNumber", e.target.value)}
             />
           </SheetField>
@@ -4819,13 +4819,13 @@ export function BrokerOrderSheet({
           <SheetField label="BOL number">
             <Input
               value={draft.bolNumber}
-              placeholder="Enter BOL Number"
+              placeholder="Enter BOL number"
               onChange={(e) => set("bolNumber", e.target.value)}
             />
           </SheetField>
           {/* Admin-configured in the product — the values below are the ones
               the reference shows; the final list is still to come. */}
-          <SheetField label="Order Type" required>
+          <SheetField label="Order type" required>
             <Combobox
               className="w-full"
               value={draft.orderType}
@@ -4857,11 +4857,11 @@ export function BrokerOrderSheet({
 
 
       <FormStep label={CREATE_STEPS.schedule}>
-      <SheetSection title="Schedule Details">
+      <SheetSection title="Schedule details">
         {/* THE SAME THIRDS AS PO NUMBER · BOL NUMBER · ORDER TYPE (Pavan,
             2026-10-29) — the date lines up under PO number, same width. */}
         <div className="grid grid-cols-3 gap-4">
-          <SheetField label="Planned Delivery Date" required>
+          <SheetField label="Planned delivery date" required>
             <DatePopover>
               <PopoverTrigger asChild>
                 <Button
@@ -4898,7 +4898,7 @@ export function BrokerOrderSheet({
         {/* THE SHARED DELIVERY TIMELINE (Pavan, 2026-10-20) — the window and
             the preferred times on one day, as on the portal's order. */}
         <DeliveryWindowTimeline
-          label="Delivery Window & Preferred Time"
+          label="Delivery window & preferred time"
           required
           start={windowMinutes[0]}
           end={windowMinutes[1]}
@@ -4927,7 +4927,7 @@ export function BrokerOrderSheet({
           cadences. */}
       {!isMovement && (
         <RecurringOrderSection
-          title="Recurring Order"
+          title="Recurring order"
           on={draft.recurring}
           schedule={draft.schedule}
           plannedDay={draft.plannedDate?.getDay()}
@@ -4960,7 +4960,7 @@ export function BrokerOrderSheet({
             <SheetField label="To">
               <Input value={order.movement.to} disabled />
             </SheetField>
-            <SheetField label="Tank Type">
+            <SheetField label="Tank type">
               <Input value={order.movement.tankType} disabled />
             </SheetField>
             <SheetField label="Capacity">
@@ -4979,7 +4979,7 @@ export function BrokerOrderSheet({
       {!isMovement && (
         <SheetSection
           id={SECTION_LINES}
-          title="Delivery Order"
+          title="Delivery order"
           flush
           /* THE ADD HANGS OFF THE CARD — DS ui §10f. It was the table's last
              band, sharing the strip with the winter flag; the band read as an
@@ -5146,8 +5146,8 @@ export function BrokerOrderSheet({
                                 label: "Fuel",
                                 has: (name) => assetCategory(name) === "Fuel",
                                 groups: [
-                                  { label: "Tank Monitors", has: (name) => hasMonitor(name) },
-                                  { label: "No Tank Monitors", has: (name) => !hasMonitor(name) },
+                                  { label: "Tank monitors", has: (name) => hasMonitor(name) },
+                                  { label: "No tank monitors", has: (name) => !hasMonitor(name) },
                                 ],
                               },
                               { label: "Bulk Lubricants", has: (name) => assetCategory(name) === "Bulk Lubricants" },
@@ -5213,7 +5213,7 @@ export function BrokerOrderSheet({
                             value={
                               line.topOff ? "" : line.gal != null ? String(inGal ? capGal(tank, plannedDays, line.gal) : line.gal) : ""
                             }
-                            placeholder={line.topOff ? "Top-off" : "0"}
+                            placeholder={line.topOff ? "Top off" : "0"}
                             /* THE SUGGESTION IS THE PLACEHOLDER — the tank full
                                on the planned day; → takes it (as the portal). */
                             suggestion={
@@ -5296,7 +5296,7 @@ export function BrokerOrderSheet({
 
                     Only once a line names an asset: a total over nothing is a
                     row that says "0 gal" about an order that has not started.
-                    "Top-off" when every line is filled, because there is no
+                    "Top off" when every line is filled, because there is no
                     number to add up. */}
                 {hasAssets && (
                   <tfoot>
@@ -5309,7 +5309,7 @@ export function BrokerOrderSheet({
                       </td>
                       <td className="px-3 text-sm font-medium tabular-nums text-foreground">
                         {isAllTopOff(draft.lines)
-                          ? "Top-off"
+                          ? "Top off"
                           : qtyTotals}
                       </td>
                       <td aria-hidden colSpan={4} />
@@ -5330,7 +5330,7 @@ export function BrokerOrderSheet({
           choice. Same table idiom as the Delivery Order above it. */}
       {!isMovement && (
         <SheetSection
-          title="Load Order"
+          title="Load order"
           /* FLUSH ONLY WHEN IT IS THE TABLE. The other two branches are a CTA
              panel and an empty state, both of which are their own padded box
              and would sit on the card's edge without the body's insets. */
@@ -5340,7 +5340,7 @@ export function BrokerOrderSheet({
           action={
             loadRows && (
               <SheetSectionRemove
-                label="Remove Load Order"
+                label="Remove load order"
                 /* The rows arrive prefilled with the order's products, so the
                    product alone is not evidence anyone has been here — a
                    terminal, an account or a quantity is. */
@@ -5366,7 +5366,7 @@ export function BrokerOrderSheet({
             </Empty>
           ) : !loadRows ? (
             <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
-              <span className="text-sm text-foreground">Add Load Order</span>
+              <span className="text-sm text-foreground">Add load order</span>
               <Button
                 variant="outline"
                 size="sm"
@@ -6546,7 +6546,7 @@ export function BrokerOrderSheet({
                   label="Total gallons"
                   value={
                     isAllTopOff(draft.lines)
-                      ? "Top-off"
+                      ? "Top off"
                       : gal > 0
                         ? `${gal.toLocaleString()} gal`
                         : "—"
@@ -6556,7 +6556,7 @@ export function BrokerOrderSheet({
                     .map((l) => ({
                       label: `${l.asset} · ${l.product}`,
                       value: l.topOff
-                        ? "Top-off"
+                        ? "Top off"
                         : `${billableGal(l).toLocaleString()} gal`,
                     }))}
                 />
@@ -6710,7 +6710,7 @@ export function BrokerOrderSheet({
             <RailCard title="Notes" icon={<StickyNote />}>
               <div className="p-4">
               <div className="flex flex-col gap-4">
-                <SheetField label="Delivery Instructions">
+                <SheetField label="Delivery instructions">
                   <Textarea
                     value={draft.instructions}
                     placeholder="Enter any delivery instructions here"
@@ -6718,7 +6718,7 @@ export function BrokerOrderSheet({
                     className="min-h-24"
                   />
                 </SheetField>
-                <SheetField label="Internal Note">
+                <SheetField label="Internal note">
                   <Textarea
                     value={draft.internalNote}
                     placeholder="Add an internal note"
@@ -6893,7 +6893,7 @@ export function BrokerOrderSheet({
       {inCreation && (
         <SheetSection title="Notes">
           <div className="flex flex-col gap-4">
-                <SheetField label="Delivery Instructions">
+                <SheetField label="Delivery instructions">
                   <Textarea
                     value={draft.instructions}
                     placeholder="Enter any delivery instructions here"
@@ -6901,7 +6901,7 @@ export function BrokerOrderSheet({
                     className="min-h-24"
                   />
                 </SheetField>
-                <SheetField label="Internal Note">
+                <SheetField label="Internal note">
                   <Textarea
                     value={draft.internalNote}
                     placeholder="Add an internal note"

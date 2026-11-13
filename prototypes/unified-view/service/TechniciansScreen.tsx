@@ -42,8 +42,8 @@ const TECH_COLUMNS: ListColumn<TechColumnKey>[] = [
   { key: "skills", label: "Skills", width: 220, sortable: true },
   /* COMPARED DOWN THE COLUMN, so right-aligned — these two are read against
      each other and against the rows above. */
-  { key: "open", label: "Open Jobs", width: 110, sortable: true },
-  { key: "capacity", label: "Jobs / Day", width: 110, sortable: true },
+  { key: "open", label: "Open jobs", width: 110, sortable: true },
+  { key: "capacity", label: "Jobs / day", width: 110, sortable: true },
   { key: "phone", label: "Phone", width: 140, sortable: true },
   { key: "status", label: "Status", width: 100, sortable: true },
   { key: "actions", label: "", width: 44 },

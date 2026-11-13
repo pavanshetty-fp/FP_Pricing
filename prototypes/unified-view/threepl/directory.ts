@@ -736,7 +736,7 @@ function buildProducts(): BrokerProduct[] {
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
       noun: "Product",
-      fields: ["Base price", "Tax code", "Unit of measure", "Top-off support", "Status", "Revenue account"],
+      fields: ["Base price", "Tax code", "Unit of measure", "Top off support", "Status", "Revenue account"],
     });
   });
 

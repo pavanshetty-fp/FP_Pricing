@@ -153,9 +153,9 @@ export function CustomerSheet({
       onOpenChange={onOpenChange}
       mode={mode}
       editTitle={customer?.name ?? ""}
-      createTitle="Create New Customer"
+      createTitle="Create customer"
       // Matches the header and the rail CTA verbatim; Asset Orders does the same.
-      createAction="Create New Customer"
+      createAction="Create customer"
       /* IT AUTOSAVES, SO THERE IS NOTHING TO CANCEL AND NOTHING TO SAVE.
          Creating still takes an act. */
       showCancel={false}
@@ -177,9 +177,9 @@ export function CustomerSheet({
         if (creating) onCreate?.(draft);
       }}
     >
-      <SheetSection title="Customer Details">
+      <SheetSection title="Customer details">
         <div className={cn("grid gap-4", creating ? "grid-cols-2" : "grid-cols-3")}>
-          <SheetField label="Customer Name">
+          <SheetField label="Customer name">
             <Input
               value={draft.name}
               placeholder="e.g. Morris Group"
@@ -212,7 +212,7 @@ export function CustomerSheet({
         </div>
       </SheetSection>
 
-      <SheetSection title="Line of Service">
+      <SheetSection title="Line of service">
         <SheetField
           label="LOS"
         >
@@ -225,9 +225,9 @@ export function CustomerSheet({
         </SheetField>
       </SheetSection>
 
-      <SheetSection title="Ship-Tos">
+      <SheetSection title="Ship-tos">
         <SheetField
-          label={`Ship-Tos (${draft.shipTos.length})`}
+          label={`Ship-tos (${draft.shipTos.length})`}
         >
           <div className="flex flex-col gap-2">
             {draft.shipTos.length > 0 && (
@@ -281,8 +281,8 @@ export function CustomerSheet({
         </SheetField>
       </SheetSection>
 
-      <SheetSection title="Billing & Contact">
-        <SheetField label="Billing Terms">
+      <SheetSection title="Billing & contact">
+        <SheetField label="Billing terms">
           <Combobox
             className="w-full"
             value={draft.billingTerms}
@@ -294,7 +294,7 @@ export function CustomerSheet({
           />
         </SheetField>
 
-        <SheetField label="Contact Name">
+        <SheetField label="Contact name">
           <Input
             value={draft.contactName}
             placeholder="e.g. Dev Morris"

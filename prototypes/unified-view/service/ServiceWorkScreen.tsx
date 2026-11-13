@@ -106,7 +106,7 @@ type Col =
    what, when, who is doing it, state, money — so the three modules' tables
    read as one product. Every column sorts, for the reason `orders.ts` gives. */
 const COLUMNS: ListColumn<Col>[] = [
-  { key: "order", label: "Service Order #", width: 130, sortable: true },
+  { key: "order", label: "Service order #", width: 130, sortable: true },
   { key: "type", label: "Type", width: 130, sortable: true },
   { key: "customer", label: "Customer", width: 250, sortable: true },
   { key: "shipTo", label: "Site", width: 170, sortable: true },
@@ -118,8 +118,8 @@ const COLUMNS: ListColumn<Col>[] = [
   { key: "status", label: "Status", width: 160, sortable: true },
   { key: "total", label: "Total", width: 80, sortable: true },
   /* ── Available, not shown by default. ── */
-  { key: "source", label: "Intake Source", width: 165, sortable: true },
-  { key: "raisedBy", label: "Raised By", width: 160, sortable: true },
+  { key: "source", label: "Intake source", width: 165, sortable: true },
+  { key: "raisedBy", label: "Raised by", width: 160, sortable: true },
   { key: "labor", label: "Labor", width: 110, sortable: true },
   { key: "invoice", label: "Invoice", width: 140, sortable: true },
   { key: "actions", label: "", width: 44 },
@@ -136,7 +136,7 @@ const SEARCH_FIELDS = [
   { key: "asset", label: "Asset" },
   { key: "fault", label: "Description" },
   { key: "technician", label: "Technician" },
-  { key: "order", label: "Service Order #" },
+  { key: "order", label: "Service order #" },
 ];
 
 /* ---------------------------------------------------------------- facets */
@@ -144,7 +144,7 @@ const SEARCH_FIELDS = [
 function buildFacets(portalOn: boolean) {
   return [
     { key: "status", label: "Status", options: [...WORK_STATUSES] },
-    { key: "workType", label: "Work Type", options: [...WORK_TYPE_NAMES] },
+    { key: "workType", label: "Work type", options: [...WORK_TYPE_NAMES] },
     { key: "priority", label: "Priority", options: [...PRIORITIES] },
     {
       key: "technician",
@@ -154,7 +154,7 @@ function buildFacets(portalOn: boolean) {
     },
     {
       key: "source",
-      label: "Intake Source",
+      label: "Intake source",
       /* THE PORTAL OPTION FOLLOWS THE SWITCH. Offering a filter for a source
          nothing can arrive from is a facet that can only ever return zero. */
       options: [...INTAKE_SOURCES, ...(portalOn ? [PORTAL_SOURCE] : [])],
@@ -199,7 +199,7 @@ function cardUnits(r: ServiceOrder, off: ReadonlySet<string>) {
       kind: "stack" as const,
       key: "customer",
       /* SHIP-TO FIRST, then where, then the customer small (Pavan, 2026-10-23). */
-      heading: "Ship-to Details",
+      heading: "Ship-to details",
       lines: [
         ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 1 as const }]),
         ...(off.has("customer.city") || !r.city
@@ -315,7 +315,7 @@ function cardUnits(r: ServiceOrder, off: ReadonlySet<string>) {
 }
 
 const CARD_UNITS = [
-  { key: "customer", label: "Ship-to Details" },
+  { key: "customer", label: "Ship-to details" },
   { key: "customer.site", label: "Ship-to name", group: "customer" },
   { key: "customer.city", label: "City and state", group: "customer" },
   { key: "customer.account", label: "Customer", group: "customer" },
@@ -1332,7 +1332,7 @@ export function ServiceWorkScreen({ flow }: { flow?: "dispatch" | "app" } = {}) 
       <FuelOrdersViewBar
         {...savedViews}
         {...displayViewsFor({ board: true, map: false }, view, setView)}
-        ctaLabel="New service order"
+        ctaLabel="Create service order"
         onCreateOrder={() => setCreating(true)}
       />
       </HeadFold>

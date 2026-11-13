@@ -419,7 +419,7 @@ function AssetPickerSheet({
                   </th>
                   <th className="px-3 py-2.5 text-left">
                     <span className="flex items-center gap-1">
-                      <TableRequiredLabel>Tank Type</TableRequiredLabel>
+                      <TableRequiredLabel>Tank type</TableRequiredLabel>
                       <HeaderFilter
                         label="Tank type"
                         allLabel={ALL_TYPES}
@@ -888,7 +888,7 @@ export function AssetMovementSheet({
                 route.from !== route.to ||
                 y !== draft[step === "from" ? "to" : "from"].yard
             )}
-            placeholder="Select Yard"
+            placeholder="Select yard"
             searchPlaceholder="Search yards…"
           />
         </SheetField>
@@ -935,12 +935,12 @@ export function AssetMovementSheet({
               value={point.customer}
               onValueChange={(v) => setPoint(step, { customer: v })}
               options={customers}
-              placeholder="Select Customer"
+              placeholder="Select customer"
               searchPlaceholder="Search customers…"
               emptyText="No customer found."
             />
           </SheetField>
-          <SheetField label="Ship To" required>
+          <SheetField label="Ship-to" required>
             <Combobox
               className="w-full"
               value={point.shipTo}
@@ -955,7 +955,7 @@ export function AssetMovementSheet({
                   route.from !== route.to ||
                   x !== draft[step === "from" ? "to" : "from"].shipTo
               )}
-              placeholder="Select Ship To"
+              placeholder="Select ship-to"
               searchPlaceholder="Search ship-tos…"
               emptyText="No ship-to found."
             />
@@ -1015,9 +1015,9 @@ export function AssetMovementSheet({
       onOpenChange={requestClose}
       mode="create"
       showCancel={false}
-      editTitle="Asset Order"
-      createTitle="Asset Order"
-      createAction="Create Order"
+      editTitle="Asset order"
+      createTitle="Asset order"
+      createAction="Create order"
       /* THE CHIP CARRIES THE ROUTE, not the type — the title already says
          "Asset Order", and the route is the one thing settled in the menu that
          the form itself never states. Without it the only evidence of which
@@ -1039,13 +1039,13 @@ export function AssetMovementSheet({
           flags={[
             {
               id: "mv-urgent",
-              label: "Mark as an Urgent Order",
+              label: "Mark as an urgent order",
               checked: draft.urgent,
               onChange: (v) => set("urgent", v),
             },
             {
               id: "mv-signature",
-              label: "Get signature on Delivery",
+              label: "Get signature on delivery",
               checked: draft.signature,
               onChange: (v) => set("signature", v),
             },
@@ -1072,12 +1072,12 @@ export function AssetMovementSheet({
         />
       </SheetSection>
 
-      <SheetSection id="mv-order" title="Order Details">
+      <SheetSection id="mv-order" title="Order details">
         {/* THREE REFERENCE NUMBERS AND A DATE, one row. With the type gone to
             the header there is room for BOL beside the PO it sits next to on
             every paper version of this order. */}
         <div className="grid grid-cols-3 gap-4">
-          <SheetField label="Planned Delivery Date" required>
+          <SheetField label="Planned delivery date" required>
             <DatePopover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-start font-normal">
@@ -1093,17 +1093,17 @@ export function AssetMovementSheet({
               </PopoverContent>
             </DatePopover>
           </SheetField>
-          <SheetField label="Customer PO Number">
+          <SheetField label="Customer PO number">
             <Input
               value={draft.poNumber}
-              placeholder="Enter Customer PO Number"
+              placeholder="Enter customer PO number"
               onChange={(e) => set("poNumber", e.target.value)}
             />
           </SheetField>
-          <SheetField label="BOL Number">
+          <SheetField label="BOL number">
             <Input
               value={draft.bolNumber}
-              placeholder="Enter BOL Number"
+              placeholder="Enter BOL number"
               onChange={(e) => set("bolNumber", e.target.value)}
             />
           </SheetField>
@@ -1151,7 +1151,7 @@ export function AssetMovementSheet({
           own, and an Add chip on the squared bottom-left corner. Reading three
           different layouts for three lists of things was the cost of not using
           it here. */}
-      <SheetSection id="mv-asset" title="Asset Details">
+      <SheetSection id="mv-asset" title="Asset details">
         {/* ONE ASSET, CHOSEN FROM A TABLE, THEN READ AS A CARD. §5.20: a
             movement order carries exactly one asset — `assertConsistent`
             enforces it — so this section never grows a second row, and the
@@ -1245,7 +1245,7 @@ export function AssetMovementSheet({
                 </Button>
               </div>
               <dl className="grid grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
-                <AssetFact label="Tank Type" value={asset.tankType ?? "—"} />
+                <AssetFact label="Tank type" value={asset.tankType ?? "—"} />
                 <AssetFact
                   label="Capacity"
                   value={
@@ -1310,7 +1310,7 @@ export function AssetMovementSheet({
             />
           ) : undefined
         }
-        title="Add Peripheral"
+        title="Add peripheral"
         /* QUIET UNTIL REACHED FOR — the same removal affordance the Load Order
            carries, and for the same reason: emptying an optional list is
            destructive, so it does not compete with the table, and it keeps its
@@ -1446,7 +1446,7 @@ export function AssetMovementSheet({
              hold, does both. */
           <div className="m-4 flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
             <span className="flex flex-col gap-0.5">
-              <span className="text-sm text-foreground">Add Peripheral</span>
+              <span className="text-sm text-foreground">Add peripheral</span>
               <span className="text-xs text-muted-foreground">
                 List peripherals to include with the asset's movement order.
               </span>
@@ -1482,7 +1482,7 @@ export function AssetMovementSheet({
             />
           ) : undefined
         }
-        title="Custom Items"
+        title="Custom items"
         action={
           draft.customOn && (
             <SheetSectionRemove
@@ -1580,7 +1580,7 @@ export function AssetMovementSheet({
         ) : (
           <div className="m-4 flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
             <span className="flex flex-col gap-0.5">
-              <span className="text-sm text-foreground">Add Custom Items</span>
+              <span className="text-sm text-foreground">Add custom items</span>
               <span className="text-xs text-muted-foreground">
                 Anything to include with the asset's Lease Equipment Order.
               </span>
@@ -1592,9 +1592,9 @@ export function AssetMovementSheet({
         )}
       </SheetSection>
 
-      <SheetSection title="Additional Details">
+      <SheetSection title="Additional details">
         <SheetField
-          label="Upload Supporting Documents"
+          label="Upload supporting documents"
         >
           <FileUpload variant="field" label="Choose a file to upload" note="" />
         </SheetField>
@@ -1604,10 +1604,10 @@ export function AssetMovementSheet({
             value=""
             onValueChange={() => {}}
             options={DOC_ACCESS}
-            placeholder="Select Document access type"
+            placeholder="Select document access type"
           />
         </SheetField>
-        <SheetField label="Delivery Instructions">
+        <SheetField label="Delivery instructions">
           <Textarea
             value={draft.instructions}
             placeholder="Anything the driver needs at the gate…"
@@ -1616,7 +1616,7 @@ export function AssetMovementSheet({
           />
         </SheetField>
         <SheetField
-          label="Internal Note"
+          label="Internal note"
         >
           <Textarea
             value={draft.internalNote}
@@ -1633,12 +1633,12 @@ export function AssetMovementSheet({
               at either end, so there is no account whose note this could be —
               the pair is absent rather than sitting there saying "select a
               customer" next to a form that will never ask for one. */}
-          <SheetField label="Customer Note">
+          <SheetField label="Customer note">
             <div className="min-h-9 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3 py-2 text-sm text-muted-foreground">
               {notePoint?.customer ? "No note on this account." : "Select a customer."}
             </div>
           </SheetField>
-          <SheetField label="ShipTo Note">
+          <SheetField label="Ship-to note">
             <div className={cn(
               "min-h-9 rounded-md border border-fp-outline-1 bg-fp-surface-1a px-3 py-2 text-sm",
               noteSite ? "text-foreground" : "text-muted-foreground"

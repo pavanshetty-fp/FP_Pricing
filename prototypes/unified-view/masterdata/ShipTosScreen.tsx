@@ -29,7 +29,7 @@ const COLUMNS: { key: Col; label: string; width: number; sortable: boolean }[] =
   { key: "address", label: "Address", width: 300, sortable: true },
   { key: "contact", label: "Contact", width: 170, sortable: true },
   { key: "rental", label: "Rental assets", width: 120, sortable: true },
-  { key: "owned", label: "Customer-owned", width: 140, sortable: true },
+  { key: "owned", label: "Customer owned", width: 140, sortable: true },
   { key: "status", label: "Status", width: 110, sortable: true },
 ];
 

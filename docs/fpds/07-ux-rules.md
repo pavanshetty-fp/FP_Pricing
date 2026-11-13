@@ -1044,6 +1044,8 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 
 **UX-166. One fact, one form — across every unit.** When a unit shows something another unit already shows (an order number, its type, a status, a date, a ship-to), it draws it the same way: same component, colour, size and weight. A new view built from an existing one (List view from the board card) copies its parts, never re-draws them. Differ only where Pavan has said so explicitly. — *The List view showed the order type as a word pill while the board card shows the coloured initial.* (Pavan, 2026-10-29) · Check: review; misses M-035.
 
+**UX-167. Sentence case everywhere, one spelling per term.** Page and section titles, tabs, column headers, field labels, buttons, chips, menu items and placeholders are sentence case ("Schedule details", "Create order"). Capitals stay for acronyms (PO, BOL, ERP, POC, DEF, RFID), record IDs, product and module names (Service Work, Master Data, Customer Portal) and stage names a sentence points to ("Move to Assigned"). One spelling per term: **Ship-to**, **Top off**, **PO number**, **BOL number**, **Customer owned**, units lower case "(gal)". Buttons: **Create {thing}** makes a record; **Add {thing}** adds a row or item inside a form; never "New" or "Add New". Empty lines read "No {things} yet." 360 titles: "{name} · Asset / Customer / Ship-to". (Pavan, 2026-11-13) · Check: eval `copy-case`.
+
 ## Index
 
 | Id | Rule |
@@ -1213,4 +1215,5 @@ Interaction behavior (hover, staging, autosave mechanics, motion, keyboard) is i
 | UX-163 | Closest existing pattern before any generic component |
 | UX-164 | Verify every stage, blank + filled row, both themes; log every miss |
 | UX-165 | Icons never wear the violet accent (decorative icons grey; status icons keep status colour); the accent is for highlights only |
+| UX-167 | Sentence case everywhere; one spelling per term (Ship-to, Top off, PO number, gal); Create for records, Add for rows; "No {things} yet." |
 | UX-166 | One fact, one form across every unit — copy the existing unit's parts; differ only when Pavan says so |

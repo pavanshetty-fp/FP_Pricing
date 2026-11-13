@@ -350,7 +350,7 @@ export function LinesTable({
               <td className="relative p-0">
                 <TableCellInput
                   value={l.topOff ? "" : l.gal ? String(capGal(asset, days, l.gal)) : ""}
-                  placeholder={l.topOff ? "Top-off" : "0"}
+                  placeholder={l.topOff ? "Top off" : "0"}
                   /* THE SUGGESTION IS THE PLACEHOLDER (Pavan, 2026-10-20) —
                      the tank full on the planned day; → takes it. */
                   suggestion={live && !l.topOff && asset?.monitor && asset.capacity ? String(suggestedGal(asset, days)) : undefined}
@@ -699,7 +699,7 @@ export function OrderRequestSheet({
       onOpenChange={(o) => (o ? onOpenChange(o) : close())}
       mode={creating ? "create" : "edit"}
       editTitle={`Order #: ${request.requestNo}`}
-      createTitle="Create Order"
+      createTitle="Create order"
       createAction="Submit order"
       showCancel={false}
       headerAside={

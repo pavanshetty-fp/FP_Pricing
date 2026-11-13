@@ -575,7 +575,7 @@ export function ShipToSheet({
       onOpenChange={onOpenChange}
       mode={creating ? "create" : "edit"}
       editTitle={shipTo?.name || "Ship-to"}
-      createTitle="Create Ship-to"
+      createTitle="Create ship-to"
       createAction="Create ship-to"
       showCancel={false}
       level={level}

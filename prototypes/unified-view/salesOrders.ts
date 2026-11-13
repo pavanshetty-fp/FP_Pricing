@@ -59,7 +59,7 @@ export function salesTypeCode(r: SalesOrderRow): {
       label: r.fuel.type.label,
       tone: TYPE_TONE[r.fuel.type.code],
     };
-  return { text: "A", label: "Asset Order", tone: "pastel-violet" };
+  return { text: "A", label: "Asset order", tone: "pastel-violet" };
 }
 
 /* ---- shared fields, read the same way for either kind ------------------- */
@@ -100,14 +100,14 @@ export const SALES_ORDER_COLUMNS: ListColumn<SalesOrderColumnKey>[] = [
   { key: "order", label: "Order #", width: 90, sortable: true },
   { key: "type", label: "Type", width: 120, sortable: true },
   { key: "customer", label: "Customer", width: 250, sortable: true },
-  { key: "products", label: "Product / Asset", width: 230, sortable: true },
+  { key: "products", label: "Product / asset", width: 230, sortable: true },
   { key: "qty", label: "Qty", width: 100, sortable: true },
-  { key: "date", label: "Date of Delivery", width: 140, sortable: true },
-  { key: "planned", label: "Planned Date & Time", width: 160, sortable: true },
+  { key: "date", label: "Date of delivery", width: 140, sortable: true },
+  { key: "planned", label: "Planned date & time", width: 160, sortable: true },
   /* ROOM FOR A STAGE AND ITS FLAG — "Over SLA" rides beside it (2026-10-07). */
   { key: "status", label: "Status", width: 200, sortable: true },
   { key: "driver", label: "Driver", width: 120, sortable: true },
-  { key: "salesRep", label: "Sales Rep", width: 120, sortable: true },
+  { key: "salesRep", label: "Sales rep", width: 120, sortable: true },
   { key: "tags", label: "Tags", width: 150, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
@@ -243,7 +243,7 @@ export function sortSalesOrders(
    dimension leaves the other kind in its empty group. */
 export const SALES_ORDER_GROUP_DIMS: GroupDim<SalesOrderRow>[] = [
   { key: "customer", label: "Customer", valuesOf: (r) => [customerOf(r)] },
-  { key: "shipTo", label: "Ship To", valuesOf: (r) => [shipToOf(r)] },
+  { key: "shipTo", label: "Ship-to", valuesOf: (r) => [shipToOf(r)] },
   {
     key: "status",
     label: "Status",
@@ -256,13 +256,13 @@ export const SALES_ORDER_GROUP_DIMS: GroupDim<SalesOrderRow>[] = [
   },
   {
     key: "date",
-    label: "Date of Delivery",
+    label: "Date of delivery",
     hides: "date",
     valuesOf: (r) => [dateOf(r).title],
   },
   {
     key: "type",
-    label: "Order Type",
+    label: "Order type",
     hides: "type",
     valuesOf: (r) => [salesTypeCode(r).label],
   },
@@ -280,12 +280,12 @@ export const SALES_ORDER_GROUP_DIMS: GroupDim<SalesOrderRow>[] = [
   },
   {
     key: "assetType",
-    label: "Asset Type",
+    label: "Asset type",
     valuesOf: (r) => (r.kind === "asset" ? [r.asset.assetType] : []),
   },
   {
     key: "salesRep",
-    label: "Sales Rep",
+    label: "Sales rep",
     hides: "salesRep",
     valuesOf: (r) => (r.kind === "asset" ? [r.asset.salesRep] : []),
   },

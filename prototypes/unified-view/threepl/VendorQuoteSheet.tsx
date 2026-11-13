@@ -246,7 +246,7 @@ export function VendorQuoteSheet({
                   {line.product}
                 </td>
                 <td className="px-3 text-sm tabular-nums text-muted-foreground">
-                  {line.topOff ? "Top-off" : billableGal(line).toLocaleString()}
+                  {line.topOff ? "Top off" : billableGal(line).toLocaleString()}
                 </td>
                 {editable ? (
                   <>

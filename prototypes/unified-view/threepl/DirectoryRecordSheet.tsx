@@ -375,7 +375,7 @@ export function DirectoryRecordSheet<T>({
       }}
       mode={mode}
       editTitle={title}
-      createTitle={`Create New ${noun}`}
+      createTitle={`Create ${noun.toLowerCase()}`}
       createAction={`Create ${noun}`}
       /* NO CANCEL — this sheet autosaves its draft (`useDraftSaveState`
          above), and "Cancel" promises to undo something that has already been

@@ -135,7 +135,7 @@ const SALES_NAV: NavItem[] = [
   /* Customers and Assets moved to Archive as "Sales customers" and "Sales
      assets" — Master Data holds them now (Pavan, 2026-11-13). */
   /* THE MODULE'S OWN SETTINGS, last — as Service's (Pavan, 2026-10-07). */
-  { key: "sales-settings", label: "Sales Settings", icon: <SlidersHorizontal /> },
+  { key: "sales-settings", label: "Sales settings", icon: <SlidersHorizontal /> },
 ];
 
 /**
@@ -180,18 +180,18 @@ const ARCHIVE_AREAS = new Set(ARCHIVE_NAV.map((i) => i.key));
  * layer takes the full width in both (Sales works the same way).
  */
 const SERVICE_NAV: NavItem[] = [
-  { key: "service-work-orders", label: "Service Orders", icon: <Wrench /> },
+  { key: "service-work-orders", label: "Service orders", icon: <Wrench /> },
   { key: "service-technicians", label: "Technicians", icon: <HardHat /> },
   /* A SEPARATE PRODUCT, REACHED FROM HERE ONLY BECAUSE THIS IS A PROTOTYPE
      (Pavan, 2026-09-23). The technician's app is a phone app a different
      person signs into; it is on the rail so it can be SHOWN, not because
      dispatch would ever open it. */
-  { key: "service-tech-app", label: "Technician App", icon: <Smartphone /> },
+  { key: "service-tech-app", label: "Technician app", icon: <Smartphone /> },
   /* THE PLATFORM'S REFERENCE SCREENS (Pavan and Deepika, 2026-09-24), after
      Anirudh's unified design — what orders price from, the shelf, the plans
      customers are on, the recurring work and the certificates, and how the
      team is doing. */
-  { key: "service-price-book", label: "Price Book", icon: <BookOpen /> },
+  { key: "service-price-book", label: "Price book", icon: <BookOpen /> },
   { key: "service-parts", label: "Parts", icon: <Package /> },
   { key: "service-agreements", label: "Agreements", icon: <FileSignature /> },
   { key: "service-maintenance", label: "Maintenance", icon: <CalendarClock /> },
@@ -200,7 +200,7 @@ const SERVICE_NAV: NavItem[] = [
   /* THE MODULE'S OWN SWITCH POINTS, not the app's Settings page — that one
      will govern several modules and is held back pending it. These change what
      the flow IS, so they belong where the flow is. */
-  { key: "service-settings", label: "Service Settings", icon: <SlidersHorizontal /> },
+  { key: "service-settings", label: "Service settings", icon: <SlidersHorizontal /> },
 ];
 
 /**
@@ -216,10 +216,10 @@ const SERVICE_NAV: NavItem[] = [
 const SUB_NAV: Record<string, NavGroup[]> = {
   "3pl-orders": [
     {
-      label: "Order Types",
+      label: "Order types",
       items: [
-        { key: "3pl-delivery-orders", label: "Delivery Orders", icon: <ListChecks /> },
-        { key: "3pl-recurring-orders", label: "Recurring Orders", icon: <Repeat /> },
+        { key: "3pl-delivery-orders", label: "Delivery orders", icon: <ListChecks /> },
+        { key: "3pl-recurring-orders", label: "Recurring orders", icon: <Repeat /> },
       ],
     },
   ],
@@ -233,7 +233,7 @@ const SUB_NAV: Record<string, NavGroup[]> = {
         { key: "3pl-customers", label: "Customers", icon: <Contact /> },
         { key: "3pl-vendors", label: "Vendors", icon: <Truck /> },
         { key: "3pl-products", label: "Products", icon: <Droplet /> },
-        { key: "3pl-rental-assets", label: "Rental Assets", icon: <Caravan /> },
+        { key: "3pl-rental-assets", label: "Rental assets", icon: <Caravan /> },
       ],
     },
   ],
@@ -262,8 +262,8 @@ const SUB_NAV: Record<string, NavGroup[]> = {
     {
       label: "Flows",
       items: [
-        { key: "service-orders-dispatch", label: "No Technician App", icon: <ClipboardList /> },
-        { key: "service-orders-app", label: "With Technician App", icon: <Smartphone /> },
+        { key: "service-orders-dispatch", label: "Without technician app", icon: <ClipboardList /> },
+        { key: "service-orders-app", label: "With technician app", icon: <Smartphone /> },
       ],
     },
   ],

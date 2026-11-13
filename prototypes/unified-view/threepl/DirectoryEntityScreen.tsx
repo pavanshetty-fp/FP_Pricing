@@ -286,7 +286,7 @@ export function DirectoryEntityScreen<Row, K extends string>({
         }
         exportRow={config.exportRow}
         onCreate={() => setSheet({ kind: "create" })}
-        createLabel={`Add New ${Noun}`}
+        createLabel={`Create ${config.noun}`}
         bulkActions={(selected, clear) => {
           const ids = selected.map(config.rowId);
           return [

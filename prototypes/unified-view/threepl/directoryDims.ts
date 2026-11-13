@@ -76,13 +76,13 @@ export type BrokerCustomerColumnKey =
   CUSTOMER INSTRUCTIONS MOVED LAST, and stopped being text. See its cell.
 */
 export const BROKER_CUSTOMER_COLUMNS = [
-  { key: "name" as const, label: "Customer Name", width: 250, sortable: true },
+  { key: "name" as const, label: "Customer name", width: 250, sortable: true },
   { key: "erpId" as const, label: "ERP ID", width: 110, sortable: true },
   { key: "poc" as const, label: "Primary POC", width: 150, sortable: true },
   { key: "address" as const, label: "Address", width: 160, sortable: true },
   { key: "credit" as const, label: "Credit", width: 130, sortable: true },
-  { key: "balance" as const, label: "Current Balance ($)", width: 160, sortable: true },
-  { key: "shipTos" as const, label: "Ship-Tos", width: 170, sortable: true },
+  { key: "balance" as const, label: "Current balance ($)", width: 160, sortable: true },
+  { key: "shipTos" as const, label: "Ship-tos", width: 170, sortable: true },
   { key: "terms" as const, label: "Terms", width: 120, sortable: true },
   { key: "status" as const, label: "Status", width: 100, sortable: true },
   /* 64px — the table's own resize minimum, and the narrowest this can be.
@@ -99,7 +99,7 @@ export const BROKER_CUSTOMER_COLUMNS = [
 
 export const BROKER_CUSTOMER_SEARCH_FIELDS = [
   { key: "name", label: "Customer", text: (c: BrokerCustomer) => `${c.name} ${c.erpId}` },
-  { key: "shipTos", label: "Ship-Tos", text: (c: BrokerCustomer) => shipToNames(c).join(" ") },
+  { key: "shipTos", label: "Ship-tos", text: (c: BrokerCustomer) => shipToNames(c).join(" ") },
   { key: "poc", label: "Primary POC", text: (c: BrokerCustomer) => `${c.mainContactName ?? ""} ${c.phone ?? ""}` },
   { key: "city", label: "City", text: (c: BrokerCustomer) => `${c.city ?? ""} ${c.state ?? ""} ${c.zip ?? ""}` },
 ];
@@ -159,7 +159,7 @@ export function sortCustomers(rows: BrokerCustomer[], sort: CustomerSort | null)
 export const BROKER_CUSTOMER_GROUP_DIMS: GroupDim<BrokerCustomer>[] = [
   {
     key: "credit",
-    label: "Credit Status",
+    label: "Credit status",
     hides: "credit",
     // Unapproved first: the group worth finding is the one that cannot order.
     order: ["Unapproved", "On hold", "Approved"],
@@ -167,7 +167,7 @@ export const BROKER_CUSTOMER_GROUP_DIMS: GroupDim<BrokerCustomer>[] = [
   },
   {
     key: "terms",
-    label: "Payment Terms",
+    label: "Payment terms",
     hides: "terms",
     order: [...PAYMENT_TERMS],
     valuesOf: (c) => [c.paymentTerms],
@@ -181,7 +181,7 @@ export const BROKER_CUSTOMER_GROUP_DIMS: GroupDim<BrokerCustomer>[] = [
   },
   {
     key: "status",
-    label: "Record Status",
+    label: "Record status",
     hides: "status",
     order: ["active", "inactive", "archived"],
     valuesOf: (c) => [c.status],
@@ -218,7 +218,7 @@ export const BROKER_PRODUCT_COLUMNS = [
   /* NAME OVER CODE. They were adjacent columns holding one identity, and the
      code is what people actually type into search — it belongs beside the
      name, not 140px away from it. */
-  { key: "name" as const, label: "Product and Code", width: 230, sortable: true },
+  { key: "name" as const, label: "Product and code", width: 230, sortable: true },
   /* Freed by the merge above, and it earns the place: what a product IS in
      regulatory terms decides who may carry it. */
   { key: "classification" as const, label: "Classification", width: 190, sortable: true },
@@ -228,9 +228,9 @@ export const BROKER_PRODUCT_COLUMNS = [
      the terminals of its loading accounts, read from them. */
   { key: "stockedAt" as const, label: "Stocked at", width: 200, sortable: true },
   { key: "topOff" as const, label: "TopOff", width: 100, sortable: true },
-  { key: "price" as const, label: "Base Price", width: 110, sortable: true },
-  { key: "taxCode" as const, label: "Tax Code", width: 100, sortable: true },
-  { key: "accounting" as const, label: "Accounting Mapping", width: 180, sortable: true },
+  { key: "price" as const, label: "Base price", width: 110, sortable: true },
+  { key: "taxCode" as const, label: "Tax code", width: 100, sortable: true },
+  { key: "accounting" as const, label: "Accounting mapping", width: 180, sortable: true },
   { key: "status" as const, label: "Status", width: 100, sortable: true },
   { key: "customers" as const, label: "Customers", width: 110, sortable: true },
   { key: "vendors" as const, label: "Vendors", width: 90, sortable: true },
@@ -300,7 +300,7 @@ export const BROKER_PRODUCT_GROUP_DIMS: GroupDim<BrokerProduct>[] = [
   },
   {
     key: "unit",
-    label: "Unit of Measure",
+    label: "Unit of measure",
     hides: "unit",
     order: [...UNITS_OF_MEASURE],
     valuesOf: (p) => [p.unit],
@@ -314,7 +314,7 @@ export const BROKER_PRODUCT_GROUP_DIMS: GroupDim<BrokerProduct>[] = [
   },
   {
     key: "topOff",
-    label: "TopOff Support",
+    label: "Top off support",
     hides: "topOff",
     order: ["Supported", "Not supported"],
     valuesOf: (p) => [p.topOffSupported ? "Supported" : "Not supported"],
@@ -353,15 +353,15 @@ export type RentalAssetColumnKey =
   "is this thing free" is the question the list is opened with.
 */
 export const RENTAL_ASSET_COLUMNS = [
-  { key: "name" as const, label: "Asset Name", width: 170, sortable: true },
-  { key: "asset" as const, label: "Asset ID / Type", width: 130, sortable: true },
-  { key: "rental" as const, label: "Rental Start and End Date", width: 280, sortable: true },
+  { key: "name" as const, label: "Asset name", width: 170, sortable: true },
+  { key: "asset" as const, label: "Asset ID / type", width: 130, sortable: true },
+  { key: "rental" as const, label: "Rental start and end date", width: 280, sortable: true },
   { key: "customer" as const, label: "Customer", width: 250, sortable: true },
-  { key: "shipTo" as const, label: "Ship-to / Location", width: 170, sortable: true },
+  { key: "shipTo" as const, label: "Ship-to / location", width: 170, sortable: true },
   { key: "address" as const, label: "Address", width: 160, sortable: true },
   { key: "status" as const, label: "Status", width: 100, sortable: true },
   { key: "rate" as const, label: "Rate", width: 80, sortable: true },
-  { key: "product" as const, label: "Linked Product", width: 160, sortable: true },
+  { key: "product" as const, label: "Linked product", width: 160, sortable: true },
   { key: "maintenance" as const, label: "Maintenance", width: 130, sortable: true },
   { key: "notes" as const, label: "Notes", width: 80, sortable: true },
   { key: "actions" as const, label: "", width: 44 },
@@ -429,7 +429,7 @@ export const RENTAL_ASSET_GROUP_DIMS: GroupDim<RentalAsset>[] = [
   },
   {
     key: "type",
-    label: "Asset Type",
+    label: "Asset type",
     order: [...RENTAL_TYPES],
     valuesOf: (a) => [a.assetType],
   },

@@ -369,7 +369,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
       <FuelOrdersViewBar
         {...savedViews}
         {...displayViewsFor({ board: false, map: false }, view, setView)}
-        ctaLabel="Create New Customer"
+        ctaLabel="Create customer"
         onCreateOrder={() => setCreating(true)}
         onExport={() => setExporting(true)}
       />
@@ -506,7 +506,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
                     setPage(1);
                   }}
                 >
-                  {q ? "Clear search" : "Create New Customer"}
+                  {q ? "Clear search" : "Create customer"}
                 </Button>
               </EmptyContent>
             </Empty>
@@ -562,7 +562,7 @@ export function CustomersScreen({ focus }: { focus?: { id: string; n: number } |
       <ExportSheet
         open={exporting}
         onOpenChange={setExporting}
-        title="Export Customers"
+        title="Export customers"
         noun="customers"
         nounOne="customer"
         count={sorted.length}

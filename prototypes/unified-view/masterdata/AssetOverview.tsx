@@ -78,7 +78,7 @@ export function AssetOverview({ asset: a, rows }: { asset: MdAsset; rows: ViewRo
         <SheetTable
           rows={movements}
           rowKey={(m) => m.id}
-          emptyBody="No asset movement orders recorded."
+          emptyBody="No asset movement orders yet."
           columns={[
             { key: "id", label: "Movement order", render: (m) => m.id },
             { key: "asset", label: "Asset", render: () => a.id },
@@ -102,7 +102,7 @@ export function AssetOverview({ asset: a, rows }: { asset: MdAsset; rows: ViewRo
         <SheetTable
           rows={deliveries}
           rowKey={(d) => d.id}
-          emptyBody="No fuel deliveries recorded."
+          emptyBody="No fuel deliveries yet."
           columns={[
             { key: "id", label: "Delivery", render: (d) => d.id },
             { key: "date", label: "Date", render: (d) => formatDate(d.date) },
@@ -182,7 +182,7 @@ export function AssetOverview({ asset: a, rows }: { asset: MdAsset; rows: ViewRo
         <SheetTable
           rows={compliance}
           rowKey={(c) => c.requirement}
-          emptyBody="No compliance requirements tracked."
+          emptyBody="No compliance requirements yet."
           columns={[
             { key: "req", label: "Requirement", render: (c) => c.requirement },
             { key: "auth", label: "Authority", render: (c) => c.authority },
@@ -195,7 +195,7 @@ export function AssetOverview({ asset: a, rows }: { asset: MdAsset; rows: ViewRo
           <SheetTable
             rows={leaks}
             rowKey={(l) => l.id}
-            emptyBody="No leak checks recorded."
+            emptyBody="No leak checks yet."
             columns={[
               { key: "id", label: "Leak check", render: (l) => l.id },
               { key: "date", label: "Date", render: (l) => formatDate(l.date) },
@@ -232,7 +232,7 @@ export function AssetOverview({ asset: a, rows }: { asset: MdAsset; rows: ViewRo
         <SheetTable
           rows={invoices}
           rowKey={(v) => v.id}
-          emptyBody="No service invoices raised for this asset yet."
+          emptyBody="No service invoices yet."
           columns={[
             { key: "id", label: "Invoice", render: (v) => v.id },
             { key: "so", label: "Service order", render: (v) => v.serviceOrder },

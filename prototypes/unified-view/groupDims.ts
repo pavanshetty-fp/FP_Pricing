@@ -40,13 +40,13 @@ export const CUSTOMER_GROUP_DIMS: GroupDim<Customer>[] = [
   },
   {
     key: "los",
-    label: "Line of Service",
+    label: "Line of service",
     multi: true,
     valuesOf: (r) => r.los,
   },
   {
     key: "billingTerms",
-    label: "Billing Terms",
+    label: "Billing terms",
     valuesOf: (r) => [r.billingTerms],
   },
 ];
@@ -76,7 +76,7 @@ export const ASSET_GROUP_DIMS: GroupDim<Asset>[] = [
   },
   {
     key: "monitor",
-    label: "Tank Monitor",
+    label: "Tank monitor",
     hides: "monitor",
     // Two groups answering "what isn't monitored", which is the real question.
     order: ["Not monitored", "Monitored"],
@@ -84,7 +84,7 @@ export const ASSET_GROUP_DIMS: GroupDim<Asset>[] = [
   },
   {
     key: "products",
-    label: "Product Compatibility",
+    label: "Product compatibility",
     multi: true,
     valuesOf: (r) => r.products,
   },

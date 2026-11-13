@@ -87,7 +87,7 @@ export function AssetSheet({
         open
         onOpenChange={(o) => !o && onClose()}
         mode="edit"
-        editTitle={`${a.id} · Asset 360`}
+        editTitle={`${a.id} · Asset`}
         createTitle=""
         createAction=""
         showCancel={false}

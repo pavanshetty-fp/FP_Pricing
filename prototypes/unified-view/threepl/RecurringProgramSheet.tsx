@@ -596,7 +596,7 @@ export function RecurringProgramSheet({
           <Field label="Gallons per run">
             {programGallons(program) > 0
               ? `${programGallons(program).toLocaleString()} + top-offs`
-              : "Top-offs only"}
+              : "Top offs only"}
           </Field>
           <Field label="Winter blend">
             {program.winterProducts.length

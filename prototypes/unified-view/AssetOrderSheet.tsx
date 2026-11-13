@@ -412,8 +412,8 @@ export function AssetOrderSheet({
       onOpenChange={requestClose}
       mode={mode}
       editTitle={`Order #: ${order?.orderNo ?? ""}`}
-      createTitle="Create Asset Order"
-      createAction="Create Asset Order"
+      createTitle="Create asset order"
+      createAction="Create asset order"
       /* IT AUTOSAVES, SO THERE IS NOTHING TO CANCEL AND NOTHING TO SAVE.
          Creating still takes an act. */
       showCancel={false}

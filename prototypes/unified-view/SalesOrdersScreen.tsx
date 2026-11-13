@@ -167,24 +167,24 @@ const TOGGLE_COLUMNS = SALES_ORDER_COLUMNS.filter((c) => c.label).map((c) => ({
 
 type CardUnit = { key: string; label: string; group?: string };
 const CUSTOMER_UNITS: CardUnit[] = [
-  { key: "customer", label: "Ship-to Details" },
+  { key: "customer", label: "Ship-to details" },
   { key: "customer.site", label: "Ship-to name", group: "customer" },
   { key: "customer.account", label: "Customer", group: "customer" },
 ];
 const FUEL_UNITS: CardUnit[] = [
   { key: "schedule", label: "Schedule" },
-  { key: "product", label: "Delivery Product Details" },
+  { key: "product", label: "Delivery product details" },
   { key: "product.product", label: "Product", group: "product" },
   { key: "product.qty", label: "Quantity", group: "product" },
   { key: "product.total", label: "Total", group: "product" },
   { key: "driver", label: "Driver" },
 ];
 const ASSET_UNITS: CardUnit[] = [
-  { key: "date", label: "Delivery Date" },
-  { key: "asset", label: "Asset Details" },
+  { key: "date", label: "Delivery date" },
+  { key: "asset", label: "Asset details" },
   { key: "asset.qty", label: "Quantity", group: "asset" },
   { key: "asset.serial", label: "Serial #", group: "asset" },
-  { key: "salesRep", label: "Sales Rep" },
+  { key: "salesRep", label: "Sales rep" },
 ];
 /** Every unit — what the parent/child toggle rule reads. */
 const ALL_UNITS: CardUnit[] = [...CUSTOMER_UNITS, ...FUEL_UNITS, ...ASSET_UNITS];
@@ -252,7 +252,7 @@ function fuelCardUnits(r: FuelOrder, off: ReadonlySet<string>): BoardCardUnit[] 
       kind: "stack",
       key: "customer",
       /* SHIP-TO FIRST, the customer small under it (Pavan, 2026-10-23). */
-      heading: "Ship-to Details",
+      heading: "Ship-to details",
       lines: [
         ...(off.has("customer.site")
           ? []
@@ -271,7 +271,7 @@ function fuelCardUnits(r: FuelOrder, off: ReadonlySet<string>): BoardCardUnit[] 
     {
       kind: "rows",
       key: "product",
-      heading: "Delivery Product Details",
+      heading: "Delivery product details",
       rows:
         showProduct || showQty
           ? r.products.map((p) => ({
@@ -306,17 +306,17 @@ function assetCardUnits(r: AssetOrder, off: ReadonlySet<string>): BoardCardUnit[
     {
       kind: "stack",
       key: "customer",
-      heading: "Ship-to Details",
+      heading: "Ship-to details",
       lines: [
         ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 1 as const }]),
         ...(off.has("customer.account") ? [] : [{ text: r.customer.title, level: 3 as const }]),
       ],
     },
-    { kind: "inline", key: "date", heading: "Delivery Date", parts: [r.date.title], planned: { date: r.date.title } },
+    { kind: "inline", key: "date", heading: "Delivery date", parts: [r.date.title], planned: { date: r.date.title } },
     {
       kind: "rows",
       key: "asset",
-      heading: "Asset Details",
+      heading: "Asset details",
       /* THE ASSET TYPE IS THE ROW, so it is not a switch — as on 3PL. */
       rows: [
         {
@@ -329,7 +329,7 @@ function assetCardUnits(r: AssetOrder, off: ReadonlySet<string>): BoardCardUnit[
     {
       kind: "stack",
       key: "salesRep",
-      heading: "Sales Rep",
+      heading: "Sales rep",
       lines: [{ text: r.salesRep, level: 2 as const }],
     },
   ];
@@ -549,7 +549,7 @@ export function SalesOrdersScreen({
       /* ORDER KIND IS A FILTER (Pavan, 2026-10-21) — it was the All · Fuel
          Orders · Asset Orders switch above the list. One kind ticked sets the
          list to that kind, as the switch did. */
-      { key: "orderKind", label: "Order Kind", options: ["Fuel Orders", "Asset Orders"] },
+      { key: "orderKind", label: "Order kind", options: ["Fuel Orders", "Asset Orders"] },
       ...(line !== "Asset Orders"
         ? [{ key: "type", label: "Type", options: ["Delivery", "Extraction"] }]
         : []),
@@ -560,7 +560,7 @@ export function SalesOrdersScreen({
         options: uniq(inLine.map(customerOf)),
         searchable: true,
       },
-      { key: "shipTo", label: "Ship-To", options: uniq(inLine.map(shipToOf)), searchable: true },
+      { key: "shipTo", label: "Ship-to", options: uniq(inLine.map(shipToOf)), searchable: true },
       ...(line !== "Asset Orders"
         ? [
             {
@@ -575,8 +575,8 @@ export function SalesOrdersScreen({
         : []),
       ...(line !== "Fuel Orders"
         ? [
-            { key: "assetType", label: "Asset Type", options: ASSET_TYPES, searchable: true },
-            { key: "salesRep", label: "Sales Rep", options: SALES_REPS },
+            { key: "assetType", label: "Asset type", options: ASSET_TYPES, searchable: true },
+            { key: "salesRep", label: "Sales rep", options: SALES_REPS },
           ]
         : []),
     ];
@@ -1386,13 +1386,13 @@ export function SalesOrdersScreen({
       <FuelOrdersViewBar
         {...savedViews}
         {...displayViewsFor({ board: true, map: true }, view, setView)}
-        ctaLabel="Create Order"
+        ctaLabel="Create order"
         /* CREATE IS A MENU, as 3PL's — three different forms, so the choice
            comes before the form (Pavan, 2026-10-07). */
         createMenu={[
-          { key: "fuel", label: "Create Fuel Order" },
-          { key: "asset", label: "Create Asset Order" },
-          { key: "quote", label: "Create Quote" },
+          { key: "fuel", label: "Create fuel order" },
+          { key: "asset", label: "Create asset order" },
+          { key: "quote", label: "Create quote" },
         ]}
         onCreateSelect={(key) => {
           if (key === "quote") {
@@ -1727,7 +1727,7 @@ export function SalesOrdersScreen({
       <ExportSheet
         open={exporting}
         onOpenChange={setExporting}
-        title="Export Orders"
+        title="Export orders"
         noun={noun}
         nounOne={noun.replace(/s$/, "")}
         count={sorted.length}

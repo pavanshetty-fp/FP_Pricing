@@ -56,7 +56,7 @@ export function LoadOrderTable({
             <TableRequiredLabel required>Supplier</TableRequiredLabel>
           </th>
           <th className="px-3 py-2.5 text-left">
-            <TableRequiredLabel required>Loading Account</TableRequiredLabel>
+            <TableRequiredLabel required>Loading account</TableRequiredLabel>
           </th>
         </tr>
       </thead>

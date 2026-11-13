@@ -27,7 +27,7 @@ const toRecord = (o: OrderRef): RecordRef => ({
   cells: [o.typeLabel, o.shipTo],
 });
 
-const ORDER_HEADERS = ["Order No", "Order Type", "ShipTo/Terminal"];
+const ORDER_HEADERS = ["Order No", "Order Type", "Ship-to/terminal"];
 
 export function OrderMiniTable({ orders }: { orders: OrderRef[] }) {
   return <RecordMiniTable records={orders.map(toRecord)} headers={ORDER_HEADERS} />;

@@ -109,8 +109,8 @@ const LIST_COLUMNS: ListColumn<RK>[] = [
   { key: "products", label: "Products", width: 125, sortable: true },
   { key: "qty", label: "Qty (gal)", width: 150, sortable: true },
   { key: "schedule", label: "Schedule", width: 380, sortable: true },
-  { key: "next", label: "Next Delivery", width: 140, sortable: true },
-  { key: "made", label: "Orders Made", width: 135, sortable: true },
+  { key: "next", label: "Next delivery", width: 140, sortable: true },
+  { key: "made", label: "Orders made", width: 135, sortable: true },
   { key: "status", label: "Status", width: 105, sortable: true },
 ];
 
@@ -438,7 +438,7 @@ export function RecurringScreen() {
         }}
         facets={[
           /* LINE OF SERVICE IS A FILTER (Pavan, 2026-10-21). */
-          { key: "line", label: "Line of Service", options: LINE_SCOPES.filter((l) => l !== "All") },
+          { key: "line", label: "Line of service", options: LINE_SCOPES.filter((l) => l !== "All") },
           { key: "status", label: "Status", options: [...RULE_STATUSES] },
           { key: "shipTo", label: "Ship-to", options: SHIP_TOS.map((x) => x.name) },
         ]}
@@ -455,7 +455,7 @@ export function RecurringScreen() {
         noun="rules"
         nounOne="rule"
         searchPlaceholder="Search rules, ship-tos, products…"
-        ctaLabel="Create Rule"
+        ctaLabel="Create rule"
         onCreate={() => setForm({ rule: null })}
         afterFilters={<RecurringRecommendations onCreate={fromRecommendation} />}
         onOpen={(r) => setOpenId(r.id)}

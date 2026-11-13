@@ -55,10 +55,10 @@ const SHIP_TO_COLUMNS: ListColumn<SK>[] = [
   { key: "contact", label: "Contact", width: 120, sortable: true },
   { key: "hours", label: "Delivery hours", width: 160, sortable: true },
   { key: "preferred", label: "Preferred windows", width: 160 },
-  { key: "lastDelivery", label: "Last Delivery", width: 120, sortable: true },
-  { key: "nextDelivery", label: "Next Delivery", width: 120, sortable: true },
+  { key: "lastDelivery", label: "Last delivery", width: 120, sortable: true },
+  { key: "nextDelivery", label: "Next delivery", width: 120, sortable: true },
   { key: "po", label: "Default PO #", width: 130, sortable: true },
-  { key: "access", label: "Delivery Instructions", width: 260, sortable: true },
+  { key: "access", label: "Delivery instructions", width: 260, sortable: true },
   { key: "geofence", label: "Geofence", width: 120, sortable: true },
   { key: "location", label: "Location", width: 170, sortable: true },
   { key: "status", label: "Status", width: 90, sortable: true },
@@ -132,21 +132,21 @@ type AK =
 /* THE ASSET SHEET'S DETAILS, column for column (Pavan, 2026-10-13). */
 const ASSET_COLUMNS: ListColumn<AK>[] = [
   { key: "asset", label: "Asset", width: 180, sortable: true },
-  { key: "rfid", label: "RFID Code", width: 150, sortable: true },
+  { key: "rfid", label: "RFID code", width: 150, sortable: true },
   { key: "erpId", label: "ERP ID", width: 120, sortable: true },
   { key: "type", label: "Type", width: 110, sortable: true },
   { key: "shipTo", label: "Ship-to", width: 170, sortable: true },
-  { key: "categories", label: "Product Categories", width: 160, sortable: true },
+  { key: "categories", label: "Product categories", width: 160, sortable: true },
   { key: "product", label: "Products", width: 190, sortable: true },
-  { key: "capacity", label: "Size (Gal)", width: 100, sortable: true },
+  { key: "capacity", label: "Size (gal)", width: 100, sortable: true },
   { key: "ownership", label: "Ownership", width: 110, sortable: true },
-  { key: "monitor", label: "Tank Monitor", width: 130, sortable: true },
-  { key: "level", label: "Current Level", width: 150, sortable: true },
-  { key: "empty", label: "Days to Empty", width: 130, sortable: true },
+  { key: "monitor", label: "Tank monitor", width: 130, sortable: true },
+  { key: "level", label: "Current level", width: 150, sortable: true },
+  { key: "empty", label: "Days to empty", width: 130, sortable: true },
   { key: "battery", label: "Battery", width: 100, sortable: true },
-  { key: "created", label: "Created By", width: 150, sortable: true },
-  { key: "lastFilled", label: "Last Filled", width: 120, sortable: true },
-  { key: "log", label: "Activity Log", width: 110 },
+  { key: "created", label: "Created by", width: 150, sortable: true },
+  { key: "lastFilled", label: "Last filled", width: 120, sortable: true },
+  { key: "log", label: "Activity log", width: 110 },
   { key: "location", label: "Location", width: 170, sortable: true },
   { key: "status", label: "Status", width: 180, sortable: true },
   { key: "actions", label: "", width: 44 },
@@ -296,7 +296,7 @@ export function SitesScreen({
           noun="ship-tos"
           nounOne="ship-to"
           searchPlaceholder="Search ship-tos, addresses, contacts…"
-          ctaLabel="Create Ship-to"
+          ctaLabel="Create ship-to"
           onCreate={() => setOpenShipTo({ id: null })}
           onOpen={(s) => setOpenShipTo({ id: s.id })}
           openLabel={(s) => `Open ship-to ${s.name}`}
@@ -438,7 +438,7 @@ export function SitesScreen({
           noun="assets"
           nounOne="asset"
           searchPlaceholder="Search assets, ship-tos, monitors…"
-          ctaLabel="Create Asset"
+          ctaLabel="Create asset"
           onCreate={() => setOpenAsset({ id: null })}
           onOpen={(r) => setOpenAsset({ id: r.asset.id })}
           openLabel={(r) => `Open asset ${r.asset.name}`}

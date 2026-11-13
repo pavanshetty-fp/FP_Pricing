@@ -52,7 +52,7 @@ export function CustomerSheet({
         open
         onOpenChange={(o) => !o && onClose()}
         mode="edit"
-        editTitle={`${c.name} · Customer 360`}
+        editTitle={`${c.name} · Customer`}
         createTitle=""
         createAction=""
         showCancel={false}

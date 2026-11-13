@@ -91,7 +91,7 @@ export function ProductTable<L extends ProductLine = ProductLine>({
   focusRow,
   columns = [],
   productLabel = "Product",
-  qtyLabel = "Quantity (Gal)",
+  qtyLabel = "Quantity (gal)",
 }: ProductTableProps<L>) {
   const update = (i: number, patch: Partial<ProductLine>) =>
     onChange(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));

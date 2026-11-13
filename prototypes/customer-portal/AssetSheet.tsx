@@ -243,7 +243,7 @@ export function AssetSheet({
         onOpenChange={onOpenChange}
         mode={creating ? "create" : "edit"}
         editTitle={asset?.name || "Asset"}
-        createTitle="Create Asset"
+        createTitle="Create asset"
         createAction="Create asset"
         showCancel={false}
         pending={creating && step === "location" ? locationPending : undefined}

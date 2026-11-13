@@ -122,10 +122,10 @@ export const ASSET_COLUMNS: AssetColumnDef[] = [
   { key: "erpId", label: "ERP ID", width: 160, sortable: true },
   { key: "hub", label: "Hub", width: 130, sortable: true },
   { key: "los", label: "LOS", width: 150, sortable: true },
-  { key: "products", label: "Product Compatibility", width: 170, sortable: true },
-  { key: "capacity", label: "Size (Gal)", width: 100, sortable: true },
-  { key: "monitor", label: "Tank Monitor", width: 120, sortable: true },
-  { key: "createdOn", label: "Created On", width: 120, sortable: true },
+  { key: "products", label: "Product compatibility", width: 170, sortable: true },
+  { key: "capacity", label: "Size (gal)", width: 100, sortable: true },
+  { key: "monitor", label: "Tank monitor", width: 120, sortable: true },
+  { key: "createdOn", label: "Created on", width: 120, sortable: true },
   { key: "status", label: "Status", width: 110, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
@@ -447,15 +447,15 @@ export const ASSET_SEARCH_FIELDS = [
   { key: "los", label: "LOS", text: (a: Asset) => a.los },
   {
     key: "products",
-    label: "Product Compatibility",
+    label: "Product compatibility",
     text: (a: Asset) => a.products.join(" "),
   },
   {
     key: "monitor",
-    label: "Tank Monitor",
+    label: "Tank monitor",
     text: (a: Asset) => (a.tankMonitor ? `Yes ${a.tankMonitorId}` : "No"),
   },
-  { key: "createdOn", label: "Created On", text: (a: Asset) => a.createdOn },
+  { key: "createdOn", label: "Created on", text: (a: Asset) => a.createdOn },
   { key: "status", label: "Status", text: (a: Asset) => a.status },
 ];
 

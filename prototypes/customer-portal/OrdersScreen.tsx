@@ -345,7 +345,7 @@ export function OrdersScreen({
 
   const facets: ListFacet[] = React.useMemo(
     () => [
-      { key: "line", label: "Line of Service", options: LINE_SCOPES.filter((l) => l !== "All") },
+      { key: "line", label: "Line of service", options: LINE_SCOPES.filter((l) => l !== "All") },
       { key: "status", label: "Status", options: [...SIDE] },
       { key: "flags", label: "Flags", options: [...FLAG_KINDS] },
       { key: "shipTo", label: "Ship-to", options: SHIP_TOS.map((s) => s.name) },
@@ -650,7 +650,7 @@ export function OrdersScreen({
               .map((f) => ({ label: f.kind, tone: f.level === "critical" ? ("critical" as const) : ("caution" as const) })),
           ],
           units: [
-            { kind: "stack" as const, key: "shipTo", heading: "Ship-to Details", lines: [{ text: r.shipTo || "—", level: 1 as const }] },
+            { kind: "stack" as const, key: "shipTo", heading: "Ship-to details", lines: [{ text: r.shipTo || "—", level: 1 as const }] },
             {
               kind: "inline" as const,
               key: "schedule",
@@ -798,7 +798,7 @@ export function OrdersScreen({
         {...savedViews}
         {...displayViewsFor({ board: true, map: true }, view, setView)}
         /* ORDERS COME FROM THE TENANT — only a request is created here. */
-        ctaLabel="Create Order"
+        ctaLabel="Create order"
         onCreateOrder={startCreate}
         onExport={() => setExporting(true)}
       />
@@ -1032,7 +1032,7 @@ export function OrdersScreen({
       <ExportSheet
         open={exporting}
         onOpenChange={setExporting}
-        title="Export Orders"
+        title="Export orders"
         noun="orders"
         nounOne="order"
         count={sorted.length}

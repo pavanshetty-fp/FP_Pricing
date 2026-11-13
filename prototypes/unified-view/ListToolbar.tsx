@@ -824,7 +824,7 @@ export function ListToolbar<K extends string>({
                 <Button
                   variant="ghost"
                   size={inBar ? "sm" : "icon-sm"}
-                  aria-label="Show/Hide columns"
+                  aria-label="Show/hide columns"
                   className={cn(inBar && BAR_TOOL)}
                 >
                   {inBar ? <Settings2 /> : <Columns3 />}

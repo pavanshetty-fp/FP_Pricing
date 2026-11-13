@@ -37,6 +37,7 @@ import * as boxedTables from "./eval/boxed-tables.mjs";
 import * as tokens from "./eval/tokens.mjs";
 import * as sheets from "./eval/sheets.mjs";
 import * as microcopy from "./eval/microcopy.mjs";
+import * as copyCase from "./eval/copy-case.mjs";
 import * as statusKinds from "./eval/status-kinds.mjs";
 import * as tableRows from "./eval/table-rows.mjs";
 /* 3PL PARITY (2026-10-07) — 3PL is the design guardrail; these count the
@@ -56,7 +57,7 @@ import * as guards from "./eval/guards.mjs";
 import * as misses from "./eval/misses.mjs";
 
 const CHECKS = [
-  tokens, boxedTables, sheets, microcopy, statusKinds, tableRows,
+  tokens, boxedTables, sheets, microcopy, copyCase, statusKinds, tableRows,
   parityLists, paritySheets, parityTables, parityShell, fieldReach, fieldsFill, wcagContrast,
   ...fpds.ALL,
   ...guards.ALL,

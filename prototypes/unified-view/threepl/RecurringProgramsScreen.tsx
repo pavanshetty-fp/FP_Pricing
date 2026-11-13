@@ -144,7 +144,7 @@ const uniq = (xs: string[]) => [...new Set(xs)].join(" / ");
 const COLUMNS: Col[] = [
   {
     key: "programNo",
-    label: "Program # / Created",
+    label: "Program # / created",
     width: 180,
     sort: (p) => p.programNo,
   },
@@ -154,7 +154,7 @@ const COLUMNS: Col[] = [
   { key: "vendor", label: "Partner", width: 160, sort: (p) => programPartnerLabel(p) },
   {
     key: "loadOrder",
-    label: "Load Order",
+    label: "Load order",
     width: 110,
     sort: (p) => (p.loadOrder ? "Yes" : "No"),
   },
@@ -166,7 +166,7 @@ const COLUMNS: Col[] = [
   },
   {
     key: "account",
-    label: "Loading Account",
+    label: "Loading account",
     width: 160,
     sort: (p) => (p.loadOrder ? uniq(p.loadRows.map((l) => l.loadingAccount)) : ""),
   },
@@ -184,7 +184,7 @@ const COLUMNS: Col[] = [
   },
   {
     key: "liveness",
-    label: "Lanes Live",
+    label: "Lanes live",
     width: 160,
     sort: (p) => liveTargets(p).length,
   },
@@ -192,19 +192,19 @@ const COLUMNS: Col[] = [
      cheapest one. */
   {
     key: "cost",
-    label: "Estimated Partner Price",
+    label: "Estimated partner price",
     width: 180,
     sort: (p) => programMoney(p).cost || Number.MAX_SAFE_INTEGER,
   },
   {
     key: "revenue",
-    label: "Estimated Customer Price",
+    label: "Estimated customer price",
     width: 190,
     sort: (p) => programMoney(p).revenue || Number.MAX_SAFE_INTEGER,
   },
   {
     key: "margin",
-    label: "Estimated Margin",
+    label: "Estimated margin",
     width: 150,
     sort: (p) =>
       programMoney(p).revenue > 0 ? programMoney(p).margin : Number.MAX_SAFE_INTEGER,
@@ -267,7 +267,7 @@ const PROGRAM_FACETS: {
      segment and preset tabs above the list. */
   {
     key: "serviceLine",
-    label: "Line of Service",
+    label: "Line of service",
     options: [...SERVICE_LINES],
     valueOf: (p) => p.serviceLine,
   },
@@ -783,7 +783,7 @@ export function RecurringProgramsScreen({
            recurring order by ticking a box on an order, so their CTA goes
            there; a programme is its own record with its own two-step form,
            so it has its own act. */
-        ctaLabel="Create Rule"
+        ctaLabel="Create rule"
         onCreateOrder={() => {
           setSeed(null);
           setCreating(true);
@@ -1076,7 +1076,7 @@ export function RecurringProgramsScreen({
       <ExportSheet
         open={exporting}
         onOpenChange={setExporting}
-        title="Export Programs"
+        title="Export programs"
         noun="programs"
         nounOne="program"
         count={rows.length}

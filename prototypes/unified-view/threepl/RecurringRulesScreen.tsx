@@ -142,14 +142,14 @@ interface Col {
 const COLUMNS: Col[] = [
   {
     key: "ruleNo",
-    label: "Rule # / Created",
+    label: "Rule # / created",
     width: 170,
     sort: (r) => r.ruleNo,
   },
   { key: "schedule", label: "Schedule", width: 270, sort: (r) => r.schedule.label },
   {
     key: "next",
-    label: "Next Delivery",
+    label: "Next delivery",
     /* A NULL NEXT DATE SORTS LAST, not first. A rule with nothing coming is
        not the most imminent thing on the list. */
     width: 150,
@@ -157,7 +157,7 @@ const COLUMNS: Col[] = [
   },
   { key: "status", label: "Status", width: 190, sort: (r) => r.status },
   { key: "customer", label: "Customer", width: 230, sort: (r) => r.customer.title },
-  { key: "shipTo", label: "Ship To", width: 170, sort: (r) => r.shipTo },
+  { key: "shipTo", label: "Ship-to", width: 170, sort: (r) => r.shipTo },
   {
     key: "assets",
     label: "Assets",
@@ -172,7 +172,7 @@ const COLUMNS: Col[] = [
   },
   {
     key: "qty",
-    label: "Qty (Gal)",
+    label: "Qty (gal)",
     width: 110,
     sort: (r) => ruleGallons(r),
   },
@@ -185,7 +185,7 @@ const COLUMNS: Col[] = [
   { key: "poc", label: "POC", width: 170, sort: (r) => r.vendorPoc ?? "" },
   {
     key: "loadOrder",
-    label: "Load Order",
+    label: "Load order",
     width: 110,
     sort: (r) => (r.loadOrder?.length ? "Yes" : "No"),
   },
@@ -203,7 +203,7 @@ const COLUMNS: Col[] = [
   },
   {
     key: "account",
-    label: "Loading Account",
+    label: "Loading account",
     width: 170,
     sort: (r) => r.loadOrder?.[0]?.loadingAccount ?? "",
   },
@@ -213,7 +213,7 @@ const COLUMNS: Col[] = [
        "Vendor" and "Customer" were unambiguous; flat, "Customer" already
        means the customer's NAME three columns to the left. A group heading
        that was carrying meaning has to hand it back to the labels. */
-    label: "Vendor Price",
+    label: "Vendor price",
     width: 130,
     /* NOT PRICED SORTS LAST on a money column, for the same reason a missing
        date does: an absent number is not the smallest one. */
@@ -221,7 +221,7 @@ const COLUMNS: Col[] = [
   },
   {
     key: "customerPrice",
-    label: "Customer Price",
+    label: "Customer price",
     width: 140,
     sort: (r) => r.customerPrice ?? Number.MAX_SAFE_INTEGER,
   },
@@ -248,7 +248,7 @@ const RULE_FACETS: {
      segment and preset tabs above the list. */
   {
     key: "serviceLine",
-    label: "Line of Service",
+    label: "Line of service",
     options: [...SERVICE_LINES],
     valueOf: (r) => r.serviceLine,
   },
@@ -310,7 +310,7 @@ const RULE_SEARCH_FIELDS: {
     label: "Customer",
     text: (r) => `${r.customer.title} ${r.customer.description}`,
   },
-  { key: "shipTo", label: "Ship To", text: (r) => r.shipTo },
+  { key: "shipTo", label: "Ship-to", text: (r) => r.shipTo },
   { key: "schedule", label: "Schedule", text: (r) => r.schedule.label },
   {
     key: "products",
@@ -890,7 +890,7 @@ export function RecurringRulesScreen({
       <FuelOrdersViewBar
         {...savedViews}
         {...displayViewsFor({ board: false, map: false }, view, setView)}
-        ctaLabel="Create Order"
+        ctaLabel="Create order"
         onCreateOrder={onCreateRule}
         onExport={() => setExporting(true)}
       />
@@ -1212,7 +1212,7 @@ export function RecurringRulesScreen({
       <ExportSheet
         open={exporting}
         onOpenChange={setExporting}
-        title="Export Rules"
+        title="Export rules"
         noun="rules"
         nounOne="rule"
         count={rows.length}

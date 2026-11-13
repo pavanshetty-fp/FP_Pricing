@@ -1108,22 +1108,22 @@ export const BROKER_COLUMNS: BrokerColumnDef[] = [
   { key: "order", label: "Order #", width: 100, sortable: true },
   { key: "type", label: "Type", width: 150, sortable: true },
   { key: "customer", label: "Customer", width: 250, sortable: true },
-  { key: "shipTo", label: "Ship To", width: 170, sortable: true },
-  { key: "date", label: "Planned Date", width: 120, sortable: true },
-  { key: "window", label: "Delivery Window", width: 160, sortable: true },
+  { key: "shipTo", label: "Ship-to", width: 170, sortable: true },
+  { key: "date", label: "Planned date", width: 120, sortable: true },
+  { key: "window", label: "Delivery window", width: 160, sortable: true },
   { key: "products", label: "Products", width: 170, sortable: true },
-  { key: "qty", label: "Qty (Gal)", width: 100, sortable: true },
+  { key: "qty", label: "Qty (gal)", width: 100, sortable: true },
   { key: "vendor", label: "Vendor", width: 200, sortable: true },
   { key: "driver", label: "Driver", width: 160, sortable: true },
   { key: "status", label: "Status", width: 140, sortable: true },
   /* CREATED BY LIVES ON THE ORDER (Pavan, 2026-10-27) — off the table. */
   /* ── Available, not shown. See `BROKER_HIDDEN_BY_DEFAULT`. ── */
   { key: "business", label: "Business", width: 140, sortable: true },
-  { key: "orderType", label: "Order Type", width: 140, sortable: true },
-  { key: "poNumber", label: "PO Number", width: 140, sortable: true },
-  { key: "bolNumber", label: "BOL Number", width: 140, sortable: true },
+  { key: "orderType", label: "Order type", width: 140, sortable: true },
+  { key: "poNumber", label: "PO number", width: 140, sortable: true },
+  { key: "bolNumber", label: "BOL number", width: 140, sortable: true },
   { key: "hub", label: "Hub", width: 160, sortable: true },
-  { key: "salesperson", label: "Sales Person", width: 170, sortable: true },
+  { key: "salesperson", label: "Sales person", width: 170, sortable: true },
   { key: "tags", label: "Tags", width: 160, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
@@ -2610,16 +2610,16 @@ export const BROKER_SEARCH_FIELDS = [
     label: "Customer",
     text: (r: BrokerOrder) => `${r.customer.title} ${r.customer.description}`,
   },
-  { key: "shipTo", label: "Ship To", text: (r: BrokerOrder) => r.shipTo },
-  { key: "date", label: "Planned Date", text: (r: BrokerOrder) => r.date.title },
+  { key: "shipTo", label: "Ship-to", text: (r: BrokerOrder) => r.shipTo },
+  { key: "date", label: "Planned date", text: (r: BrokerOrder) => r.date.title },
   {
     key: "vendor",
     label: "Vendor",
     text: (r: BrokerOrder) => VENDORS.find((v) => v.id === r.vendorId)?.name ?? "",
   },
   { key: "status", label: "Status", text: (r: BrokerOrder) => r.status },
-  { key: "poNumber", label: "PO Number", text: (r: BrokerOrder) => r.poNumber },
-  { key: "bolNumber", label: "BOL Number", text: (r: BrokerOrder) => r.bolNumber },
+  { key: "poNumber", label: "PO number", text: (r: BrokerOrder) => r.poNumber },
+  { key: "bolNumber", label: "BOL number", text: (r: BrokerOrder) => r.bolNumber },
 ];
 
 /**
@@ -2649,7 +2649,7 @@ export function brokerColumnText(r: BrokerOrder, key: BrokerColumnKey): string {
       return r.lines.map((l) => l.product).join(" ");
     case "qty": {
       const g = totalGal(r.lines);
-      return isAllTopOff(r.lines) ? "Top-off" : g ? g.toLocaleString() : "";
+      return isAllTopOff(r.lines) ? "Top off" : g ? g.toLocaleString() : "";
     }
     case "vendor":
       return (

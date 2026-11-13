@@ -161,7 +161,7 @@ export function customerReadSections(
       key: "shiptos",
       /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
       columns: [CELL.name, CELL.text, CELL.flag, CELL.status],
-      title: "Ship-to Locations",
+      title: "Ship-to locations",
       count: sites.length,
       render: () => (
         <SheetTable
@@ -242,7 +242,7 @@ export function customerReadSections(
       key: "assets",
       /* ITS TABLE'S COLUMNS — the sheet's width (DS ui/7-variants §1). */
       columns: [CELL.name, CELL.pick, CELL.pick, CELL.name, CELL.date, CELL.number],
-      title: "Rental Assets",
+      title: "Rental assets",
       count: assets.length,
       render: () => (
         <SheetTable

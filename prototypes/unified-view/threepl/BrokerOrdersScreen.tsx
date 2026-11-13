@@ -221,14 +221,14 @@ function deliveryUnit(
   const qty =
     numbered.length === 0
       ? r.lines.some((l) => l.topOff)
-        ? "Top-off"
+        ? "Top off"
         : ""
       : `${gal.toLocaleString()} gal${numbered.length < r.lines.length ? " + top-off" : ""}`;
   const site = parseLatLng(shipTo?.latLng);
   return {
     kind: "delivery",
     key: "product",
-    heading: "Delivery Details",
+    heading: "Delivery details",
     summary: [
       assets.length ? plural(assets.length, "asset") : "No asset",
       ...(off.has("product.product") || !products.length ? [] : [plural(products.length, "product")]),
@@ -237,7 +237,7 @@ function deliveryUnit(
     rows: r.lines.map((l) => ({
       asset: l.asset || "No asset",
       product: l.product,
-      qty: l.topOff ? "Top-off" : `${(l.gal ?? 0).toLocaleString()} gal`,
+      qty: l.topOff ? "Top off" : `${(l.gal ?? 0).toLocaleString()} gal`,
       qtySoft: l.topOff,
     })),
     total: showTotal ? `${gal.toLocaleString()} gal` : undefined,
@@ -270,7 +270,7 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
         return {
           kind: "rows",
           key: "product",
-          heading: "Delivery Details",
+          heading: "Delivery details",
           rows: [
             {
               asset: r.lines[0]?.asset || "Asset not chosen",
@@ -302,7 +302,7 @@ function laneCardUnits(r: BrokerOrder, off: ReadonlySet<string>): BoardCardUnit[
       /* SHIP-TO FIRST (Pavan, 2026-10-23): the place the truck goes is what a
          dispatcher reads a card by — its name leads, its address follows,
          and the customer is the small line under them. */
-      heading: "Ship-to Details",
+      heading: "Ship-to details",
       lines: [
         ...(off.has("customer.site") ? [] : [{ text: r.shipTo, level: 1 as const }]),
         ...(site && !off.has("customer.address")
@@ -735,7 +735,7 @@ const TOGGLE_COLUMNS = BROKER_COLUMNS.filter((c) => c.label).map((c) => ({
  * number is not a card you can act on.
  */
 const CARD_UNITS: { key: string; label: string; group?: string }[] = [
-  { key: "customer", label: "Ship-to Details" },
+  { key: "customer", label: "Ship-to details" },
   { key: "customer.site", label: "Ship-to name", group: "customer" },
   { key: "customer.address", label: "Address", group: "customer" },
   { key: "customer.account", label: "Customer", group: "customer" },
@@ -747,7 +747,7 @@ const CARD_UNITS: { key: string; label: string; group?: string }[] = [
      a card where the difference between planned and actual is the point. */
   { key: "completed", label: "Completed on" },
   { key: "completed.when", label: "Date and time", group: "completed" },
-  { key: "product", label: "Delivery Details" },
+  { key: "product", label: "Delivery details" },
   { key: "product.product", label: "Products", group: "product" },
   { key: "product.qty", label: "Quantity", group: "product" },
   { key: "driver", label: "Driver" },
@@ -959,11 +959,11 @@ const BROKER_GROUP_DIMS: GroupDim<BrokerOrder>[] = [
   },
   {
     key: "line",
-    label: "Line of Service",
+    label: "Line of service",
     order: [...SERVICE_LINES],
     valuesOf: (r) => [r.serviceLine],
   },
-  { key: "shipTo", label: "Ship To", hides: "shipTo", valuesOf: (r) => [r.shipTo] },
+  { key: "shipTo", label: "Ship-to", hides: "shipTo", valuesOf: (r) => [r.shipTo] },
 ];
 
 /** What a saved view captures. `kind` is here because the tab IS part of the
@@ -1498,7 +1498,7 @@ export function BrokerOrdersScreen({
                  make the views they want from them. */
               {
                 key: "serviceLine",
-                label: "Line of Service",
+                label: "Line of service",
                 options: [...SERVICE_LINES],
               },
               {
@@ -1521,7 +1521,7 @@ export function BrokerOrdersScreen({
               },
               {
                 key: "shipToAddress",
-                label: "Ship-To Address",
+                label: "Ship-to address",
                 /* One facet, three questions. Ship-to name, ZIP and state are
                    the same address asked at three grains, so they share a
                    pane instead of eating three rows of the facet menu. Each
@@ -1529,14 +1529,14 @@ export function BrokerOrdersScreen({
                    a name and only the street tells them apart. */
                 sections: [
                   {
-                    title: "Ship-To Name",
+                    title: "Ship-to name",
                     options: SHIP_TO_SITES.map((x) => ({
                       value: x.name,
                       description: siteAddress(x),
                     })),
                   },
                   {
-                    title: "Zip Code",
+                    title: "Zip code",
                     options: [...new Set(SHIP_TO_SITES.map((x) => x.zip))],
                   },
                   {
@@ -1548,7 +1548,7 @@ export function BrokerOrdersScreen({
               },
               {
                 key: "orderTypes",
-                label: "Order Types",
+                label: "Order types",
                 options: [...ORDER_TYPE_FILTERS],
               },
               {
@@ -1559,16 +1559,16 @@ export function BrokerOrdersScreen({
               },
               {
                 key: "vendor",
-                label: "Vendors / Common Carriers",
+                label: "Vendors / common carriers",
                 options: VENDORS.map((v) => v.name),
                 searchable: true,
               },
               {
                 key: "salesperson",
-                label: "Sales Person",
+                label: "Sales person",
                 options: [...SALESPEOPLE],
               },
-              { key: "createdBy", label: "Created By", options: [...CREATED_BY] },
+              { key: "createdBy", label: "Created by", options: [...CREATED_BY] },
               { key: "tags", label: "Tags", options: [...ORDER_TAGS] },
                 ],
     [customers]
@@ -2050,7 +2050,7 @@ export function BrokerOrdersScreen({
             <Hit
               text={
                 isAllTopOff(row.lines)
-                  ? "Top-off"
+                  ? "Top off"
                   : totalGal(row.lines).toLocaleString()
               }
               q={f}
@@ -2424,7 +2424,7 @@ export function BrokerOrdersScreen({
               onDisplayChange: (k: string) => setView(k as ListView),
             }
           : {})}
-        ctaLabel="Create Order"
+        ctaLabel="Create order"
         /* TWO FORMS, SO TWO ENTRIES. A delivery has lines and a partner; an
            asset order has one asset and a route — different forms, so the
            choice comes before the form rather than as a Type field inside it.
@@ -2440,14 +2440,14 @@ export function BrokerOrdersScreen({
         createMenu={[
           {
             key: "delivery-order",
-            label: "Delivery Order",
+            label: "Delivery order",
             detail: "Standard fuel delivery to a customer site",
           },
           /* ONE ENTRY, THE ROUTE PICKED IN A MODAL (Pavan, 2026-10-06) —
              the four routes were a submenu; now they are four squares. */
           {
             key: "movement-order",
-            label: "Asset Order",
+            label: "Asset order",
             detail: "Move a tank or asset between yards and customer sites",
           },
         ]}
@@ -2747,7 +2747,7 @@ export function BrokerOrdersScreen({
       <ExportSheet
         open={exporting}
         onOpenChange={setExporting}
-        title="Export Orders"
+        title="Export orders"
         noun="orders"
         nounOne="order"
         count={sorted.length}
@@ -2811,7 +2811,7 @@ export function BrokerOrdersScreen({
       <Dialog open={pickingRoute} onOpenChange={setPickingRoute}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Asset Order</DialogTitle>
+            <DialogTitle>Asset order</DialogTitle>
           </DialogHeader>
           {/* FOUR SQUARES IN ONE BOX (Pavan, 2026-10-06) — pick the route and
               the order's form opens for it. */}

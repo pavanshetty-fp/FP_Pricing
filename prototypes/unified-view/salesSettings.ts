@@ -87,32 +87,32 @@ const field = (
    rows — product and quantity — because those are its two columns; the table
    is drawn where the first of them sits. */
 const FUEL_FIELDS: FormField[] = [
-  field("orderType", "Order Type", "Order Details", "Select"),
-  field("customer", "Customer", "Order Details", "Select", true),
-  field("shipTo", "Ship To", "Order Details", "Select", true),
-  field("driver", "Driver", "Order Details", "Select"),
-  field("planDate", "Plan Date", "Schedule", "Date"),
-  field("planTime", "Plan Time", "Schedule", "Text"),
-  field("urgent", "Mark as Urgent", "Schedule", "Toggle"),
-  field("product", "Product", "Product Details", "Select", true),
-  field("quantity", "Quantity", "Product Details", "Number", true),
+  field("orderType", "Order type", "Order details", "Select"),
+  field("customer", "Customer", "Order details", "Select", true),
+  field("shipTo", "Ship-to", "Order details", "Select", true),
+  field("driver", "Driver", "Order details", "Select"),
+  field("planDate", "Plan date", "Schedule", "Date"),
+  field("planTime", "Plan time", "Schedule", "Text"),
+  field("urgent", "Mark as urgent", "Schedule", "Toggle"),
+  field("product", "Product", "Product details", "Select", true),
+  field("quantity", "Quantity", "Product details", "Number", true),
   field("tags", "Tags", "Tags", "Select"),
-  field("site", "Site", "Delivery Details", "Select"),
-  field("note", "Note", "Delivery Details", "Text"),
+  field("site", "Site", "Delivery details", "Select"),
+  field("note", "Note", "Delivery details", "Text"),
 ];
 
 /* THE ASSET ORDER SHEET'S. Status is locked because on an asset order it is
    a field, and the order has to have one. */
 const ASSET_FIELDS: FormField[] = [
-  field("customer", "Customer", "Order Details", "Select", true),
-  field("shipTo", "Ship To", "Order Details", "Select", true),
-  field("salesRep", "Sales Rep", "Order Details", "Select"),
-  field("status", "Status", "Order Details", "Select", true),
-  field("assetType", "Asset Type", "Asset", "Select", true),
+  field("customer", "Customer", "Order details", "Select", true),
+  field("shipTo", "Ship-to", "Order details", "Select", true),
+  field("salesRep", "Sales rep", "Order details", "Select"),
+  field("status", "Status", "Order details", "Select", true),
+  field("assetType", "Asset type", "Asset", "Select", true),
   field("quantity", "Quantity", "Asset", "Number", true),
-  field("serialNo", "Serial No", "Asset", "Text"),
-  field("deliveryDate", "Delivery Date", "Schedule", "Date"),
-  field("poNumber", "PO Number", "Reference", "Text"),
+  field("serialNo", "Serial no", "Asset", "Text"),
+  field("deliveryDate", "Delivery date", "Schedule", "Date"),
+  field("poNumber", "PO number", "Reference", "Text"),
   field("note", "Note", "Reference", "Text"),
 ];
 
@@ -160,7 +160,7 @@ export const FIELD_LIBRARY: LibraryField[] = [
   { key: "marginFloor", label: "Margin floor (cpg)", type: "Number", section: "Guardrails" },
   { key: "maxDiscount", label: "Max discount (cpg)", type: "Number", section: "Guardrails" },
   { key: "effectiveDate", label: "Effective date", type: "Date", section: "Publish" },
-  { key: "shipTo", label: "ShipTo", type: "Select", section: "Order", options: [] },
+  { key: "shipTo", label: "Ship-to", type: "Select", section: "Order", options: [] },
   { key: "terminal", label: "Terminal", type: "Select", section: "Logistics", options: ["Pasadena Terminal", "Irving Terminal"] },
   { key: "supplier", label: "Supplier", type: "Select", section: "Logistics", options: ["Valero", "Motiva", "Shell"] },
   { key: "recurring", label: "Mark as recurring", type: "Toggle", section: "Order" },
@@ -202,7 +202,7 @@ export interface TypeTag {
 export const DEFAULT_TYPE_TAGS: TypeTag[] = [
   { label: "Delivery", color: "cyan" },
   { label: "Extraction", color: "orange" },
-  { label: "Asset Order", color: "violet" },
+  { label: "Asset order", color: "violet" },
 ];
 
 /* ---------------------------------------------------- notifications --- */

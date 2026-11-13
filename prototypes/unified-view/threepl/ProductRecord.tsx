@@ -46,7 +46,7 @@ export function productHeaderAside(p: BrokerProduct) {
       </StatusChip>
       {p.topOffSupported && (
         <StatusChip tone={kindTone("info")} variant="soft">
-          Top-off
+          Top off
         </StatusChip>
       )}
       {p.taxable && !p.taxCode && (
@@ -83,7 +83,7 @@ export function productReadSections(
         <ReadGrid>
           <ReadField label="Base price" value={`${money(p.basePrice)} per ${p.unit}`} />
           <ReadField
-            label="Top-off"
+            label="Top off"
             value={p.topOffSupported ? "A line may be a top-off" : "Every line needs a quantity"}
           />
           <ReadField
@@ -184,7 +184,7 @@ export function productReadSections(
               render: (o) => {
                 const line = o.lines.find((l) => l.product === p.name);
                 if (!line) return <Muted />;
-                return line.topOff ? "Top-off" : `${(line.gal ?? 0).toLocaleString()} ${p.unit}`;
+                return line.topOff ? "Top off" : `${(line.gal ?? 0).toLocaleString()} ${p.unit}`;
               },
             },
             {
@@ -215,7 +215,7 @@ export function productReadSections(
     {
       key: "notes",
       title: "Product notes",
-      render: () => <NoteBlock body={p.notes} hint="No notes recorded." />,
+      render: () => <NoteBlock body={p.notes} hint="No notes yet." />,
     },
   ];
 }
@@ -272,7 +272,7 @@ export function productFormSections(): FormSectionDef<BrokerProduct>[] {
         { key: "defaultQuantity", label: "Default quantity", kind: "number", get: (d) => d.defaultQuantity, set: (d, v) => ({ ...d, defaultQuantity: v === null ? null : Number(v) }) },
         {
           key: "topOffSupported",
-          label: "Top-off supported",
+          label: "Top off supported",
           kind: "switch",
           description: "Off, an order line for this product always needs a number.",
           get: (d) => d.topOffSupported,

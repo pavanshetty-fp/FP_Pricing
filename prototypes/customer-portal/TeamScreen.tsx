@@ -29,8 +29,8 @@ const COLUMNS: ListColumn<UK>[] = [
   { key: "name", label: "Name", width: 220, sortable: true },
   { key: "role", label: "Role", width: 100, sortable: true },
   { key: "phone", label: "Phone", width: 130, sortable: true },
-  { key: "invite", label: "Invite Status", width: 120, sortable: true },
-  { key: "lastLogin", label: "Last Login", width: 120, sortable: true },
+  { key: "invite", label: "Invite status", width: 120, sortable: true },
+  { key: "lastLogin", label: "Last login", width: 120, sortable: true },
   { key: "deactivated", label: "Deactivated", width: 120, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];

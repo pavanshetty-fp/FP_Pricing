@@ -442,7 +442,7 @@ export function vendorFormSections(): FormSectionDef<Vendor>[] {
           validate: (d) =>
             d.businessLines.length === 0 ? "Pick at least one line this vendor runs" : null,
         },
-        { key: "topOffCapable", label: "Top-off capable", kind: "switch", get: (d) => d.topOffCapable, set: (d, v) => ({ ...d, topOffCapable: Boolean(v) }) },
+        { key: "topOffCapable", label: "Top off capable", kind: "switch", get: (d) => d.topOffCapable, set: (d, v) => ({ ...d, topOffCapable: Boolean(v) }) },
         { key: "assetHandlingCapable", label: "Asset handling", kind: "switch", get: (d) => d.assetHandlingCapable, set: (d, v) => ({ ...d, assetHandlingCapable: Boolean(v) }) },
         { key: "afterHoursCapable", label: "After hours", kind: "switch", get: (d) => d.afterHoursCapable, set: (d, v) => ({ ...d, afterHoursCapable: Boolean(v) }) },
       ],

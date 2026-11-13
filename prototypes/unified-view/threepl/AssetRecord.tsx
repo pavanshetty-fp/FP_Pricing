@@ -270,7 +270,7 @@ export function assetReadSections(
     {
       key: "notes",
       title: "Asset notes",
-      render: () => <NoteBlock body={a.notes} hint="No notes recorded." />,
+      render: () => <NoteBlock body={a.notes} hint="No notes yet." />,
     },
   );
 
@@ -329,7 +329,7 @@ export function assetFormSections(): FormSectionDef<RentalAsset>[] {
         },
         {
           key: "topOffRelevant",
-          label: "Top-off relevant",
+          label: "Top off relevant",
           kind: "switch",
           visible: (d) => d.capacityGal > 0,
           get: (d) => d.topOffRelevant,

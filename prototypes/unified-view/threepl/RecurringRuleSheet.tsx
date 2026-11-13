@@ -522,7 +522,7 @@ export function RecurringRuleSheet({
         title="Delivery details"
         aside={
           <span className="text-xs tabular-nums text-muted-foreground">
-            {gal > 0 ? `${gal.toLocaleString()} gal per delivery` : "Top-off"}
+            {gal > 0 ? `${gal.toLocaleString()} gal per delivery` : "Top off"}
           </span>
         }
         flush

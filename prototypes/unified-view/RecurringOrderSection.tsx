@@ -40,7 +40,7 @@ export function RecurringOrderSection({
     >
       {!on ? (
         <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
-          <span className="text-sm text-foreground">Add Recurring Order</span>
+          <span className="text-sm text-foreground">Add recurring order</span>
           <Button
             variant="outline"
             size="sm"

@@ -367,7 +367,7 @@ export function QuotesScreen({
       <FuelOrdersViewBar
         {...savedViews}
         {...displayViewsFor({ board: false, map: false }, view, setView)}
-        ctaLabel="Create Quote"
+        ctaLabel="Create quote"
         onCreateOrder={startCreate}
         onExport={() => setExporting(true)}
       />
@@ -539,7 +539,7 @@ export function QuotesScreen({
       <ExportSheet
         open={exporting}
         onOpenChange={setExporting}
-        title="Export Quotes"
+        title="Export quotes"
         noun="quotes"
         nounOne="quote"
         count={sorted.length}

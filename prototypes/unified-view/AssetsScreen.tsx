@@ -94,11 +94,11 @@ const ASSET_FACETS: ListFacet[] = [
   { key: "hub", label: "Hub", options: HUBS, searchable: true },
   {
     key: "products",
-    label: "Product Compatibility",
+    label: "Product compatibility",
     options: PRODUCT_COMPATIBILITY,
     searchable: true,
   },
-  { key: "monitor", label: "Tank Monitor", options: ["Yes", "No"] },
+  { key: "monitor", label: "Tank monitor", options: ["Yes", "No"] },
 ];
 
 const keyOf = (s: ViewState) =>
@@ -427,7 +427,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
       <FuelOrdersViewBar
         {...savedViews}
         {...displayViewsFor({ board: false, map: false }, view, setView)}
-        ctaLabel="Create New Asset"
+        ctaLabel="Create asset"
         onCreateOrder={() => setCreating(true)}
         onExport={() => setExporting(true)}
       />
@@ -566,7 +566,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
                     setPage(1);
                   }}
                 >
-                  {q ? "Clear search" : "Create New Asset"}
+                  {q ? "Clear search" : "Create asset"}
                 </Button>
               </EmptyContent>
             </Empty>
@@ -622,7 +622,7 @@ export function AssetsScreen({ focus }: { focus?: { id: string; n: number } | nu
       <ExportSheet
         open={exporting}
         onOpenChange={setExporting}
-        title="Export Assets"
+        title="Export assets"
         noun="assets"
         nounOne="asset"
         count={sorted.length}

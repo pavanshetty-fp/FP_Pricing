@@ -142,8 +142,8 @@ export function AssetSheet({
       onOpenChange={onOpenChange}
       mode={mode}
       editTitle={asset?.displayName ?? ""}
-      createTitle="Create New Asset"
-      createAction="Create New Asset"
+      createTitle="Create asset"
+      createAction="Create asset"
       /* IT AUTOSAVES, SO THERE IS NOTHING TO CANCEL AND NOTHING TO SAVE. An
          edit is already written by the time the reader looks up; creating
          still takes an act, because the record does not exist until somebody
@@ -165,7 +165,7 @@ export function AssetSheet({
       }}
     >
       <SheetSection title="Identity">
-        <SheetField label="Display Name">
+        <SheetField label="Display name">
           <Input
             value={draft.displayName}
             placeholder="e.g. Northgate Tank 4"
@@ -198,7 +198,7 @@ export function AssetSheet({
         </div>
 
         <SheetField
-          label="Created On"
+          label="Created on"
         >
           <Input
             readOnly
@@ -245,9 +245,9 @@ export function AssetSheet({
         </SheetField>
       </SheetSection>
 
-      <SheetSection title="Capacity & Compatibility">
+      <SheetSection title="Capacity & compatibility">
         <SheetField
-          label="Size (Gal)"
+          label="Size (gal)"
         >
           <Input
             inputMode="numeric"
@@ -263,7 +263,7 @@ export function AssetSheet({
         </SheetField>
 
         <SheetField
-          label="Product Compatibility"
+          label="Product compatibility"
         >
           <MultiSelectList
             options={PRODUCT_COMPATIBILITY}
@@ -279,7 +279,7 @@ export function AssetSheet({
             monitor to identify. */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Tank Monitor</span>
+            <span className="text-sm font-medium">Tank monitor</span>
             <span className="text-xs text-muted-foreground">
               Whether this asset reports its level automatically.
             </span>
@@ -292,13 +292,13 @@ export function AssetSheet({
               // an asset that has no monitor.
               if (!on) set("tankMonitorId", "");
             }}
-            aria-label="Tank Monitor"
+            aria-label="Tank monitor"
           />
         </div>
 
         {draft.tankMonitor && (
           <SheetField
-            label="Tank Monitor ID"
+            label="Tank monitor ID"
           >
             <Input
               value={draft.tankMonitorId}

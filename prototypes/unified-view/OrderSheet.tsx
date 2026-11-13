@@ -608,7 +608,7 @@ export function OrderSheet({
   };
 
   let footerPrimary: React.ReactNode = null;
-  if (creating) footerPrimary = <Button onClick={commit}>Create Order</Button>;
+  if (creating) footerPrimary = <Button onClick={commit}>Create order</Button>;
   else if (awaiting && awaiting !== status) {
     /* THE SECOND PRESS — it stands for the approver's. */
     footerPrimary = (
@@ -646,8 +646,8 @@ export function OrderSheet({
         onOpenChange={requestClose}
         mode={creating ? "create" : "edit"}
         editTitle={`Order #: ${order?.orderNo ?? ""}`}
-        createTitle="Create Order"
-        createAction="Create Order"
+        createTitle="Create order"
+        createAction="Create order"
         /* AUTOSAVED, so Cancel is a promise the sheet cannot keep. */
         showCancel={false}
         headerAside={

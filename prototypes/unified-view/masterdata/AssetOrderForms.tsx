@@ -244,7 +244,7 @@ export function AssetOrderSheet({
         onOpenChange={(o) => !o && onClose()}
         mode="create"
         noun="Movement Order"
-        title="Create New Movement Order"
+        title="Create movement order"
         recordKey={key}
         initial={{ uid: key, asset: a.id, from: a.site, to: "", direction: "", date: dateOffset(1), windowStart: 8 * 60, windowEnd: 12 * 60, preferred: [], fulfillment: "First party", notes: "", linked: "" }}
         sections={form}
@@ -262,7 +262,7 @@ export function AssetOrderSheet({
       onOpenChange={(o) => !o && onClose()}
       mode="create"
       noun="Service Order"
-      title="Create New Service Order"
+      title="Create service order"
       recordKey={key}
       initial={{
         uid: key,

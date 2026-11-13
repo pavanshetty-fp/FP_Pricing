@@ -1000,7 +1000,7 @@ export const REQUEST_COLUMNS: {
   { key: "shipTo", label: "Ship-to", width: 240, sortable: true },
   { key: "assets", label: "Tanks & assets", width: 240, sortable: true },
   { key: "products", label: "Product", width: 130, sortable: true },
-  { key: "quantity", label: "Quantity (Gal)", width: 155, sortable: true },
+  { key: "quantity", label: "Quantity (gal)", width: 155, sortable: true },
   /* THE TANKS' READINGS, IN THE ORDER'S ROW (Pavan, 2026-10-21 — trial of
      bringing the nested layer up; see OrdersScreen's TANK_LAYOUT). */
   { key: "level", label: "Current level", width: 150 },

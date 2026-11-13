@@ -51,9 +51,9 @@ const NAV: NavItem[] = [
   { key: "orders", label: "Orders", icon: <ClipboardList /> },
   /* Also reachable from each order request. */
   { key: "invoices", label: "Invoices", icon: <ReceiptText /> },
-  { key: "sites-assets", label: "Sites & Assets", icon: <MapPin /> },
+  { key: "sites-assets", label: "Sites & assets", icon: <MapPin /> },
   { key: "reports", label: "Reports", icon: <BarChart3 /> },
-  { key: "team-access", label: "Team & Access", icon: <UsersRound /> },
+  { key: "team-access", label: "Team & access", icon: <UsersRound /> },
 ];
 
 /* ORDERS HOLDS TWO PAGES (Pavan, 2026-10-15) — the requests, and the
@@ -66,7 +66,7 @@ const SUB_NAV: Record<string, NavGroup[]> = {
         /* ORDERS AND ORDER REQUESTS, ONE PAGE (Pavan, 2026-10-19) — a
            segment above the list switches between them. */
         { key: "orders", label: "Orders", icon: <ClipboardList /> },
-        { key: "recurring", label: "Recurring Orders", icon: <Repeat /> },
+        { key: "recurring", label: "Recurring orders", icon: <Repeat /> },
       ],
     },
   ],

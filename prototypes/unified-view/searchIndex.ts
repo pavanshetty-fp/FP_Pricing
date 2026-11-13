@@ -89,9 +89,9 @@ export const TYPE_LABEL: Record<SearchType, string> = {
 
 /** Singular — the pill on a result row. */
 export const TYPE_SINGULAR: Record<SearchType, string> = {
-  "delivery-order": "Delivery Order",
-  "fuel-order": "Fuel Order",
-  "asset-order": "Asset Order",
+  "delivery-order": "Delivery order",
+  "fuel-order": "Fuel order",
+  "asset-order": "Asset order",
   quote: "Quote",
   "service-order": "Service Order",
   customer: "Customer",
@@ -186,7 +186,7 @@ const PAGES: Raw[] = [
   {
     id: "page-3pl-orders",
     type: "page",
-    title: "Delivery Orders",
+    title: "Delivery orders",
     subtitle: "Brokered orders and delivery partners · board",
     keywords: ["3pl orders"],
     moduleKey: "3pl",
@@ -196,7 +196,7 @@ const PAGES: Raw[] = [
   {
     id: "page-3pl-recurring",
     type: "page",
-    title: "Recurring Orders",
+    title: "Recurring orders",
     subtitle: "Repeating deliveries",
     moduleKey: "3pl",
     navKey: "3pl-recurring-orders",
@@ -232,7 +232,7 @@ const PAGES: Raw[] = [
   {
     id: "page-3pl-rental-assets",
     type: "page",
-    title: "Rental Assets",
+    title: "Rental assets",
     subtitle: "Archive · 3PL directory · tanks and equipment on rent",
     moduleKey: "3pl",
     navKey: "3pl-rental-assets",
@@ -242,7 +242,7 @@ const PAGES: Raw[] = [
   {
     id: "page-service-orders",
     type: "page",
-    title: "Service Orders",
+    title: "Service orders",
     subtitle: "Dispatch board",
     moduleKey: "service",
     navKey: "service-orders-dispatch",

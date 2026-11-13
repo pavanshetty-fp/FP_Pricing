@@ -430,7 +430,7 @@ function TargetEditor({
                         value={
                           line.topOff ? "" : line.gal != null ? String(line.gal) : ""
                         }
-                        placeholder={line.topOff ? "Top-off" : "0"}
+                        placeholder={line.topOff ? "Top off" : "0"}
                         disabled={line.topOff}
                         numeric
                         aria-label={`Gallons for line ${i + 1}`}
@@ -1260,7 +1260,7 @@ export function RecurringProgramCreate({
                     <thead>
                       <tr className="border-b border-border bg-fp-table-header">
                         <th className="px-3 py-2.5 text-left">
-                          <TableRequiredLabel>Loading Account</TableRequiredLabel>
+                          <TableRequiredLabel>Loading account</TableRequiredLabel>
                         </th>
                         <th className="px-3 py-2.5 text-left">
                           <TableRequiredLabel>Terminals</TableRequiredLabel>
@@ -1503,7 +1503,7 @@ export function RecurringProgramCreate({
                     [8 * 60, 12 * 60];
                   return (
                     <DeliveryWindowTimeline
-                      label="Delivery Window & Preferred Time"
+                      label="Delivery window & preferred time"
                       required
                       disabled={!activeTarget.shipTo}
                       start={w[0]}
@@ -1719,7 +1719,7 @@ export function RecurringProgramCreate({
                                 <TableRequiredLabel>Frequency</TableRequiredLabel>
                               </th>
                               <th className="px-3 py-2.5 text-left">
-                                <TableRequiredLabel>Assets · Products</TableRequiredLabel>
+                                <TableRequiredLabel>Assets · products</TableRequiredLabel>
                               </th>
                               <th className="px-3 py-2.5 text-left">
                                 <TableRequiredLabel>Window</TableRequiredLabel>

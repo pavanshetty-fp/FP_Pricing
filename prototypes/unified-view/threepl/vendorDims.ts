@@ -20,7 +20,7 @@ import {
 export const VENDOR_GROUP_DIMS: GroupDim<Vendor>[] = [
   {
     key: "lines",
-    label: "Business Lines",
+    label: "Business lines",
     /* A carrier that runs three lines belongs to three groups — the counts add
        up past the list total, and the footer says so. */
     multi: true,
@@ -29,7 +29,7 @@ export const VENDOR_GROUP_DIMS: GroupDim<Vendor>[] = [
   },
   {
     key: "safety",
-    label: "Safety Score",
+    label: "Safety score",
     hides: "safety",
     /* Bands, not the raw number: grouping by a 0–100 score makes one group per
        vendor. The bands are the question anyone actually asks. */
@@ -53,7 +53,7 @@ export const VENDOR_GROUP_DIMS: GroupDim<Vendor>[] = [
   },
   {
     key: "account",
-    label: "Vendor App",
+    label: "Vendor app",
     hides: "account",
     order: ["Link only", "Has account"],
     valuesOf: (v) => [v.hasAccount ? "Has account" : "Link only"],

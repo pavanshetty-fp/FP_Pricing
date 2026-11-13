@@ -147,12 +147,12 @@ interface SeriesCol {
 }
 
 const SERIES_COLUMNS: SeriesCol[] = [
-  { key: "order", label: "Order # / Created", width: 165, sort: (s) => s.parent.orderNo },
+  { key: "order", label: "Order # / created", width: 165, sort: (s) => s.parent.orderNo },
   { key: "customer", label: "Customer", width: 230, sort: (s) => s.parent.customer.title },
-  { key: "shipTo", label: "Ship To", width: 170, sort: (s) => s.parent.shipTo },
+  { key: "shipTo", label: "Ship-to", width: 170, sort: (s) => s.parent.shipTo },
   { key: "schedule", label: "Schedule", width: 190, sort: (s) => s.schedule.label },
   /* No next date sorts last, as on Rules. */
-  { key: "next", label: "Next Delivery", width: 165, sort: (s) => s.nextKey ?? "9999" },
+  { key: "next", label: "Next delivery", width: 165, sort: (s) => s.nextKey ?? "9999" },
   {
     key: "upcoming",
     label: "Upcoming",
@@ -177,10 +177,10 @@ interface DeliveryCol {
 }
 
 const DELIVERY_COLUMNS: DeliveryCol[] = [
-  { key: "order", label: "Order # / Created", width: 165, sort: (d) => d.orderNo },
-  { key: "date", label: "Planned Date", width: 165, sort: (d) => d.dateKey },
+  { key: "order", label: "Order # / created", width: 165, sort: (d) => d.orderNo },
+  { key: "date", label: "Planned date", width: 165, sort: (d) => d.dateKey },
   { key: "products", label: "Products", width: 230, sort: (d) => d.lines[0]?.product ?? "" },
-  { key: "qty", label: "Qty (Gal)", width: 110, sort: (d) => totalGal(d.lines) },
+  { key: "qty", label: "Qty (gal)", width: 110, sort: (d) => totalGal(d.lines) },
   { key: "vendor", label: "Partner", width: 210, sort: (d) => vendorName(d.vendorId) },
   { key: "status", label: "Status", width: 210, sort: (d) => BROKER_STATUSES.indexOf(d.status) },
 ];
@@ -285,7 +285,7 @@ const SERIES_FACETS: {
      segment and preset tabs above the list. */
   {
     key: "serviceLine",
-    label: "Line of Service",
+    label: "Line of service",
     options: [...SERVICE_LINES],
     valueOf: (s) => s.parent.serviceLine,
   },
@@ -331,7 +331,7 @@ const SERIES_SEARCH_FIELDS: {
     label: "Customer",
     text: (s) => `${s.parent.customer.title} ${s.parent.customer.description}`,
   },
-  { key: "shipTo", label: "Ship To", text: (s) => s.parent.shipTo },
+  { key: "shipTo", label: "Ship-to", text: (s) => s.parent.shipTo },
   { key: "schedule", label: "Schedule", text: (s) => s.schedule.label },
   {
     key: "vendor",
@@ -1012,7 +1012,7 @@ export function RecurringOrdersScreen({
       <FuelOrdersViewBar
         {...savedViews}
         {...displayViewsFor({ board: false, map: false }, view, setView)}
-        ctaLabel="Create Order"
+        ctaLabel="Create order"
         onCreateOrder={onCreateRule}
         onExport={() => setExporting(true)}
       />
@@ -1342,7 +1342,7 @@ export function RecurringOrdersScreen({
       <ExportSheet
         open={exporting}
         onOpenChange={setExporting}
-        title="Export Recurring Orders"
+        title="Export recurring orders"
         noun="recurring orders"
         nounOne="recurring order"
         count={rows.length}

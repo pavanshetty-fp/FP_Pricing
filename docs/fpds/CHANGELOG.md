@@ -2,6 +2,17 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.13 — 2026-11-13
+
+Built from commit `e8d2ce4`.
+
+- **Archive** is a new menu item. It holds the module pages whose records Master Data now holds: 3PL directory, Sales customers and Sales assets. Master Data stays its own menu item (IX-101).
+- **No Archive action** on any record any more. It had been added without being asked.
+- **Activity log is always on the right**, as on the 3PL delivery order, in every module, including the Directory and Customer Portal sheets that had it as a clock icon. The right column now scrolls all the way to its last card, and Activity alone fills the column top to bottom (IX-100).
+- **Modal** is as wide as its content (756–1200px), 24px from the top and bottom. **Full page** keeps its content in a centred column of the same width.
+- **Settings → Information page view** (was Detail page view) shows a small looping wireframe of how a record opens: side sheet, modal or full page (IX-102).
+- **3PL Orders lane:** Invitations is a plain card reading "Vendor invites · Pending" until vendors are invited.
+
 ## v1.12 — 2026-11-13
 
 Built from commit `192a083`.

@@ -602,7 +602,13 @@ function backgroundPlans(): Plan[] {
         /* ACROSS ACCOUNTS (Yash, 2026-11-16: "why always 1 customer?") — a
            market or rate-type move, a new fee, hits several customers at once,
            so four bulk changes in ten span two or three of them. */
-        const custs = hash(`sp${seed}`) > 0.6 ? uniq([cust, pick(CUSTOMERS, `c2${seed}`).id, pick(CUSTOMERS, `c3${seed}`).id]) : [cust];
+        /* Seven in ten span three to six customers (Yash, 2026-11-16: "at
+           least 4–5"); the rest stay on one account. */
+        const many = 3 + Math.floor(hash(`n${seed}`) * 4);
+        const custs =
+          hash(`sp${seed}`) > 0.3
+            ? uniq([cust, ...Array.from({ length: many * 2 }, (_, k) => pick(CUSTOMERS, `c${k}${seed}`).id)]).slice(0, many)
+            : [cust];
         const cat = hash(`cat${seed}`) > 0.4 ? pick(["diesel", "gasoline", "def", "bio"], `cc${seed}`) : null;
         const kind = pick(["margin", "margin", "fee", "market", "rateType", "tax", "pair"] as const, `bk${seed}`);
         out.push({
@@ -646,7 +652,10 @@ function backgroundPlans(): Plan[] {
 
 /** The handful of changes the prototype's story leans on. */
 function storyPlans(): Plan[] {
-  const cust = (c: string, cat?: string) => (rows: ConfigRow[]) => rowsOf(rows, (x) => x.customerId === c && (!cat || catOf(x) === cat));
+  /* ONE ACCOUNT OR SEVERAL (Yash, 2026-11-16) — a bulk change reaches the
+     accounts of a region at once, as it does in a tenant's day. */
+  const cust = (c: string | string[], cat?: string) => (rows: ConfigRow[]) =>
+    rowsOf(rows, (x) => ([] as string[]).concat(c).includes(x.customerId) && (!cat || catOf(x) === cat));
   /** The demo ShipTo's rows. */
   const demo = (rows: ConfigRow[]) => rowsOf(rows, (x) => x.shiptoId === DEMO_SHIPTOS[0]);
   const demo2 = (rows: ConfigRow[]) => rowsOf(rows, (x) => x.shiptoId === DEMO_SHIPTOS[1]);
@@ -659,15 +668,15 @@ function storyPlans(): Plan[] {
     (rows: ConfigRow[]): Edit[] => [{ setting, operation, entityIds, rowIds: scope(rows) }];
   return [
     // Same weekday last week, for the stat comparison.
-    { at: at(7, 9, 5), by: "Priya Nair", source: "shiptoBulk", edits: one("fee", "add", ["f-fuel-surcharge"], cust("mustang")) },
+    { at: at(7, 9, 5), by: "Priya Nair", source: "shiptoBulk", edits: one("fee", "add", ["f-fuel-surcharge"], cust(["mustang", "bayou", "redriver", "coastal", "lonestar"])) },
     { at: at(7, 13, 20), by: "Cody McLelland", source: "shiptoInline", edits: one("margin", "add", ["m-freight-recovery-margin"], (r) => cust("bayou")(r).slice(0, 1)) },
     // ---- Every case, for the demo. Inline ones land on Creole County Road 12 Depot
     // (OnSite), so its ShipTo history shows them all.
     { at: at(40, 9, 10), by: "Yash J", source: "setup", edits: () => [{ setting: "tax", operation: "create", entityIds: ["t-la-parish-sales-tax"], rowIds: [] }] },
-    { at: at(39, 10, 0), by: "Priya Nair", source: "shiptoBulk", edits: one("tax", "add", ["t-la-parish-sales-tax"], cust("onsite")) },
+    { at: at(39, 10, 0), by: "Priya Nair", source: "shiptoBulk", edits: one("tax", "add", ["t-la-parish-sales-tax"], cust(["onsite", "bayou", "pelican", "delta-ag", "natchez"])) },
     { at: at(30, 11, 30), by: "Marcus Hale", source: "setup", edits: () => [{ setting: "tax", operation: "edit", entityIds: ["t-la-parish-sales-tax"], amount: 0.035, rowIds: [] }] },
     { at: at(26, 14, 0), by: "Valarie Rogers", source: "shiptoInline", edits: one("tax", "remove", ["t-la-parish-sales-tax"], (r) => demo(r).slice(0, 1)) },
-    { at: at(22, 9, 45), by: "Cody McLelland", source: "shiptoBulk", edits: one("tax", "replace", ["t-federal-excise", "t-tx-state-excise"], cust("lonestar", "def")) },
+    { at: at(22, 9, 45), by: "Cody McLelland", source: "shiptoBulk", edits: one("tax", "replace", ["t-federal-excise", "t-tx-state-excise"], cust(["lonestar", "adamas", "permian", "mustang"], "def")) },
     { at: at(35, 8, 15), by: "Yash J", source: "setup", edits: () => [{ setting: "adder", operation: "create", entityIds: ["a-river-access-adder"], rowIds: [] }] },
     { at: at(34, 9, 0), by: "Yash J", source: "shiptoInline", edits: one("adder", "add", ["a-river-access-adder"], (r) => demo(r)) },
     { at: at(20, 13, 10), by: "Priya Nair", source: "setup", edits: () => [{ setting: "adder", operation: "edit", entityIds: ["a-river-access-adder"], amount: 0.03, rowIds: [] }] },
@@ -711,40 +720,40 @@ function storyPlans(): Plan[] {
     // Pricing Setup: a new fee created (not on any row yet).
     { at: at(2, 11, 20), by: "Yash J", source: "setup", edits: () => [{ setting: "fee", operation: "create", entityIds: ["f-weekend-delivery-fee"], rowIds: [] }] },
     // A change undone straight after.
-    { at: at(3, 15, 10), by: "Valarie Rogers", source: "shiptoBulk", edits: one("market", "set", ["k-beaumont"], cust("coastal")), undoAfter: 12 },
+    { at: at(3, 15, 10), by: "Valarie Rogers", source: "shiptoBulk", edits: one("market", "set", ["k-beaumont"], cust(["coastal", "gulf", "lonestar"])), undoAfter: 12 },
     // A schedule canceled before it ran.
-    { at: at(4, 11, 0), by: "Marcus Hale", source: "shiptoBulk", edits: one("margin", "replace", ["m-standard-rack-margin"], cust("permian")), status: "canceled", effectiveAt: at(2, 6, 0) },
+    { at: at(4, 11, 0), by: "Marcus Hale", source: "shiptoBulk", edits: one("margin", "replace", ["m-standard-rack-margin"], cust(["lonestar", "adamas", "permian", "mustang"])), status: "canceled", effectiveAt: at(2, 6, 0) },
     // Last night's scheduled run, partly failed: rate type and market together.
     {
       at: at(2, 16, 45),
       by: "Priya Nair",
       source: "shiptoBulk",
       edits: (r) => [
-        { setting: "rateType", operation: "set", entityIds: ["r-contract-rack"], rowIds: cust("adamas")(r) },
-        { setting: "market", operation: "set", entityIds: ["k-houston"], rowIds: cust("adamas")(r) },
+        { setting: "rateType", operation: "set", entityIds: ["r-contract-rack"], rowIds: cust(["lonestar", "adamas", "permian", "mustang"])(r) },
+        { setting: "market", operation: "set", entityIds: ["k-houston"], rowIds: cust(["lonestar", "adamas", "permian", "mustang"])(r) },
       ],
       effectiveAt: at(1, 18, 0),
       fail: 0.06,
     },
     // Today, before 10:40.
     { at: at(0, 7, 12), by: "Yash J", source: "setup", edits: () => [{ setting: "margin", operation: "edit", entityIds: ["m-ag-co-op-margin"], amount: 0.135, rowIds: [] }] },
-    { at: at(0, 8, 3), by: "Cody McLelland", source: "shiptoBulk", edits: one("fee", "add", ["f-small-drop-fee"], cust("lonestar", "gasoline")) },
+    { at: at(0, 8, 3), by: "Cody McLelland", source: "shiptoBulk", edits: one("fee", "add", ["f-small-drop-fee"], cust(["lonestar", "gulf", "coastal", "mustang"], "gasoline")) },
     { at: at(0, 8, 40), by: "Valarie Rogers", source: "shiptoInline", edits: one("rateType", "set", ["r-opis-rack-low"], (r) => cust("redriver")(r).slice(1, 2)) },
-    { at: at(0, 9, 15), by: "Priya Nair", source: "shiptoBulk", edits: one("margin", "replace", ["m-marine-bunker-margin"], cust("pelican")) },
-    { at: at(0, 9, 52), by: "Marcus Hale", source: "import", edits: one("market", "set", ["k-austin"], cust("lonestar")) },
+    { at: at(0, 9, 15), by: "Priya Nair", source: "shiptoBulk", edits: one("margin", "replace", ["m-marine-bunker-margin"], cust(["gulf", "coastal", "pelican", "bayou"])) },
+    { at: at(0, 9, 52), by: "Marcus Hale", source: "import", edits: one("market", "set", ["k-austin"], cust(["lonestar", "adamas", "mustang"])) },
     {
       at: at(0, 10, 18),
       by: "Yash J",
       source: "shiptoBulk",
-      edits: (r, ents) => [{ setting: "margin", operation: "add", entityIds: [dynamicMargin(0.015, ents).id], rowIds: cust("onsite", "diesel")(r) }],
+      edits: (r, ents) => [{ setting: "margin", operation: "add", entityIds: [dynamicMargin(0.015, ents).id], rowIds: cust(["onsite", "bayou", "pelican", "delta-ag", "natchez"], "diesel")(r) }],
     },
     // Two schedules on the same Gulf Coast rows: the one that runs later wins.
-    { at: at(0, 9, 30), by: "Yash J", source: "shiptoBulk", edits: one("margin", "add", ["m-freight-recovery-margin"], cust("gulf", "diesel")), status: "scheduled", effectiveAt: at(0, 14, 0) },
+    { at: at(0, 9, 30), by: "Yash J", source: "shiptoBulk", edits: one("margin", "add", ["m-freight-recovery-margin"], cust(["gulf", "coastal", "pelican", "bayou"], "diesel")), status: "scheduled", effectiveAt: at(0, 14, 0) },
     {
       at: at(0, 10, 5),
       by: "Priya Nair",
       source: "shiptoBulk",
-      edits: (r, ents) => [{ setting: "margin", operation: "replace", entityIds: [dynamicMargin(0.21, ents).id], rowIds: cust("gulf")(r) }],
+      edits: (r, ents) => [{ setting: "margin", operation: "replace", entityIds: [dynamicMargin(0.21, ents).id], rowIds: cust(["gulf", "coastal", "pelican", "bayou"])(r) }],
       status: "scheduled",
       effectiveAt: at(-1, 6, 0),
     },

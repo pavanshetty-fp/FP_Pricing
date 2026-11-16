@@ -9,7 +9,7 @@ import { RailCard, RailRow } from "../SheetCards";
 import { kindTone } from "../statusKind";
 import { FIGURE_STRIP, Figure } from "../masterdata/sheetParts";
 import { attend } from "../PendingStrip";
-import { customerOf, fmtDateTime, fmtWhen, plural, productOf, shiptoOf } from "./changeLog";
+import { customerOf, fmtDateTime, plural, productOf, shiptoOf } from "./changeLog";
 import { ChangeSheet } from "./ChangeSheet";
 import { ORDER_STATUS_KIND, PHASE_LABEL, money2, money3, orderLabel, type Phase, type PricedOrder } from "./orderTrace";
 
@@ -60,6 +60,14 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
     });
   /* "Changed after order" opens every component a late change reached, then
      brings the price into view and blinks it. */
+  /* $/gal by component group, and its share of the price. */
+  const part = (g: string) => o.components.filter((c) => c.group === g).reduce((t, c) => t + c.perGal, 0);
+  const pct = (v: number) => `${Math.round((v / o.perGal) * 100)}%`;
+  /* A figure opens its groups' rows (those with history) and blinks the table. */
+  const showGroups = (groups: string[]) => {
+    setOpen(new Set(o.components.filter((c) => groups.includes(c.group) && c.history.length).map((c) => c.key)));
+    attend("trace-price");
+  };
   const showLate = () => {
     setOpen(new Set(o.components.filter((c) => c.history.some((h) => h.phase === "applied")).map((c) => c.key)));
     attend("trace-price");
@@ -79,27 +87,48 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
         stepNav={false}
         noFooter
         headerAside={
-          <StatusChip tone={kindTone(ORDER_STATUS_KIND[o.status])} variant="soft">
-            {o.status}
-          </StatusChip>
-        }
-        headerSubtitle={
-          <span className="text-sm text-muted-foreground">
-            {[o.invoice ? `Invoice ${o.invoice}` : "Not invoiced", n.customer, n.shipto, n.product].join(" · ")}
+          <span className="flex items-center gap-1.5">
+            <StatusChip tone={kindTone(ORDER_STATUS_KIND[o.status])} variant="soft">
+              {o.status}
+            </StatusChip>
+            {/* A LATE CHANGE IS A FLAG, NOT A FIGURE (Yash, 2026-11-16): most
+                orders have none, so a "0" figure spent a slot on nothing. It
+                shows only when it happened; pressing it opens those rows. */}
+            {o.appliedAfterOrder > 0 && (
+              <button type="button" onClick={showLate} className="cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+                <Pill kind="caution">{plural(o.appliedAfterOrder, "change")} after order</Pill>
+              </button>
+            )}
           </span>
         }
+        headerSubtitle={<span className="text-sm text-muted-foreground">{o.invoice ? `Invoice ${o.invoice}` : "Not invoiced"}</span>}
         onSubmit={onClose}
       >
+        {/* WHAT MADE THE PRICE (Yash, 2026-11-16) — the total, then the price
+            per gallon taken apart: the market's base, the margin on top, the
+            fees and taxes. Each opens its rows in the table below. */}
         <div className={FIGURE_STRIP}>
-          <Figure label="Gallons delivered" value={o.gallons.toLocaleString()} note={`Delivered ${fmtWhen(o.deliveredAt)}`} />
-          <Figure label="Price ($/gal)" value={money3(o.perGal)} note={`${o.rateType} · ${o.market}`} />
-          <Figure label="Total" value={money2(o.total)} note={o.invoice ? `Invoice ${o.invoice}` : "Not invoiced"} />
+          <Figure label="Total" value={money2(o.total)} note={`${o.gallons.toLocaleString()} gal · ${money3(o.perGal)}/gal`} />
           <Figure
-            label="Changed after order"
-            value={o.appliedAfterOrder.toLocaleString()}
-            note={o.appliedAfterOrder ? "Applied to this order" : "None"}
-            onOpen={o.appliedAfterOrder ? showLate : undefined}
-            openLabel="View changes"
+            label="Base price ($/gal)"
+            value={money3(part("Base price"))}
+            note={`${o.rateType} · ${o.market}`}
+            onOpen={() => showGroups(["Base price"])}
+            openLabel="View"
+          />
+          <Figure
+            label="Margin ($/gal)"
+            value={money3(part("Margin") + part("Adder") + part("Discount"))}
+            note={`${pct(part("Margin") + part("Adder") + part("Discount"))} of the price`}
+            onOpen={() => showGroups(["Margin", "Adder", "Discount"])}
+            openLabel="View"
+          />
+          <Figure
+            label="Fees & taxes ($/gal)"
+            value={money3(part("Fee") + part("Tax"))}
+            note={`${pct(part("Fee") + part("Tax"))} of the price`}
+            onOpen={() => showGroups(["Fee", "Tax"])}
+            openLabel="View"
           />
         </div>
 
@@ -206,6 +235,15 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
               are Associated records, label above, a detail after "·" (3PL's
               order sheet). */}
           <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+            {/* WHO AND WHAT FIRST (Yash, 2026-11-16) — the customer, ship-to
+                and product lead; the header keeps only the invoice. */}
+            <RailCard title="Associated records" icon={<Users />}>
+              <dl className="flex flex-col gap-3 px-4 py-3">
+                <Linked label="Customer" value={n.customer} detail={customerOf(o.customerId).account} />
+                <Linked label="Ship-to" value={n.shipto} detail={shiptoOf(o.shiptoId).address.split(", ").slice(-2).join(", ")} />
+                <Linked label="Product" value={n.product} detail={productOf(o.productId).code} />
+              </dl>
+            </RailCard>
             <RailCard title="Record" icon={<History />}>
               <dl className="flex flex-col py-1">
                 <RailRow label="Ordered" value={fmtDateTime(o.placedAt)} />
@@ -219,13 +257,6 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
                 <RailRow label="Rate type" value={o.rateType} />
                 <RailRow label="Market" value={o.market} />
                 <RailRow label="Gallons" value={o.gallons.toLocaleString()} />
-              </dl>
-            </RailCard>
-            <RailCard title="Associated records" icon={<Users />}>
-              <dl className="flex flex-col gap-3 px-4 py-3">
-                <Linked label="Customer" value={n.customer} detail={customerOf(o.customerId).account} />
-                <Linked label="Ship-to" value={n.shipto} detail={shiptoOf(o.shiptoId).address.split(", ").slice(-2).join(", ")} />
-                <Linked label="Product" value={n.product} detail={productOf(o.productId).code} />
               </dl>
             </RailCard>
           </div>

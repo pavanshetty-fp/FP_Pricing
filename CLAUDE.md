@@ -1,7 +1,7 @@
-# pricing-work — instructions for Claude Code
+# FP_Pricing — instructions for Claude Code
 
-This branch of Pavan Shetty's FP-DS-2026 repo is for building the **Pricing**
-module of FleetPanda's Unified View prototype. The app opens on Pricing
+This repo is the **Pricing** module of FleetPanda's Unified View prototype,
+split off Pavan Shetty's FP-DS-2026 repo. The app opens on Pricing
 (`prototypes/unified-view/main.tsx`, `landing="pricing"`); the other modules
 stay reachable so their screens can be read and reused.
 
@@ -21,8 +21,8 @@ Authority when they disagree: `docs/fpds/` + `docs/ds/` > `docs/unified-view/` >
 ## RULES ARE LOCKED — a strict no to changing them
 
 Design-system and Unified View **rules** — components, interactions, layout,
-content, tokens, and the evals that check them — are owned by Pavan on
-`main`. On this branch they are **read-only**.
+content, tokens, and the evals that check them — are owned by Pavan's
+FP-DS-2026 repo. In this repo they are **read-only**.
 
 - **Allowed: building Pricing within the rules** — its screens, flows, columns,
   sample data, and its own PRD.
@@ -57,7 +57,7 @@ content, tokens, and the evals that check them — are owned by Pavan on
 - **Pricing code lives in `prototypes/unified-view/pricing/`.** Shared
   components (`src/components/`, `prototypes/unified-view/*.tsx`) are used by
   every module on `main` — change them sparingly and flag it.
-- **Updates from `main` arrive on this branch** whenever Pavan pushes; pull
-  before starting work (`git pull`).
+- **Updates from FP-DS-2026 arrive here** whenever Pavan pushes; pull before
+  starting work (`git pull`). **Work on a branch**, never directly on `main`.
 - Replies to the team: short, plain language, in three parts —
   Done · Pending · Doubts.

@@ -1,7 +1,7 @@
 {
-  ".claude/hooks/protect-rules.mjs": "8bfd34cb3e1f2b53",
+  ".claude/hooks/protect-rules.mjs": "9c9b61374ea1bfa0",
   ".claude/settings.json": "27d0f8a41f6bd1b6",
-  "CLAUDE.md": "6011b2750b7b92de",
+  "CLAUDE.md": "b170f05c696836f6",
   "docs/apply-design-system.md": "5866490f5a787841",
   "docs/context/3pl-brokerage.md": "11e7e11b2e30e697",
   "docs/context/README.md": "364588481bd4aa47",
@@ -132,5 +132,5 @@
   "scripts/eval/table-rows.mjs": "268ec1fbf07510fa",
   "scripts/eval/tokens.mjs": "091933b4aea1be21",
   "scripts/eval/wcag-contrast.mjs": "5d465ffaf4534469",
-  "scripts/rules-lock.mjs": "f0cb849e0e4acc1e"
+  "scripts/rules-lock.mjs": "76a5d1779fe68f2a"
 }

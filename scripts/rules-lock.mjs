@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
-  THE RULES ARE LOCKED ON THIS BRANCH (pricing-work, Pavan 2026-11-16; the same
+  THE RULES ARE LOCKED IN FP_Pricing (Pavan 2026-11-16; the same
   lock as FP_Service-Work, 2026-09-25).
 
   Design-system and Unified View rules — components, interactions, layout,

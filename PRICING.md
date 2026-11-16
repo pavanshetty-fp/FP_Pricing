@@ -1,23 +1,23 @@
-# pricing-work — start here
+# FP_Pricing — start here
 
-This branch is for building the **Pricing** module. It is a branch of Pavan's
-FP-DS-2026 repo (github.com/pavanshetty-fp/FP-DS-2026, branch `pricing-work`).
-The app opens on Pricing; every other module is still there to read from.
+This repo is for building the **Pricing** module. It is a copy of Pavan's
+FP-DS-2026 prototype, split off on 2026-11-16. The app opens on Pricing; every
+other module is still there to read from.
 
-Every change Pavan makes on `main` (design system, shared components, other
-modules) is merged into this branch when he pushes, so `git pull` before you
-start each day.
+Every change Pavan makes in FP-DS-2026 (design system, shared components,
+other modules) is synced into this repo when he pushes, so `git pull` before
+you start each day.
 
 ## One-time setup
 
-1. Accept the GitHub invite to **pavanshetty-fp/FP-DS-2026**.
+1. Accept the GitHub invite to **pavanshetty-fp/FP_Pricing**.
 2. Install Git, Node.js 20+, and Claude Code (the Claude desktop app's Code tab,
    or `npm install -g @anthropic-ai/claude-code`).
 3. Download the branch:
 
 ```bash
-git clone -b pricing-work git@github.com:pavanshetty-fp/FP-DS-2026.git FP-Pricing
-cd FP-Pricing
+git clone git@github.com:pavanshetty-fp/FP_Pricing.git
+cd FP_Pricing
 npm install
 ```
 
@@ -47,5 +47,5 @@ npm run check:rules        # confirms no rule file was changed
 
 ## Handing work back
 
-Commit to `pricing-work` (or a branch off it) and tell Pavan, or open a pull
-request into `main`. He reviews it and decides what comes back.
+Work on a branch of this repo and open a pull request, or tell Pavan what is
+ready. He reviews it and decides what goes back into FP-DS-2026.

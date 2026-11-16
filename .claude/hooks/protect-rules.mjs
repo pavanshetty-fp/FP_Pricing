@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
-  CLAUDE CODE GUARD — stops any edit to a locked rule file on the
-  pricing-work branch (Pavan, 2026-11-16; as FP_Service-Work). Runs before Edit / Write / MultiEdit / NotebookEdit.
+  CLAUDE CODE GUARD — stops any edit to a locked rule file in
+  FP_Pricing (Pavan, 2026-11-16; as FP_Service-Work). Runs before Edit / Write / MultiEdit / NotebookEdit.
   The locked list is the one in scripts/rules-lock.mjs.
 */
 import { readFileSync } from "node:fs";

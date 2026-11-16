@@ -1,6 +1,6 @@
 # Pricing — PRD
 
-Owner: (colleague) · Reviewer: Pavan · Branch: `pricing-work`
+Owner: (colleague) · Reviewer: Pavan · Repo: FP_Pricing
 
 ## 1. Problem
 _To be written._

@@ -2,6 +2,12 @@
 
 Every published version of the FleetPanda Design System (FPDS), newest first. The line-by-line history is the GitHub repo `pavanshetty-fp/FP-DS-2026`, branch `main`; each version names the commit it was built from.
 
+## v1.18 — 2026-11-16
+
+Built from commit `d511674`.
+
+- **Accessibility is now "User view configuration"** and lives in the account menu (your initials, top right), under Profile. It is no longer at the foot of the left menu. Same settings; the panel opens under the avatar. Unified View and Customer Portal.
+
 ## v1.17 — 2026-11-13
 
 Built from commit `172e78d`.

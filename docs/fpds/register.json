@@ -4,7 +4,7 @@
   "gapMessage": "This unit needs a tweak in design/new design. Please contact the owner to get a design for this gap, pavanshetty@fleetpanda.com.",
   "protocol": "docs/fpds/00-protocol.md",
   "registryUrl": "https://pavanshetty-rgb.github.io/FP-DS-2026/r",
-  "generated": "2026-11-13",
+  "generated": "2026-11-16",
   "entries": [
     {
       "id": "atom.button",
@@ -439,7 +439,7 @@
         "Use for pickers (combobox, date), breakdowns, filter panels."
       ],
       "dontUseWhen": [
-        "Don't use for a task that needs focus held (→ `atom.dialog`) or a record (→ `atom.sheet`). Not for the Accessibility panel (fixed, because zoom misplaces popovers)."
+        "Don't use for a task that needs focus held (→ `atom.dialog`) or a record (→ `atom.sheet`). Not for the User view configuration panel (fixed, because zoom misplaces popovers)."
       ],
       "match": []
     },
@@ -1168,7 +1168,7 @@
         "Use for module-wide configuration."
       ],
       "dontUseWhen": [
-        "Don't use for personal preferences (→ Accessibility panel) or one record (→ Record sheet)."
+        "Don't use for personal preferences (→ User view configuration panel) or one record (→ Record sheet)."
       ],
       "match": [
         "settings",
@@ -1251,14 +1251,14 @@
       ],
       "registry": "fpds-app-shell",
       "install": "npx shadcn@latest add https://pavanshetty-rgb.github.io/FP-DS-2026/r/fpds-app-shell.json",
-      "purpose": "The frame every page sits in: the top bar (brand, global search, notifications, account), the one-panel navigation (modules and their pages, Accessibility at its foot) and the content layer. It answers \"where am I, where can I go, and how do I find anything\".",
+      "purpose": "The frame every page sits in: the top bar (brand, global search, notifications, account), the one-panel navigation (modules and their pages) and the content layer. It answers \"where am I, where can I go, and how do I find anything\".",
       "useWhen": [
         "Use when building any page of the Unified View (3PL, Sales, Service Work, Pricing, Lease) or the Customer Portal — the portal reuses `AppShell`, `TopBar` and `ModuleSidebar` with one module.",
         "Use `ModuleSkeleton` for a module's page while its data loads after a module switch."
       ],
       "dontUseWhen": [
         "Don't use the two-layer rail + drawer (`NavRail` + `NavigationDrawer`) — it is kept behind `NAV_STYLE = \"two-layer\"` and comes back only when Pavan says \"Bring in the two-layer navigation drawers\".",
-        "Don't put a theme toggle in the top bar — Light/Dark lives only in the Accessibility panel.",
+        "Don't put a theme toggle in the top bar — Light/Dark lives only in the User view configuration panel.",
         "Don't put Profile or Settings in the navigation — they are in the account menu."
       ],
       "match": [

@@ -1,6 +1,5 @@
 import * as React from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { AccessibilityIcon, AccessibilityPanel } from "@/components/theme";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -365,7 +364,6 @@ export function ModuleSidebar({
                 </button>,
               ),
             )}
-          <AccessibilityNav collapsed />
         </nav>
       </div>
     );
@@ -536,93 +534,10 @@ export function ModuleSidebar({
             );
           })}
         </ul>
-        {/* ALWAYS IN VIEW, UNDER THE MODULES. */}
-        <div className="shrink-0 border-t border-fp-shell-guide px-2.5 py-2">
-          <AccessibilityNav />
-        </div>
+        {/* User view configuration (was Accessibility) lives in the profile
+            menu since 2026-11-16. */}
       </nav>
     </div>
   );
 }
 
-/** THE ACCESSIBILITY ITEM (Pavan, 2026-10-21; DS ui §10n) — the last row of
-    the main navigation. Its panel is PINNED beside the nav at the window's
-    foot — not a measured popover — so it lands in the same place at every
-    Screen size and is never pushed off the page. Escape or a press outside
-    closes it. */
-function AccessibilityNav({ collapsed }: { collapsed?: boolean }) {
-  const [open, setOpen] = React.useState(false);
-  const panel = React.useRef<HTMLDivElement>(null);
-  const trigger = React.useRef<HTMLButtonElement>(null);
-  React.useEffect(() => {
-    if (!open) return;
-    panel.current?.focus();
-    const key = (e: KeyboardEvent) => e.key === "Escape" && (setOpen(false), trigger.current?.focus());
-    const down = (e: PointerEvent) => {
-      const t = e.target as Node;
-      /* Menus the panel opens (Screen size) live in a portal — not "outside". */
-      if (panel.current?.contains(t) || trigger.current?.contains(t) || (t as Element).closest?.("[data-radix-popper-content-wrapper]")) return;
-      setOpen(false);
-    };
-    window.addEventListener("keydown", key);
-    window.addEventListener("pointerdown", down);
-    return () => {
-      window.removeEventListener("keydown", key);
-      window.removeEventListener("pointerdown", down);
-    };
-  }, [open]);
-  return (
-    <>
-      {collapsed ? (
-        <button
-          ref={trigger}
-          type="button"
-          aria-label="Accessibility"
-          aria-expanded={open}
-          title="Accessibility"
-          onClick={() => setOpen((o) => !o)}
-          className={cn(
-            "mt-auto flex size-9 shrink-0 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-[18px]",
-            open ? "bg-fp-shell-selected text-sidebar-foreground" : "text-sidebar-foreground/70 hover:bg-fp-shell-selected hover:text-sidebar-foreground",
-          )}
-        >
-          <AccessibilityIcon />
-        </button>
-      ) : (
-        <button
-          ref={trigger}
-          type="button"
-          aria-expanded={open}
-          onClick={() => setOpen((o) => !o)}
-          className={cn(
-            "flex h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-[18px]",
-            open ? "bg-fp-shell-selected text-sidebar-foreground" : "text-sidebar-foreground/80 hover:bg-fp-shell-selected hover:text-sidebar-foreground",
-          )}
-        >
-          <span className="flex shrink-0">
-            <AccessibilityIcon />
-          </span>
-          <span className="min-w-0 flex-1 truncate text-left">Accessibility</span>
-        </button>
-      )}
-      {open && (
-        <div
-          ref={panel}
-          role="dialog"
-          aria-label="Accessibility"
-          data-fp-panel
-          tabIndex={-1}
-          className={cn(
-            "fixed bottom-2 z-50 rounded-md border border-border bg-popover text-popover-foreground shadow-md outline-none",
-            /* NEVER WIDER THAN THE ROOM LEFT OF THE WINDOW. */
-            collapsed
-              ? "left-[calc(0.5rem+3.5rem+0.75rem)] max-w-[calc(var(--fp-vw)-4.75rem-0.5rem)]"
-              : "left-[calc(0.5rem+var(--fp-nav-width)+0.75rem)] max-w-[calc(var(--fp-vw)-var(--fp-nav-width)-1.75rem)]",
-          )}
-        >
-          <AccessibilityPanel />
-        </div>
-      )}
-    </>
-  );
-}

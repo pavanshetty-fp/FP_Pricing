@@ -6,6 +6,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SideSheet } from "@/components/side-sheet";
+import { AccessibilityIcon } from "@/components/theme/AccessibilityIcon";
 import {
   Tooltip,
   TooltipContent,
@@ -52,6 +53,12 @@ export interface TopBarProps {
   onLogout?: () => void;
   /** The hairline under the bar. Off = the bar runs straight into the panels below. */
   divider?: boolean;
+  /**
+   * USER VIEW CONFIGURATION (Pavan, 2026-11-16 — was "Accessibility", a row at
+   * the foot of the sidebar). Given, the account menu offers it under Profile
+   * and it opens as a panel under the avatar.
+   */
+  viewConfig?: React.ReactNode;
 }
 
 /**
@@ -68,8 +75,28 @@ export function TopBar({
   onSettings,
   onLogout,
   divider = true,
+  viewConfig,
 }: TopBarProps) {
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
+  const [configOpen, setConfigOpen] = React.useState(false);
+  const configPanel = React.useRef<HTMLDivElement>(null);
+  /* Escape or a press outside closes it; menus it opens live in a portal. */
+  React.useEffect(() => {
+    if (!configOpen) return;
+    configPanel.current?.focus();
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setConfigOpen(false);
+    const down = (e: PointerEvent) => {
+      const t = e.target as Element;
+      if (configPanel.current?.contains(t) || t.closest?.("[data-radix-popper-content-wrapper]")) return;
+      setConfigOpen(false);
+    };
+    window.addEventListener("keydown", key);
+    window.addEventListener("pointerdown", down);
+    return () => {
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("pointerdown", down);
+    };
+  }, [configOpen]);
 
   // ⌘K / Ctrl-K opens the palette from anywhere, which is what the field's own
   // hint promises. Only bound when there is a palette to open.
@@ -181,12 +208,30 @@ export function TopBar({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onProfile}><UserRound /> Profile</DropdownMenuItem>
+            {viewConfig && (
+              <DropdownMenuItem onSelect={() => setConfigOpen(true)}>
+                <AccessibilityIcon /> User view configuration
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onSelect={onSettings}><Settings /> Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onSelect={onLogout}><LogOut /> Log out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {configOpen && viewConfig && (
+        <div
+          ref={configPanel}
+          role="dialog"
+          aria-label="User view configuration"
+          data-fp-panel
+          tabIndex={-1}
+          className="fixed top-14 right-2 z-50 max-w-[calc(var(--fp-vw)-1rem)] rounded-md border border-border bg-popover text-popover-foreground shadow-md outline-none"
+        >
+          {viewConfig}
+        </div>
+      )}
 
       <SideSheet
         variant="shortcuts"

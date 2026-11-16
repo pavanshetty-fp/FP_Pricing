@@ -4,7 +4,7 @@
 
 The values every atom, molecule and unit is built from. **Code is the source of
 truth**: every value below is read from `src/index.css` (and `a11y.ts` for the
-Accessibility panel). If this page and the CSS disagree, the CSS wins and this
+User view configuration panel). If this page and the CSS disagree, the CSS wins and this
 page is wrong. Older docs (`docs/ds/ui/1-fundamentals.md`) still list some
 pre-2026-10-21 dark values; the dark column here is the current one.
 
@@ -183,7 +183,7 @@ Lane accents move too (WCAG light: yellow `#a67f06`, green `#1a9848`, cyan `#059
 
 ### Rules — color
 
-1. **Tokens only; a new color joins the token layer** with a light value, a dark value, WCAG light + dark values, a pair in `scripts/eval/wcag-contrast.mjs`, and a place in `a11y.ts` (STROKE, BACKGROUND, INK or ON_FILL). — *A color outside the layer cannot follow the theme or the Accessibility panel, and earlier AI work hallucinated values read off screenshots.* (constitution; DS ui §10n)
+1. **Tokens only; a new color joins the token layer** with a light value, a dark value, WCAG light + dark values, a pair in `scripts/eval/wcag-contrast.mjs`, and a place in `a11y.ts` (STROKE, BACKGROUND, INK or ON_FILL). — *A color outside the layer cannot follow the theme or the User view configuration panel, and earlier AI work hallucinated values read off screenshots.* (constitution; DS ui §10n)
 2. **The default CTA is `bg-primary`, never `bg-brand`.** — *Orange is the product's mark; as a CTA it would compete with meaning on every screen.* (constitution §2)
 3. **Brand says "you chose this"; violet highlights; gray `--accent` says "the pointer is here".** The three never trade jobs. — *Hover and chosen shared one gray once and a hovered segment looked selected. Purple had been used ad hoc in two hues; Pavan wanted one accent.* (DS ui §10c, 2026-10-16)
 4. **Dark selects in gray, light in brand tint.** Use `bg-selected` and let the theme decide. — *An orange dark enough to sit on near-black has gone brown, which the product does not own.*

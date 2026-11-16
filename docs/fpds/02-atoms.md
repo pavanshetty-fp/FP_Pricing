@@ -511,7 +511,7 @@ A number or a pair.
 By eye: value visible.
 
 ### Reference
-Accessibility panel (Text size, Stroke contrast…); `molecule.time-window-slider`.
+User view configuration panel (Text size, Stroke contrast…); `molecule.time-window-slider`.
 
 ---
 
@@ -1104,7 +1104,7 @@ A floating panel anchored to a control.
 
 ### Use when / Don't use when
 - Use for pickers (combobox, date), breakdowns, filter panels.
-- Don't use for a task that needs focus held (→ `atom.dialog`) or a record (→ `atom.sheet`). Not for the Accessibility panel (fixed, because zoom misplaces popovers).
+- Don't use for a task that needs focus held (→ `atom.dialog`) or a record (→ `atom.sheet`). Not for the User view configuration panel (fixed, because zoom misplaces popovers).
 
 ### Anatomy
 Trigger · content · optional header / title / description.

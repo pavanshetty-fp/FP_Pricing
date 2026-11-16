@@ -901,34 +901,47 @@ export function basePriceMoves(shiptoId: string, rows: ConfigRow[], from: number
 /** One edit's change: names for add/remove/create, before → after for a
  *  replace or set, old → new $/gal for a value edit. `lines` are the rows it
  *  moved (to read what it replaced). */
-export function editSummary(e: Edit, lines: ImpactLine[], ents: EntityMap): string {
-  /* WHAT MOVED, BY NAME (Yash, 2026-11-16: "4 values → $0.21" said nothing).
-     A margin made from a typed value reads as a rate ("$0.21/gal"); several
-     replaced values read as the first one and how many more. */
+/* A CHANGE AS PARTS (Yash, 2026-11-16) — text, and a name list that shows
+   its first names and folds the rest into "+N" (hover lists them, as Service
+   Work's order rows do). `editSummary` / `changeSummary` are the same parts as
+   plain text, for search, sort and titles. */
+export type SummaryPart = string | { names: string[]; label: string };
+const partsText = (parts: SummaryPart[]) =>
+  parts.map((p) => (typeof p === "string" ? p : p.names.length <= 2 ? p.names.join(", ") : `${p.names[0]} +${p.names.length - 1} more`)).join("");
+
+export function editParts(e: Edit, lines: ImpactLine[], ents: EntityMap): SummaryPart[] {
+  /* WHAT MOVED, BY NAME: a margin made from a typed value reads as a rate
+     ("$0.21/gal"). */
   const name = (id: string) => {
     const ent = ents.get(id);
     return ent ? (ent.dynamic ? `${ent.name}/gal` : ent.name) : id;
   };
-  const list = (ids: string[]) => (ids.length <= 2 ? ids.map(name).join(", ") : `${name(ids[0])} +${ids.length - 1} more`);
-  const names = list(e.entityIds);
-  if (e.operation === "add" || e.operation === "remove" || e.operation === "create") return names;
+  const label = ({ margin: "margins", fee: "fees", tax: "taxes", rateType: "rate types", market: "markets", adder: "adders" } as const)[e.setting];
+  const list = (ids: string[]): SummaryPart => ({ names: ids.map(name), label });
+  if (e.operation === "add" || e.operation === "remove" || e.operation === "create") return [list(e.entityIds)];
   if (e.operation === "edit") {
     const was = lines.find((l) => l.setting === e.setting && l.beforeIds.includes(e.entityIds[0]))?.before.split(" · ")[1];
-    return was ? `${names}: ${was} → ${money(e.amount ?? 0)}` : `${names}: ${money(e.amount ?? 0)}`;
+    return [list(e.entityIds), was ? `: ${was} → ${money(e.amount ?? 0)}` : `: ${money(e.amount ?? 0)}`];
   }
   const mine = lines.filter((l) => l.setting === e.setting);
   const off = uniq(mine.flatMap((l) => l.beforeIds.filter((id) => !l.afterIds.includes(id))));
-  return off.length ? `${list(off)} → ${names}` : names;
+  return off.length ? [list(off), " → ", list(e.entityIds)] : [list(e.entityIds)];
 }
 
-/** The Change column, read with the Action badge beside it: what moved. */
-export function changeSummary(c: ChangeRecord, ents: EntityMap): string {
-  if (c.undoOf) return `Undo of ${c.undoOf}`;
-  if (c.resets) return "Reset to customer pricing";
-  return c.edits
-    .map((e) => (c.edits.length > 1 ? `${SETTING_LABEL[e.setting]}: ${editSummary(e, c.lines, ents)}` : editSummary(e, c.lines, ents)))
-    .join(" · ");
+export const editSummary = (e: Edit, lines: ImpactLine[], ents: EntityMap) => partsText(editParts(e, lines, ents));
+
+export function changeParts(c: ChangeRecord, ents: EntityMap): SummaryPart[] {
+  if (c.undoOf) return [`Undo of ${c.undoOf}`];
+  if (c.resets) return ["Reset to customer pricing"];
+  return c.edits.flatMap((e, i) => [
+    ...(i > 0 ? [" · "] : []),
+    ...(c.edits.length > 1 ? [`${SETTING_LABEL[e.setting]}: `] : []),
+    ...editParts(e, c.lines, ents),
+  ]);
 }
+
+/** The Change column as text: what moved. */
+export const changeSummary = (c: ChangeRecord, ents: EntityMap) => partsText(changeParts(c, ents));
 
 // ------------------------------------------------------- customer pricing --
 

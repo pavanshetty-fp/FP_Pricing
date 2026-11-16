@@ -194,11 +194,18 @@ function ChangeSheetBody({
             },
             sort: { delta: l.delta },
             status: LINE_OUTCOME[l.outcome],
-            values: { outcome: LINE_OUTCOME[l.outcome], setting: SETTING_LABEL[l.setting], action: lineAction(l) },
+            values: { customer: customerOf(l.customerId).name, shipto: shiptoOf(l.shiptoId).name, product: productOf(l.productId).name, outcome: LINE_OUTCOME[l.outcome], setting: SETTING_LABEL[l.setting], action: lineAction(l) },
           })
         ),
         nameOf: (r) => `${r.text.shipto} · ${r.text.product}`,
+        /* THE ROW SHOWS ALL IT HOLDS — no drawer to repeat it. */
+        noOpen: true,
+        /* CUSTOMER · SHIP-TO · PRODUCT FIRST in every Pricing filter (Yash,
+           2026-11-16), searchable — the questions asked first. */
         facets: [
+          { key: "customer", label: "Customer", searchable: true },
+          { key: "shipto", label: "Ship-to", searchable: true },
+          { key: "product", label: "Product", searchable: true },
           /* ITS OWN KEY, not "status" — facets are shared across the tabs, and
              Orders has a Status of its own. */
           { key: "outcome", label: "Outcome" },
@@ -246,6 +253,7 @@ function ChangeSheetBody({
           })
         ),
         facets: [{ key: "setting", label: "Entity" }],
+        noOpen: true,
         renderCell: (r, key) => (key === "action" ? <Pill>{r.text.action}</Pill> : undefined),
       });
     t.push({
@@ -281,13 +289,17 @@ function ChangeSheetBody({
           },
           sort: { delivery: o.delivery, gallons: o.gallons, before: o.before, after: o.after },
           status: o.status === "repriced" ? "Repriced" : "Kept price",
-          values: { reason: o.reason ?? "—" },
+          values: { customer: customerOf(o.customerId).name, shipto: shiptoOf(o.shiptoId).name, product: productOf(o.productId).name, reason: o.reason ?? "—" },
         })
       ),
       facets: [
+        { key: "customer", label: "Customer", searchable: true },
+        { key: "shipto", label: "Ship-to", searchable: true },
+        { key: "product", label: "Product", searchable: true },
         { key: "status", label: "Status" },
         { key: "reason", label: "Why kept" },
       ],
+      noOpen: true,
       renderCell: (r, key) =>
         key === "status" ? (
           <StatusChip tone={kindTone(ORDER_KIND[r.status as keyof typeof ORDER_KIND] ?? "neutral")} variant="text">

@@ -47,6 +47,11 @@ _Record each decision with its date and who made it._
 - 2026-11-16 · Yash — Customer & ship-to dashboard, round 2: Customer and Ship-to pickers on the scope row ("All customers" / "All ship-tos" by default; a Where bar sets them). Timeline and Then vs now are short tables on the card, as Sales › Dashboard (ten rows); the card's ↗ opens the full list in a sheet (search, Filters, pages) — the Customer Portal Schedule card pattern. Insights, people and entities open that sheet already filtered.
 - 2026-11-16 · Yash — The date window sits level with the page title, through AppShell's `headerAction` slot (`headerSlot.tsx`). FPDS puts a dashboard's date on its scope row — **to raise with Pavan**.
 - 2026-11-16 · Yash — A change reads by name: a margin made from a typed value is "$0.21/gal"; several replaced values read "Fleet Contract Margin +3 more → $0.21/gal" (was "4 values → $0.21").
+- 2026-11-16 · Yash — Customer & ship-to dashboard, round 3: Customer and Ship-to are multi-select pickers (DS multi-select list) on the right with the date window; "All …" stands alone; ship-tos follow the customers picked. One Timeline on the page — no sheets: Changes scrolls to it; Ship-tos changed → Where; Changed by → Who; an insight, person or entity → the Timeline with that filter as a chip. The section scrolls into view and blinks once (`attend`). Last change still opens the change. Timeline and Then vs now are the Sales dashboard table under search + Filters, with pages. Where and Who show the top 5.
+- 2026-11-16 · Yash — Every Pricing filter starts Customer · Ship-to · Product (searchable).
+- 2026-11-16 · Yash — In a change, rows that already show everything (Ship-tos affected, Orders, Edits) open nothing — no read drawer repeating them.
+- 2026-11-16 · Yash — A list of names in a change shows the first and a "+N" pill; hover or press lists them all (Service Work's overflow chip).
+- 2026-11-16 · Yash — Sample data: frac pads are named by lease ("Hayes Unit 2H"), and every ship-to name is unique.
 - 2026-11-16 · Yash — Delivered Price Impact (the prototype's Phase 2 tab) is out.
 - Open — Freight has four pages in the live app (Customer Freight, Contract Freight Rate, Standard Freight Rate, Origin Group). The shared sidebar nests two levels, so Freight is one entry for now.
 

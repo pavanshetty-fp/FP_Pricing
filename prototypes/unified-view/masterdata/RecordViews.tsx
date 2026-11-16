@@ -45,6 +45,8 @@ export interface ViewFacet {
   label: string;
   /** The options' order, when it is not alphabetical. */
   order?: readonly string[];
+  /** A search box over the options — long lists (customers, ship-tos). */
+  searchable?: boolean;
 }
 
 export interface ViewTab {
@@ -70,6 +72,9 @@ export interface ViewTab {
   /** A row press of the tab's own — opens the real record (a pricing change)
    *  or narrows the page — instead of the read drawer (Pricing, 2026-11-16). */
   onOpen?: (r: ViewRow) => void;
+  /** NO ROW PRESS — the row already shows everything it holds, so a read
+   *  drawer would only repeat it (Pricing, 2026-11-16). */
+  noOpen?: boolean;
 }
 
 /** Per-tab table state — each view keeps its own sort, columns and page. */
@@ -170,7 +175,7 @@ export function RecordViews({
       key: f.key,
       label: f.label,
       options: f.order ? f.order.filter((x) => present.has(x)) : [...present].sort(),
-      searchable: f.key === "status",
+      searchable: f.searchable ?? f.key === "status",
     };
   });
   /* The chips show this view's facets; another view's ticks wait for it. */
@@ -348,7 +353,7 @@ export function RecordViews({
             columnWidths={t.widths}
             onResizeColumns={(widths) => patch({ widths })}
             openLabel={(r) => `Open ${def.one} ${nameOf(r)}`}
-            onOpenRow={def.onOpen ?? setOpen}
+            onOpenRow={def.noOpen ? undefined : (def.onOpen ?? setOpen)}
             showColumnFilters={t.colFiltersOpen}
             onToggleColumnFilters={() =>
               patch(t.colFiltersOpen ? { colFiltersOpen: false, colFilters: {}, page: 1 } : { colFiltersOpen: true })

@@ -92,7 +92,9 @@ const CUSTOMER_SEED: { id: string; name: string; account: string; sites: number;
 const SITE_WORDS = ["Yard", "Plant", "Batch Site", "Laydown", "Depot", "Terminal", "Shop", "Hub", "Pad", "Field Office", "Quarry", "Dock"];
 const SITE_LEADS = ["North", "South", "East", "West", "Main", "Riverside", "Highway 90", "Industrial", "Airport", "Harbor", "Pine Ridge", "County Road 12", "FM 1960", "Loop 250"];
 const STREETS = ["Highway 90", "Broad St", "Industrial Pkwy", "Airline Hwy", "Main St", "County Rd 12", "Harborside Dr", "Loop 250", "FM 1960", "Timberland Dr"];
-const DINOS = ["Utahraptor", "Velociraptor", "Allosaurus", "Triceratops", "Stegosaurus", "Ankylosaur", "Spinosaur", "Iguanodon"];
+/* FRAC PADS BY LEASE (Yash, 2026-11-16: "keep realistic data") — the way
+   operators name well pads: lease or unit, then the well, e.g. "Hayes Unit 2H". */
+const LEASES = ["Hayes Unit", "Pecos Ranch", "Red Bluff", "Cotton Draw", "Big Spring", "Sand Dune", "Mesa Verde", "Wolfbone", "Toyah Lake", "Salt Flat"];
 
 export const CUSTOMERS: Customer[] = CUSTOMER_SEED.map((c, i) => ({
   id: c.id,
@@ -101,12 +103,12 @@ export const CUSTOMERS: Customer[] = CUSTOMER_SEED.map((c, i) => ({
   salesperson: REPS[i % REPS.length],
 }));
 
-export const SHIPTOS: ShipTo[] = CUSTOMER_SEED.flatMap((c) =>
+const SHIPTOS_RAW: ShipTo[] = CUSTOMER_SEED.flatMap((c) =>
   Array.from({ length: c.sites }, (_, i): ShipTo => {
     const city = c.region[i % c.region.length];
     const frac = c.id === "adamas" || c.id === "permian";
     const name = frac
-      ? `FRAC ${pick(DINOS, c.id + i)} ${1 + (i % 6)}H`
+      ? `${LEASES[i % LEASES.length]} ${1 + Math.floor(i / LEASES.length)}H`
       : `${city.split(",")[0]} ${pick(SITE_LEADS, c.id + i + "l")} ${pick(SITE_WORDS, c.id + i)}`;
     return {
       id: `${c.id}-${i + 1}`,
@@ -119,6 +121,15 @@ export const SHIPTOS: ShipTo[] = CUSTOMER_SEED.flatMap((c) =>
     };
   }),
 );
+
+/* ONE NAME, ONE SHIP-TO — a picker and a filter chip go by the name, so a
+   repeat gets a number ("Lufkin North Yard 2"). */
+const seenNames = new Map<string, number>();
+export const SHIPTOS: ShipTo[] = SHIPTOS_RAW.map((st) => {
+  const n = (seenNames.get(st.name) ?? 0) + 1;
+  seenNames.set(st.name, n);
+  return n === 1 ? st : { ...st, name: `${st.name} ${n}` };
+});
 
 export const PRODUCTS: Product[] = [
   { id: "dct", code: "DCT", name: "Diesel Clear Transport", categoryId: "diesel" },

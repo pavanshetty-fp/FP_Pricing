@@ -54,6 +54,7 @@ import {
 } from "./activityFeed";
 import { ChangeSheet } from "./ChangeSheet";
 import { fitColumns } from "./fitColumns";
+import { ChangeText } from "./ChangeText";
 
 /*
   CHANGE LOG › ACTIVITY FEED (Yash, 2026-11-16) — the old Pricing prototype's
@@ -228,14 +229,15 @@ export function ActivityFeedScreen() {
   const facets = React.useMemo<ListFacet[]>(() => {
     const opts = (k: string) => uniq(log.changes.flatMap(FACET_VALUES[k])).sort();
     return [
+      /* CUSTOMER · SHIP-TO · PRODUCT FIRST in every Pricing filter (Yash, 2026-11-16). */
+      { key: "customer", label: "Customer", options: opts("customer"), searchable: true },
+      { key: "shipto", label: "Ship-to", options: opts("shipto"), searchable: true },
+      { key: "product", label: "Product", options: opts("product"), searchable: true },
       { key: "action", label: "Action", options: [...ACTIONS, "Undo"] },
       { key: "entity", label: "Entity", options: SETTINGS.map((s) => SETTING_LABEL[s]) },
       { key: "source", label: "Made via", options: Object.values(SOURCE_LABEL) },
       { key: "status", label: "Status", options: Object.values(STATUS_LABEL) },
       { key: "by", label: "Made by", options: opts("by") },
-      { key: "customer", label: "Customer", options: opts("customer"), searchable: true },
-      { key: "shipto", label: "Ship-to", options: opts("shipto"), searchable: true },
-      { key: "product", label: "Product", options: opts("product"), searchable: true },
     ];
   }, [log.changes]);
 
@@ -331,7 +333,13 @@ export function ActivityFeedScreen() {
   const renderCell = (c: ChangeRecord, key: FeedColumnKey) => {
     switch (key) {
       case "change":
-        return <TwoLineCell title={changeSummary(c, ents)} description={c.id} />;
+        /* THE NAMES, WITH "+N" ON HOVER (Yash, 2026-11-16). */
+        return (
+          <div className="flex min-w-0 flex-col">
+            <ChangeText c={c} ents={ents} className="flex min-w-0 items-center gap-1 text-sm text-foreground" />
+            <span className="truncate text-xs text-muted-foreground">{c.id}</span>
+          </div>
+        );
       case "action":
         return <Pill>{actionOf(c)}</Pill>;
       case "entity":

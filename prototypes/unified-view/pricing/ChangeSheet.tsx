@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Ban, CalendarClock, Clock, Download, MoreHorizontal, RotateCw, Undo2 } from "lucide-react";
+import { Ban, CalendarClock, Clock, Download, History, MoreHorizontal, RotateCw, Undo2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pill } from "@/components/ui/pill";
@@ -453,16 +453,12 @@ function ChangeSheetBody({
           initialPicked={failed ? ["outcome:Failed"] : undefined}
           apply={apply}
         />
-        <div className="flex min-h-0 flex-col gap-3 overflow-auto">
-          <RailCard title="Details">
+        <div className="flex min-h-0 flex-col gap-6 overflow-auto">
+          <RailCard title="Record" icon={<History />}>
             <dl className="flex flex-col py-1">
               <RailRow label="Change" value={c.id} />
               <RailRow label="Action" value={action} />
               <RailRow label="Entity" value={uniq(c.edits.map((e) => SETTING_LABEL[e.setting])).join(", ")} />
-              <RailRow
-                label={customers.length === 1 ? "Customer" : "Customers"}
-                value={<OverflowList values={customers.map((id) => customerOf(id).name)} label="customers" />}
-              />
               <RailRow label="Rows" value={failed ? `${c.lines.length.toLocaleString()} · ${failed.toLocaleString()} failed` : c.lines.length.toLocaleString()} />
               <RailRow label="Made via" value={SOURCE_LABEL[c.source]} />
               <RailRow label="Made by" value={c.by} />
@@ -478,6 +474,24 @@ function ChangeSheetBody({
               {c.undoOf && <RailRow label="Undoes" value={<ChangeLink id={c.undoOf} onOpen={onOpen} />} />}
               {c.undoneBy && <RailRow label="Undone by" value={<ChangeLink id={c.undoneBy} onOpen={onOpen} />} />}
               {c.noChange > 0 && <RailRow label="Rows already set" value={c.noChange.toLocaleString()} />}
+            </dl>
+          </RailCard>
+          {/* THE RECORDS IT TOUCHED — label above, as Associated records reads
+              in every record sheet (3PL's order sheet). */}
+          <RailCard title="Associated records" icon={<Users />}>
+            <dl className="flex flex-col gap-3 px-4 py-3">
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs text-muted-foreground">{customers.length === 1 ? "Customer" : "Customers"}</dt>
+                <dd className="min-w-0">
+                  <OverflowList values={customers.map((id) => customerOf(id).name)} label="customers" />
+                </dd>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs text-muted-foreground">Ship-tos</dt>
+                <dd className="min-w-0">
+                  <OverflowList values={shiptos.map((id) => shiptoOf(id).name)} label="ship-tos" />
+                </dd>
+              </div>
             </dl>
           </RailCard>
         </div>

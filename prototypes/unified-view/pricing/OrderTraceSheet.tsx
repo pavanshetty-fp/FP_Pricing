@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, History, Tag, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -9,7 +9,7 @@ import { RailCard, RailRow } from "../SheetCards";
 import { kindTone } from "../statusKind";
 import { FIGURE_STRIP, Figure } from "../masterdata/sheetParts";
 import { attend } from "../PendingStrip";
-import { fmtDateTime, fmtWhen, plural } from "./changeLog";
+import { customerOf, fmtDateTime, fmtWhen, plural, productOf, shiptoOf } from "./changeLog";
 import { ChangeSheet } from "./ChangeSheet";
 import { ORDER_STATUS_KIND, PHASE_LABEL, money2, money3, orderLabel, type Phase, type PricedOrder } from "./orderTrace";
 
@@ -28,6 +28,19 @@ import { ORDER_STATUS_KIND, PHASE_LABEL, money2, money3, orderLabel, type Phase,
 
 const PHASE_KIND: Record<Phase, "neutral" | "caution"> = { before: "neutral", applied: "caution", after: "neutral" };
 const HEAD = "px-3 text-xs";
+
+/** A record this one belongs to — label above, a muted detail after "·". */
+export function Linked({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return (
+    <div className="flex flex-col">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="truncate text-sm text-foreground">
+        {value}
+        {detail && <span className="text-muted-foreground"> · {detail}</span>}
+      </dd>
+    </div>
+  );
+}
 
 export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | null; onClose: () => void }) {
   const [open, setOpen] = React.useState<Set<string>>(new Set());
@@ -89,7 +102,18 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]">
           <section id="trace-price" className="min-w-0 scroll-mt-4 overflow-hidden rounded-lg border border-border">
-            <Table>
+            {/* FIXED COLUMNS (Yash, 2026-11-16) — the widths are set once, so
+                opening a component's history never moves a column; "How it
+                was calculated" takes the room that is left. */}
+            <Table className="table-fixed">
+              <colgroup>
+                <col style={{ width: 112 }} />
+                <col style={{ width: 190 }} />
+                <col />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 112 }} />
+                <col style={{ width: 176 }} />
+              </colgroup>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className={HEAD}>Component</TableHead>
@@ -121,7 +145,7 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
                             <span className="text-muted-foreground">{c.group}</span>
                           </span>
                         </TableCell>
-                        <TableCell className="px-3 font-medium">{c.name}</TableCell>
+                        <TableCell className="px-3 whitespace-normal font-medium">{c.name}</TableCell>
                         <TableCell className="px-3 whitespace-normal text-muted-foreground">{c.how}</TableCell>
                         <TableCell className="px-3 tabular-nums">{money3(c.perGal)}</TableCell>
                         <TableCell className="px-3 tabular-nums">{money2(c.amount)}</TableCell>
@@ -140,7 +164,7 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
                         c.history.map((h) => (
                           <TableRow key={`${c.key}-${h.changeId}-${h.at}`} className="cursor-pointer" onClick={() => setChangeId(h.changeId)}>
                             <TableCell className="relative px-3 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-status-success/70">
-                              <span className="pl-6 text-xs text-muted-foreground tabular-nums">{fmtDateTime(h.at)}</span>
+                              <span className="block pl-6 text-xs whitespace-normal text-muted-foreground tabular-nums">{fmtDateTime(h.at)}</span>
                             </TableCell>
                             <TableCell className="px-3 text-sm whitespace-normal" colSpan={2}>
                               {h.what} <span className="text-muted-foreground">· {h.changeId}</span>
@@ -149,7 +173,7 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
                               {h.by}
                             </TableCell>
                             <TableCell className="px-3">
-                              <Pill kind={PHASE_KIND[h.phase]}>{PHASE_LABEL[h.phase]}</Pill>
+                              <Pill kind={PHASE_KIND[h.phase]} className="max-w-full">{PHASE_LABEL[h.phase]}</Pill>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -169,18 +193,32 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
             </Table>
           </section>
 
-          <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-0">
-            <RailCard title="Details">
+          {/* THE RIGHT COLUMN, AS EVERY RECORD SHEET HAS IT (Yash, 2026-11-16):
+              a card per subject, each titled with its icon. The order's own
+              facts read label · value on one line; the records it belongs to
+              are Associated records, label above, a detail after "·" (3PL's
+              order sheet). */}
+          <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+            <RailCard title="Record" icon={<History />}>
               <dl className="flex flex-col py-1">
                 <RailRow label="Ordered" value={fmtDateTime(o.placedAt)} />
                 <RailRow label="Delivered" value={fmtDateTime(o.deliveredAt)} />
                 <RailRow label="Invoiced" value={o.invoicedAt ? fmtDateTime(o.invoicedAt) : "—"} />
                 <RailRow label="Priced at" value="Delivery" />
+              </dl>
+            </RailCard>
+            <RailCard title="Pricing" icon={<Tag />}>
+              <dl className="flex flex-col py-1">
                 <RailRow label="Rate type" value={o.rateType} />
                 <RailRow label="Market" value={o.market} />
-                <RailRow label="Customer" value={n.customer} />
-                <RailRow label="Ship-to" value={n.shipto} />
-                <RailRow label="Product" value={n.product} />
+                <RailRow label="Gallons" value={o.gallons.toLocaleString()} />
+              </dl>
+            </RailCard>
+            <RailCard title="Associated records" icon={<Users />}>
+              <dl className="flex flex-col gap-3 px-4 py-3">
+                <Linked label="Customer" value={n.customer} detail={customerOf(o.customerId).account} />
+                <Linked label="Ship-to" value={n.shipto} detail={shiptoOf(o.shiptoId).address.split(", ").slice(-2).join(", ")} />
+                <Linked label="Product" value={n.product} detail={productOf(o.productId).code} />
               </dl>
             </RailCard>
           </div>

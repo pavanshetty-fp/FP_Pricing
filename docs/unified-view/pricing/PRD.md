@@ -30,6 +30,9 @@ _Record each decision with its date and who made it._
 - 2026-11-16 · Yash — A row opens the change on the 360 layout (Master Data › Ship-to 360): figures on top, tabs Ship-tos affected · Edits (when more than one) · Orders, a Details card on the right. Lists have no row menu, so the old row actions live on the sheet: Retry failed rows and Edit schedule are the footer's next act; Undo (latest change only), Cancel schedule and Export are in ⋯. Read-only otherwise, so no footer.
 - 2026-11-16 · Yash — Edit schedule moves the day and time only. Changing what a scheduled change does waits for the Review changes flow.
 - 2026-11-16 · Yash — The change log is one shared store (`pricing/changeLogStore.ts`) so the other Change log pages and the bulk edit read and write the same records. The prototype's clock is 10:40 AM today.
+- 2026-11-16 · Yash — Pricing opens on Change log › Activity feed while it is being built (Dashboard stays first in the menu).
+- 2026-11-16 · Yash — A change with failed rows opens on them: Ship-tos affected filtered to Outcome: Failed (the chip clears it), failed rows first, the reason under "Failed". Outcome sits after Product.
+- 2026-11-16 · Yash — Export changes carries the Overview (ship-tos, customers, products) and the changes by status, as Sales › Orders does.
 - Open — Freight has four pages in the live app (Customer Freight, Contract Freight Rate, Standard Freight Rate, Origin Group). The shared sidebar nests two levels, so Freight is one entry for now.
 
 ## 7. Working agreements (fixed — see `CLAUDE.md`)

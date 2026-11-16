@@ -105,7 +105,11 @@ export function RecordViews({
   searchPlaceholder,
   historyKey,
   onTabChange,
+  initialPicked,
 }: {
+  /** Facets ticked when the record opens, as `facet:value` ids — a change
+   *  opened with failed rows starts on them (Pricing, 2026-11-16). */
+  initialPicked?: readonly string[];
   /** Told which tab is showing — the sheet lays itself out per tab. */
   onTabChange?: (key: string) => void;
   /** The record — a different one starts the views afresh. */
@@ -117,13 +121,13 @@ export function RecordViews({
   const fresh = React.useCallback(() => Object.fromEntries(tabs.map((t) => [t.key, freshTable(t)])) as Record<string, TableState>, [tabs]);
   const [tabKey, setTabKey] = React.useState(tabs[0].key);
   const [search, setSearch] = React.useState("");
-  const [picked, setPicked] = React.useState<ReadonlySet<string>>(new Set());
+  const [picked, setPicked] = React.useState<ReadonlySet<string>>(() => new Set(initialPicked));
   const [tables, setTables] = React.useState(fresh);
   const [open, setOpen] = React.useState<ViewRow | null>(null);
   React.useEffect(() => {
     setTabKey(tabs[0].key);
     setSearch("");
-    setPicked(new Set());
+    setPicked(new Set(initialPicked));
     setTables(fresh());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new record resets
   }, [resetKey]);

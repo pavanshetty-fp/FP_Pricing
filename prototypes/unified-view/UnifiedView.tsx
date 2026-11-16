@@ -411,6 +411,9 @@ const MODULE_LANDING: Record<string, string> = {
   sales: "sales-orders",
   "master-data": "md-directory",
   archive: "3pl-directory",
+  /* PRICING OPENS ON THE PAGE BEING BUILT (Yash, 2026-11-16) — Change log ›
+     Activity feed. Dashboard stays first in the menu. */
+  pricing: "pricing-change-log",
 };
 /** THE PAGE A MODULE OPENS ON, inside its landing area — Master Data opens on
  *  Customers, the first page of its Directory (Assets until Customers was
@@ -418,6 +421,7 @@ const MODULE_LANDING: Record<string, string> = {
 const MODULE_LANDING_SUB: Record<string, string> = {
   "master-data": "md-customers",
   archive: "3pl-customers",
+  pricing: "pricing-log-activity",
 };
 const landingKey = (moduleKey: string): string =>
   MODULE_LANDING[moduleKey] ?? MODULE_NAV[moduleKey]?.[0]?.key ?? "";

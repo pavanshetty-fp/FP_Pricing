@@ -14,10 +14,11 @@ import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
 import { HeadFold, displayViewsFor, topBannerClass, useHeadFold, useTopBanner } from "../HeadFold";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement } from "../ListToolbar";
 import { ListFilters, type ListFacet } from "../ListFilters";
-import { ExportSheet, type ExportFilterRow } from "../ExportSheet";
+import { ExportSheet, type ExportFilterRow, type ExportSummary } from "../ExportSheet";
+import { TERM_ICONS } from "@/components/ui/term-icons";
 import { ListTable, TwoLineCell, type ListSort } from "../ListTable";
 import { useSavedViews } from "../useSavedViews";
-import { kindTone } from "../statusKind";
+import { KIND_TONE, kindTone } from "../statusKind";
 import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
 import { dateKeyOf, startOfDay } from "../data";
 import {
@@ -36,6 +37,7 @@ import {
   settingsOf,
   uniq,
   type ChangeRecord,
+  type ChangeStatus,
 } from "./changeLog";
 import { retryChange, useChangeLog } from "./changeLogStore";
 import {
@@ -462,6 +464,26 @@ export function ActivityFeedScreen() {
     }),
   ];
 
+  /* THE EXPORT SUMMARY — as Sales › Orders and 3PL Delivery Orders: the
+     file's reach, then its changes by status. */
+  const exportSummary = React.useMemo((): ExportSummary => {
+    const lines = sorted.flatMap((c) => c.lines);
+    return {
+      tilesTitle: "Overview",
+      tiles: [
+        { label: "Ship-tos", value: uniq(lines.map((l) => l.shiptoId)).length.toLocaleString(), icon: TERM_ICONS.shipTos },
+        { label: "Customers", value: uniq(lines.map((l) => l.customerId)).length.toLocaleString(), icon: TERM_ICONS.customers },
+        { label: "Products", value: uniq(lines.map((l) => l.productId)).length.toLocaleString(), icon: TERM_ICONS.products },
+      ],
+      breakdown: {
+        title: "By status",
+        parts: (Object.keys(STATUS_LABEL) as ChangeStatus[])
+          .map((st) => ({ label: STATUS_LABEL[st], count: sorted.filter((c) => c.status === st).length, tone: KIND_TONE[STATUS_KIND[st]] }))
+          .filter((p) => p.count > 0),
+      },
+    };
+  }, [sorted]);
+
   /* THE PICKER'S "All dates" AND LIVE COUNT — read off every change's day. */
   const dateWindow = React.useMemo(
     () => dateWindowOf(log.changes.map((c) => dateKeyOf(new Date(c.effectiveAt)))),
@@ -690,6 +712,7 @@ export function ActivityFeedScreen() {
         count={sorted.length}
         range={{ value: range, onChange: setWindow, ...dateWindow }}
         filtersControl={filtersControl(true)}
+        summary={exportSummary}
         filters={exportFilters}
         onExport={(format) => {
           setExporting(false);

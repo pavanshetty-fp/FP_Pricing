@@ -166,14 +166,17 @@ function ChangeSheetBody({
           { key: "customer", label: "Customer", width: 200, sortable: true },
           { key: "shipto", label: "Ship-to", width: 200, sortable: true },
           { key: "product", label: "Product", width: 170, sortable: true },
+          { key: "status", label: "Outcome", width: 200, sortable: true },
           { key: "setting", label: "Entity", width: 110, sortable: true },
           { key: "action", label: "Action", width: 130, sortable: true },
           { key: "before", label: "Before", width: 220, sortable: true },
           { key: "after", label: "After", width: 220, sortable: true },
           { key: "delta", label: "Price change ($/gal)", width: 170, sortable: true },
-          { key: "status", label: "Outcome", width: 120, sortable: true },
         ],
-        rows: c.lines.map(
+        /* FAILED ROWS FIRST — they are what the reader came for. */
+        rows: [...c.lines]
+          .sort((a, b) => Number(b.outcome === "failed") - Number(a.outcome === "failed"))
+          .map(
           (l, i): ViewRow => ({
             id: `${l.rowId}-${l.setting}-${i}`,
             text: {
@@ -185,22 +188,29 @@ function ChangeSheetBody({
               before: l.before || "—",
               after: l.after || "—",
               delta: cents(l.delta),
+              error: l.error ?? "",
             },
             sort: { delta: l.delta },
             status: LINE_OUTCOME[l.outcome],
-            values: { setting: SETTING_LABEL[l.setting], action: lineAction(l) },
+            values: { outcome: LINE_OUTCOME[l.outcome], setting: SETTING_LABEL[l.setting], action: lineAction(l) },
           })
         ),
         facets: [
-          { key: "status", label: "Outcome" },
+          /* ITS OWN KEY, not "status" — facets are shared across the tabs, and
+             Orders has a Status of its own. */
+          { key: "outcome", label: "Outcome" },
           { key: "setting", label: "Entity" },
           { key: "action", label: "Action" },
         ],
         renderCell: (r, key) =>
           key === "status" ? (
-            <StatusChip tone={kindTone(OUTCOME_KIND[r.status as keyof typeof OUTCOME_KIND] ?? "neutral")} variant="text">
-              {r.status}
-            </StatusChip>
+            /* THE REASON UNDER A FAILURE, as the old impact table had it. */
+            <span className="flex min-w-0 flex-col items-start gap-0.5">
+              <StatusChip tone={kindTone(OUTCOME_KIND[r.status as keyof typeof OUTCOME_KIND] ?? "neutral")} variant="text">
+                {r.status}
+              </StatusChip>
+              {r.text.error && <span className="truncate text-xs text-muted-foreground">{r.text.error}</span>}
+            </span>
           ) : key === "action" ? (
             <Pill>{r.text.action}</Pill>
           ) : undefined,
@@ -375,7 +385,15 @@ function ChangeSheetBody({
       </div>
 
       <div ref={work} className={WORK_AREA}>
-        <RecordViews resetKey={c.id} tabs={tabs} searchPlaceholder="Search this change" historyKey="pricing-change" />
+        <RecordViews
+          resetKey={c.id}
+          tabs={tabs}
+          searchPlaceholder="Search this change"
+          historyKey="pricing-change"
+          /* A CHANGE WITH FAILED ROWS OPENS ON THEM (Yash, 2026-11-16) — the
+             Outcome filter is on; its chip clears it to see every row. */
+          initialPicked={failed ? ["outcome:Failed"] : undefined}
+        />
         <div className="flex min-h-0 flex-col gap-3 overflow-auto">
           <RailCard title="Details">
             <dl className="flex flex-col py-1">

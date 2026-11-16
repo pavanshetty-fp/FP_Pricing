@@ -902,8 +902,15 @@ export function basePriceMoves(shiptoId: string, rows: ConfigRow[], from: number
  *  replace or set, old → new $/gal for a value edit. `lines` are the rows it
  *  moved (to read what it replaced). */
 export function editSummary(e: Edit, lines: ImpactLine[], ents: EntityMap): string {
-  const name = (id: string) => ents.get(id)?.name ?? id;
-  const names = e.entityIds.map(name).join(", ");
+  /* WHAT MOVED, BY NAME (Yash, 2026-11-16: "4 values → $0.21" said nothing).
+     A margin made from a typed value reads as a rate ("$0.21/gal"); several
+     replaced values read as the first one and how many more. */
+  const name = (id: string) => {
+    const ent = ents.get(id);
+    return ent ? (ent.dynamic ? `${ent.name}/gal` : ent.name) : id;
+  };
+  const list = (ids: string[]) => (ids.length <= 2 ? ids.map(name).join(", ") : `${name(ids[0])} +${ids.length - 1} more`);
+  const names = list(e.entityIds);
   if (e.operation === "add" || e.operation === "remove" || e.operation === "create") return names;
   if (e.operation === "edit") {
     const was = lines.find((l) => l.setting === e.setting && l.beforeIds.includes(e.entityIds[0]))?.before.split(" · ")[1];
@@ -911,8 +918,7 @@ export function editSummary(e: Edit, lines: ImpactLine[], ents: EntityMap): stri
   }
   const mine = lines.filter((l) => l.setting === e.setting);
   const off = uniq(mine.flatMap((l) => l.beforeIds.filter((id) => !l.afterIds.includes(id))));
-  const from = off.length === 0 ? "" : off.length === 1 ? name(off[0]) : `${off.length} values`;
-  return from ? `${from} → ${names}` : names;
+  return off.length ? `${list(off)} → ${names}` : names;
 }
 
 /** The Change column, read with the Action badge beside it: what moved. */

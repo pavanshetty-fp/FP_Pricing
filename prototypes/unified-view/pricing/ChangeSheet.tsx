@@ -197,6 +197,7 @@ function ChangeSheetBody({
             values: { outcome: LINE_OUTCOME[l.outcome], setting: SETTING_LABEL[l.setting], action: lineAction(l) },
           })
         ),
+        nameOf: (r) => `${r.text.shipto} · ${r.text.product}`,
         facets: [
           /* ITS OWN KEY, not "status" — facets are shared across the tabs, and
              Orders has a Status of its own. */

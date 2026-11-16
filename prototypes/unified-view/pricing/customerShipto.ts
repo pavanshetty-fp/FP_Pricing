@@ -27,7 +27,7 @@ import { SHIPTOS } from "./seed";
 export const INHERITED_SOURCES: Source[] = ["setup", "customer"];
 export const kindOf = (c: ChangeRecord) => (INHERITED_SOURCES.includes(c.source) ? "Inherited" : "Assignment");
 /** Made outside the Pricing screens — bulk upload and imports. */
-export const OUTSIDE_UI: Source[] = ["shiptoBulk", "import"];
+export const OUTSIDE_UI: Source[] = ["import"];
 
 export interface Scope {
   /** The ship-tos in view, by id. */
@@ -174,44 +174,50 @@ export const FLAG_LABEL: Record<FlagKey, string> = {
 };
 
 export interface Insight {
-  key: FlagKey;
+  key: string;
   label: string;
-  count: number;
+  value: string;
   note: string;
 }
 
-/** Which flags each change in scope carries. */
-export function flagsOf(scope: Scope): Map<string, Set<FlagKey>> {
-  const flags = new Map<string, Set<FlagKey>>();
-  const add = (id: string, f: FlagKey) => flags.set(id, new Set([...(flags.get(id) ?? []), f]));
-  const rep = new Map<string, string[]>();
-  scope.changes.forEach((x) => uniq(x.lines.map((l) => `${l.setting}|${l.rowId}`)).forEach((k) => rep.set(k, [...(rep.get(k) ?? []), x.c.id])));
-  rep.forEach((ids) => ids.length >= 3 && ids.forEach((id) => add(id, "repeated")));
-  scope.changes.forEach((x) => {
-    if (x.lines.some((l) => l.setting === "fee" && l.beforeIds.some((id) => !l.afterIds.includes(id)))) add(x.c.id, "fees");
-    if (OUTSIDE_UI.includes(x.c.source)) add(x.c.id, "outside");
-  });
-  return flags;
-}
-
-export function insightsOf(scope: Scope, flags: Map<string, Set<FlagKey>>): Insight[] {
-  const of = (f: FlagKey) => scope.changes.filter((x) => flags.get(x.c.id)?.has(f)).map((x) => x.c);
+/** INSIGHTS, READ-ONLY (Yash, 2026-11-16) — the prototype's three, in its words:
+ *  what changed most, fees removed and by whom, what came in outside the UI.
+ *  Facts to read, not filters: they open nothing. */
+export function insightsOf(scope: Scope, ents: EntityMap): Insight[] {
   const top = (list: string[]) => {
     const n: Record<string, number> = {};
     list.forEach((v) => (n[v] = (n[v] ?? 0) + 1));
-    return Object.keys(n).sort((a, b) => n[b] - n[a]);
+    const k = Object.keys(n).sort((a, b) => n[b] - n[a])[0];
+    return k ? { name: k, n: n[k] } : null;
   };
-  const repeated = of("repeated");
-  const fees = of("fees");
-  const outside = of("outside");
+  const name = (id: string) => ents.get(id)?.name ?? id;
+  /* The record changed most — each change counts once per entity it touched. */
+  const most = top(scope.changes.flatMap((x) => uniq(x.lines.flatMap((l) => [...l.beforeIds, ...l.afterIds])).map(name)));
+  const removed = scope.changes.flatMap((x) =>
+    x.lines
+      .filter((l) => l.setting === "fee")
+      .flatMap((l) => l.beforeIds.filter((id) => !l.afterIds.includes(id)).map(() => x.c.by))
+  );
+  const by = top(removed);
+  const outside = scope.changes.filter((x) => OUTSIDE_UI.includes(x.c.source)).length;
   return [
-    { key: "repeated", label: FLAG_LABEL.repeated, count: repeated.length, note: repeated.length ? `Mostly ${top(repeated.flatMap((c) => uniq(c.lines.map((l) => SETTING_LABEL[l.setting]))))[0]}` : "None" },
-    { key: "fees", label: FLAG_LABEL.fees, count: fees.length, note: fees.length ? `Mostly by ${top(fees.map((c) => c.by))[0]}` : "None" },
+    {
+      key: "most",
+      label: "Changed most",
+      value: most ? `${most.n} times` : "—",
+      note: most ? `${most.name} — more than anything else here` : "No changes",
+    },
+    {
+      key: "fees",
+      label: "Fees removed",
+      value: removed.length.toLocaleString(),
+      note: by ? `Mostly by ${by.name} — check these were intended` : "None",
+    },
     {
       key: "outside",
-      label: FLAG_LABEL.outside,
-      count: outside.length,
-      note: outside.length ? top(outside.map((c) => SOURCE_LABEL[c.source])).map((k) => `${k}: ${outside.filter((c) => SOURCE_LABEL[c.source] === k).length}`).join(" · ") : "None",
+      label: "Outside the UI",
+      value: outside.toLocaleString(),
+      note: "Came through import or system sync, not the UI",
     },
   ];
 }

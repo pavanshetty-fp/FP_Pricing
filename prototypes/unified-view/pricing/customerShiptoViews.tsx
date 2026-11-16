@@ -20,7 +20,7 @@ import {
 } from "./changeLog";
 import { STATUS_KIND, actionOf } from "./activityFeed";
 import { fitColumns } from "./fitColumns";
-import { FLAG_LABEL, kindOf, type FlagKey, type Insight, type Scope, type ThenNowRow, type WhereRow, type WhoRow } from "./customerShipto";
+import { kindOf, type Insight, type Scope, type ThenNowRow, type WhereRow, type WhoRow } from "./customerShipto";
 
 /*
   THE CUSTOMER & SHIP-TO VIEWS, shared by its two layouts (Yash, 2026-11-16):
@@ -30,7 +30,6 @@ import { FLAG_LABEL, kindOf, type FlagKey, type Insight, type Scope, type ThenNo
 const STATUS_BY_LABEL = Object.fromEntries(
   (Object.keys(STATUS_LABEL) as ChangeStatus[]).map((s) => [STATUS_LABEL[s], s])
 ) as Record<string, ChangeStatus>;
-const FLAGS: FlagKey[] = ["repeated", "fees", "outside"];
 
 /** A tab's columns, sized to what they print (UX-45). */
 export const fitTab = (tab: ViewTab): ViewTab => ({
@@ -38,7 +37,7 @@ export const fitTab = (tab: ViewTab): ViewTab => ({
   columns: fitColumns(tab.columns, tab.rows, (r, key) => [key === "status" ? r.status : (r.text[key] ?? "")], ["status", "action", "kind"]),
 });
 
-export function timelineTab(scope: Scope, ents: EntityMap, flags: Map<string, Set<FlagKey>>, onOpen: (id: string) => void): ViewTab {
+export function timelineTab(scope: Scope, ents: EntityMap, onOpen: (id: string) => void): ViewTab {
   const n = scope.shiptos.length;
   return fitTab({
     key: "timeline",
@@ -59,7 +58,6 @@ export function timelineTab(scope: Scope, ents: EntityMap, flags: Map<string, Se
     rows: scope.changes.map(({ c, lines }): ViewRow => {
       const hits = uniq(lines.map((l) => l.shiptoId));
       const entities = uniq(lines.map((l) => SETTING_LABEL[l.setting])).join(", ");
-      const mine = flags.get(c.id);
       return {
         id: c.id,
         text: {
@@ -79,7 +77,6 @@ export function timelineTab(scope: Scope, ents: EntityMap, flags: Map<string, Se
           setting: entities,
           action: actionOf(c),
           by: c.by,
-          ...Object.fromEntries(FLAGS.map((f) => [f, mine?.has(f) ? "Yes" : "No"])),
         },
       };
     }),
@@ -89,7 +86,6 @@ export function timelineTab(scope: Scope, ents: EntityMap, flags: Map<string, Se
       { key: "action", label: "Action" },
       { key: "by", label: "Made by" },
       { key: "status", label: "Status" },
-      ...FLAGS.map((f) => ({ key: f, label: FLAG_LABEL[f], order: ["Yes", "No"] })),
     ],
     renderCell: (r, key) =>
       key === "status" ? (
@@ -203,31 +199,15 @@ export function thenNowTab(rows: ThenNowRow[], from: Date): ViewTab {
 
 /**
  * INSIGHTS — the summary card (3PL Quotation summary shell) as the highlight,
- * holding three figures: a count of changes, one fact under it. Each opens
- * the Timeline narrowed to the changes it counts (Yash, 2026-11-16).
+ * three figures in the prototype's words. Read-only (Yash, 2026-11-16).
  */
-export function InsightsCard({
-  insights,
-  onOpen,
-  across = false,
-}: {
-  insights: Insight[];
-  onOpen: (key: FlagKey) => void;
-  /** Three across (dashboard) or stacked (a rail). */
-  across?: boolean;
-}) {
+export function InsightsCard({ insights, across = false }: { insights: Insight[]; across?: boolean }) {
   return (
     <SummaryCard title="Insights">
       <div className={across ? "-m-3 grid grid-cols-1 divide-border sm:grid-cols-3 sm:divide-x" : "-m-3 flex flex-col divide-y divide-border"}>
         {insights.map((i) => (
-          <Figure
-            key={i.key}
-            label={i.label}
-            value={i.count.toLocaleString()}
-            note={i.note}
-            onOpen={i.count ? () => onOpen(i.key) : undefined}
-            openLabel="View changes"
-          />
+          /* An insight's sentence wraps — it is the point, not a caption. */
+          <Figure key={i.key} label={i.label} value={i.value} note={<span className="whitespace-normal">{i.note}</span>} />
         ))}
       </div>
     </SummaryCard>

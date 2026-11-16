@@ -33,7 +33,7 @@ import { ChangeText } from "./ChangeText";
 import { DashTable, type DashColumn, type DashFacet } from "./DashTable";
 import { FilterChips } from "../ListToolbar";
 import { ListFilters, type ListFacet } from "../ListFilters";
-import { FLAG_LABEL, flagsOf, insightsOf, kindOf, scopeOf, thenNowOf, whereOf, whoOf, type FlagKey, type ThenNowRow } from "./customerShipto";
+import { insightsOf, kindOf, scopeOf, thenNowOf, whereOf, whoOf, type ThenNowRow } from "./customerShipto";
 import { InsightsCard } from "./customerShiptoViews";
 
 /*
@@ -57,7 +57,6 @@ const inRange = (r: DateRange) => (c: ChangeRecord) =>
   c.status === "scheduled" || (c.effectiveAt >= r.from.getTime() && c.effectiveAt < r.to.getTime() + DAY);
 /** Bars per panel (Yash, 2026-11-16: "keep this to top 5 as of now"). */
 const TOP = 5;
-const FLAGS: FlagKey[] = ["repeated", "fees", "outside"];
 const SECTION = "scroll-mt-4 rounded-xl";
 
 type Item = { c: ChangeRecord; lines: ImpactLine[] };
@@ -109,8 +108,7 @@ export function CustomerShiptoDashboard() {
     () => scopeOf(log.changes, custs.length ? custs : CUSTOMERS.map((c) => c.id), ships, inWindow),
     [log.changes, custs.join(), ships.join(), inWindow] // eslint-disable-line react-hooks/exhaustive-deps
   );
-  const flags = React.useMemo(() => flagsOf(scope), [scope]);
-  const insights = React.useMemo(() => insightsOf(scope, flags), [scope, flags]);
+  const insights = React.useMemo(() => insightsOf(scope, ents), [scope, ents]);
   const who = React.useMemo(() => whoOf(scope), [scope]);
   const thenNow = React.useMemo(() => thenNowOf(scope, log.rows, ents), [scope, log.rows, ents]);
 
@@ -196,7 +194,6 @@ export function CustomerShiptoDashboard() {
     { key: "kind", label: "Kind", values: (x) => [kindOf(x.c)] },
     { key: "by", label: "Made by", values: (x) => [x.c.by] },
     { key: "status", label: "Status", values: (x) => [STATUS_LABEL[x.c.status]] },
-    ...FLAGS.map((f) => ({ key: f, label: FLAG_LABEL[f], values: (x: Item) => [flags.get(x.c.id)?.has(f) ? "Yes" : "No"], order: ["Yes", "No"] })),
   ];
 
   const thenNowColumns: DashColumn<ThenNowRow>[] = [
@@ -264,7 +261,7 @@ export function CustomerShiptoDashboard() {
           />
         </div>
 
-        <InsightsCard across insights={insights} onOpen={(f) => showTimeline([`${f}:Yes`])} />
+        <InsightsCard across insights={insights} />
 
         <div className="grid gap-3 lg:grid-cols-2">
           <div id="cs-where" className={`flex min-w-0 ${SECTION}`}>

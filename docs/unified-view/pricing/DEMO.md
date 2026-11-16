@@ -39,6 +39,7 @@ Sales › Orders and 3PL Delivery Orders).
 | **Filters** | Customer, Ship-to and Product come first, then Action, Entity, Made via, Status, Made by | Same filter order on every Pricing page |
 | **Group by** → Customer, then the date window ‹ › | Grouping and a date range, like every list | List template; this is not the table-only standard list |
 | Settings gear, column search on header hover, Export | "Same tools as every list in the product." | FPDS IX-93 / IX-94 |
+| Hover a row and its **⋯** appears at the end. Open it on a scheduled change: **Edit schedule · Cancel schedule · Export**. On a partly failed one: **Retry failed prices**. On the latest change: **Undo change**. | "Everything you can do to a change, without opening it." Edit schedule opens straight from the row. | Row actions at the row's end (UX-46), shown on hover and on keyboard focus (IX-3) |
 
 **Open a change (row press).** Pick a **partly failed** change: the red pill, or the one the banner points to.
 
@@ -52,8 +53,8 @@ Sales › Orders and 3PL Delivery Orders).
 | **⋯**: Undo (latest change only), Cancel schedule (scheduled), Export | Acts on the change live in ⋯ |
 | Open a **scheduled** change → **Edit schedule** (DS date + time select) | Move a schedule without leaving the log |
 
-> If asked "why no row menu in the list?": FPDS lists open the record on row press. Actions live
-> on the record, not in a ··· per row.
+> The same acts are in two places: the row's ⋯ and the change's own ⋯ and footer. They ask the same
+> questions ("Undo CH-…?", "Cancel CH-…?") either way.
 
 ---
 
@@ -68,7 +69,7 @@ what it is?", for example when a customer calls.
 | Pick 2 customers → chip "Customer 2 ×" | Scope shows as a chip | |
 | **Stat tiles:** Changes (assignment · inherited) · Ship-tos changed · Changed by · Last change | Each one jumps to its section and blinks it once | Dashboard rule: every number opens what it counts |
 | **Assignment vs inherited** | "Assignment = changed on the ship-to itself (inline, bulk, import). Inherited = a shared entity or the customer's pricing changed." | PRD §6 |
-| **Insights** card: Edited 3+ times · Fees removed · Outside pricing screens | Press one: the Timeline scrolls in already filtered | Highlight card (Quotation/Order summary shell) |
+| **Insights** card, read only: **Changed most** ("23 times · Environmental Fee — more than anything else here") · **Fees removed** ("Mostly by … — check these were intended") · **Outside the UI** (came through import or system sync) | "What a pricing lead should look at first, in plain words." Don't press it; it's for reading. | Highlight card (Quotation/Order summary shell); wording from the prototype |
 | **Where changes happened** (customers → ship-tos → entities), top 5 + **View N others** | Press a customer to drill in | Percentages are shares of the whole |
 | **Who made the changes**, top 5 + View others | Press a person: Timeline filtered to them | |
 | **Timeline** (search and Filters on the card's right) → press a row | Opens the same change sheet as Activity feed | One timeline on the page; no duplicate sheet |
@@ -86,7 +87,7 @@ what it is?", for example when a customer calls.
 | Banner "N orders priced with a change made after the order was placed" → View details | The orders worth checking | |
 | Open one with **"1 change after order"** | | |
 | Header: status plus a caution pill "1 change after order" (only when it happened) | Press it: those rows open and blink | A flag, not a figure (zero on most orders) |
-| **Figures:** Total · Base price · Margin · Fees & taxes (with % of price) | "The price taken apart." Each opens its rows. | |
+| **Figures**, read only: Total · Base price · Margin · Fees & taxes (with % of price) | "The price taken apart." | |
 | **Table:** one row per component, the name over "how it was calculated", $/gal, amount | Total row "Matches INV-…" | |
 | Expand a component's **history** (chevron) | Each change tagged **Before order** / **After order placed · applied** / **After delivery · not applied** | The heart of a dispute |
 | Press a history row | The change opens over the trace | |
@@ -115,6 +116,8 @@ Then ask for the **PM decisions** below.
 | Can I fix pricing from the trace? | Not in this phase; trace only. Order Pricing Insights' actions (fix missing fees, configure products) are a later phase. |
 | Then vs now, rack moves? | Configured price only (base + margin + fees + taxes). Daily rack moves aren't in the log. |
 | Why does the date sit by the title on Customer & ship-to? | Our ask. FPDS puts it on the scope row; raised with Pavan. |
+| Can I press an insight to see those changes? | Not now. Insights are read-only; use the Timeline's search and Filters. |
+| What counts as "Outside the UI"? | Changes that came in by import or system sync. Bulk edits made on the Ship-to pricing screen are in the UI. |
 
 ## Open for the PM (from PRD §6)
 

@@ -52,7 +52,7 @@ import {
   shiptosOf,
   type FeedColumnKey,
 } from "./activityFeed";
-import { ChangeSheet } from "./ChangeSheet";
+import { ChangeDialogs, ChangeRowMenu, ChangeSheet, type ChangeAsk } from "./ChangeSheet";
 import { fitColumns } from "./fitColumns";
 import { ChangeText } from "./ChangeText";
 
@@ -119,6 +119,8 @@ export function ActivityFeedScreen() {
   const log = useChangeLog();
   const ents = log.entityMap;
   const [openId, setOpenId] = React.useState<string | null>(null);
+  /* An act asked for from a row's ⋯ — the same dialogs the sheet uses. */
+  const [rowAsk, setRowAsk] = React.useState<{ id: string; ask: ChangeAsk } | null>(null);
   const [range, setRange] = React.useState<DateRange>(lastWeek);
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<ListSort<FeedColumnKey> | null>(null);
@@ -712,6 +714,7 @@ export function ActivityFeedScreen() {
               rowId={(c) => c.id}
               renderCell={renderCell}
               actionsKey="actions"
+              rowMenu={(c) => <ChangeRowMenu c={c} latest={log.latestId === c.id} onAsk={(ask) => setRowAsk({ id: c.id, ask })} />}
               columnOrder={columnOrder}
               onReorderColumns={setColumnOrder}
               columnWidths={columnWidths}
@@ -756,6 +759,12 @@ export function ActivityFeedScreen() {
       />
 
       <ChangeSheet id={openId} onClose={() => setOpenId(null)} onOpen={setOpenId} />
+      <ChangeDialogs
+        change={log.changes.find((x) => x.id === rowAsk?.id) ?? null}
+        ask={rowAsk?.ask ?? null}
+        onClose={() => setRowAsk(null)}
+        onUndone={setOpenId}
+      />
 
       <div className={cn("mt-4 shrink-0")}>
         {g.grouped ? (

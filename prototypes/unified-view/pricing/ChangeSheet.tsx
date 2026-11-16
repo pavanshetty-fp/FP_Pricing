@@ -86,7 +86,7 @@ export function ChangeSheet({
 }) {
   const log = useChangeLog();
   const c = log.changes.find((x) => x.id === id) ?? null;
-  const [ask, setAsk] = React.useState<"undo" | "cancel" | "reschedule" | null>(null);
+  const [ask, setAsk] = React.useState<ChangeAsk | null>(null);
   if (!c) return null;
   return (
     <>
@@ -100,6 +100,35 @@ export function ChangeSheet({
         onAsk={setAsk}
         level={level}
       />
+      <ChangeDialogs change={c} ask={ask} onClose={() => setAsk(null)} onUndone={onOpen} />
+    </>
+  );
+}
+
+export type ChangeAsk = "undo" | "cancel" | "reschedule";
+
+/**
+ * THE ACTS ON A CHANGE THAT ASK FIRST — Undo, Cancel schedule, Edit schedule —
+ * shared by the change's sheet (⋯ and footer) and its row ⋯ in Activity feed,
+ * so both ask the same question the same way.
+ */
+export function ChangeDialogs({
+  change: c,
+  ask,
+  onClose,
+  onUndone,
+}: {
+  change: ChangeRecord | null;
+  ask: ChangeAsk | null;
+  onClose: () => void;
+  /** The undo is a new change — open it. */
+  onUndone?: (id: string) => void;
+}) {
+  if (!c) return null;
+  const setAsk = (v: null) => v === null && onClose();
+  const onOpen = (id: string) => onUndone?.(id);
+  return (
+    <>
       <AlertDialog open={ask === "undo"} onOpenChange={(o) => !o && setAsk(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -138,6 +167,55 @@ export function ChangeSheet({
       </AlertDialog>
       <RescheduleDialog change={ask === "reschedule" ? c : null} onClose={() => setAsk(null)} />
     </>
+  );
+}
+
+/**
+ * A CHANGE'S ⋯ ON ITS ROW (Yash, 2026-11-16) — the acts its sheet offers, so
+ * they can be done from the list: Retry failed prices, Edit / Cancel schedule,
+ * Undo (the latest change only), Export. Row actions show on hover and focus
+ * (IX-3).
+ */
+export function ChangeRowMenu({ c, latest, onAsk }: { c: ChangeRecord; latest: boolean; onAsk: (a: ChangeAsk) => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${c.id}`}>
+          <MoreHorizontal />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        {c.status === "partlyFailed" && (
+          <DropdownMenuItem onSelect={() => retryChange(c.id)}>
+            <RotateCw />
+            Retry failed prices
+          </DropdownMenuItem>
+        )}
+        {c.status === "scheduled" && (
+          <>
+            <DropdownMenuItem onSelect={() => onAsk("reschedule")}>
+              <CalendarClock />
+              Edit schedule
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onAsk("cancel")}>
+              <Ban />
+              Cancel schedule
+            </DropdownMenuItem>
+          </>
+        )}
+        {latest && (
+          <DropdownMenuItem onSelect={() => onAsk("undo")}>
+            <Undo2 />
+            Undo change
+          </DropdownMenuItem>
+        )}
+        {(latest || c.status === "scheduled" || c.status === "partlyFailed") && <DropdownMenuSeparator />}
+        <DropdownMenuItem onSelect={() => toast.success(`Exporting ${plural(c.lines.length, "price")} of ${c.id} as .csv`)}>
+          <Download />
+          Export
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

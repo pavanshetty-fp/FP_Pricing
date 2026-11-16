@@ -63,11 +63,6 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
   /* $/gal by component group, and its share of the price. */
   const part = (g: string) => o.components.filter((c) => c.group === g).reduce((t, c) => t + c.perGal, 0);
   const pct = (v: number) => `${Math.round((v / o.perGal) * 100)}%`;
-  /* A figure opens its groups' rows (those with history) and blinks the table. */
-  const showGroups = (groups: string[]) => {
-    setOpen(new Set(o.components.filter((c) => groups.includes(c.group) && c.history.length).map((c) => c.key)));
-    attend("trace-price");
-  };
   const showLate = () => {
     setOpen(new Set(o.components.filter((c) => c.history.some((h) => h.phase === "applied")).map((c) => c.key)));
     attend("trace-price");
@@ -106,29 +101,23 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
       >
         {/* WHAT MADE THE PRICE (Yash, 2026-11-16) — the total, then the price
             per gallon taken apart: the market's base, the margin on top, the
-            fees and taxes. Each opens its rows in the table below. */}
+            fees and taxes. Read-only (Yash, 2026-11-16). */}
         <div className={FIGURE_STRIP}>
           <Figure label="Total" value={money2(o.total)} note={`${o.gallons.toLocaleString()} gal · ${money3(o.perGal)}/gal`} />
           <Figure
             label="Base price ($/gal)"
             value={money3(part("Base price"))}
             note={`${o.rateType} · ${o.market}`}
-            onOpen={() => showGroups(["Base price"])}
-            openLabel="View"
           />
           <Figure
             label="Margin ($/gal)"
             value={money3(part("Margin") + part("Adder") + part("Discount"))}
             note={`${pct(part("Margin") + part("Adder") + part("Discount"))} of the price`}
-            onOpen={() => showGroups(["Margin", "Adder", "Discount"])}
-            openLabel="View"
           />
           <Figure
             label="Fees & taxes ($/gal)"
             value={money3(part("Fee") + part("Tax"))}
             note={`${pct(part("Fee") + part("Tax"))} of the price`}
-            onOpen={() => showGroups(["Fee", "Tax"])}
-            openLabel="View"
           />
         </div>
 

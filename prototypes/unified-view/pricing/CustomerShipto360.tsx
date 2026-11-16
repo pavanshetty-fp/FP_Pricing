@@ -22,7 +22,7 @@ import {
 import { CUSTOMERS, SHIPTOS } from "./seed";
 import { useChangeLog } from "./changeLogStore";
 import { ChangeSheet } from "./ChangeSheet";
-import { flagsOf, insightsOf, kindOf, scopeOf, thenNowOf, whereOf, whoOf } from "./customerShipto";
+import { insightsOf, kindOf, scopeOf, thenNowOf, whereOf, whoOf } from "./customerShipto";
 import { InsightsCard, thenNowTab, timelineTab, whereTab, whoTab } from "./customerShiptoViews";
 
 /*
@@ -97,12 +97,11 @@ export function CustomerShipto360Screen() {
   const where = React.useMemo(() => whereOf(scope), [scope]);
   const who = React.useMemo(() => whoOf(scope), [scope]);
   const thenNow = React.useMemo(() => thenNowOf(scope, log.rows, ents), [scope, log.rows, ents]);
-  const flags = React.useMemo(() => flagsOf(scope), [scope]);
-  const insights = React.useMemo(() => insightsOf(scope, flags), [scope, flags]);
+  const insights = React.useMemo(() => insightsOf(scope, ents), [scope, ents]);
 
   const tabs = React.useMemo<ViewTab[]>(
     () => [
-      timelineTab(scope, ents, flags, setOpenId),
+      timelineTab(scope, ents, setOpenId),
       whereTab(where, (id) => {
         const st = shiptoOf(id);
         applySel(new Set([`customer:${CUSTOMERS.find((c) => c.id === st.customerId)!.name}`, `shipto:${st.name}`]));
@@ -110,7 +109,7 @@ export function CustomerShipto360Screen() {
       whoTab(who),
       thenNowTab(thenNow, range.from),
     ],
-    [scope, where, who, thenNow, ents, range, flags] // eslint-disable-line react-hooks/exhaustive-deps
+    [scope, where, who, thenNow, ents, range] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const dateWindow = React.useMemo(
@@ -185,7 +184,7 @@ export function CustomerShipto360Screen() {
             <RecordViews resetKey="pricing-customer-shipto" tabs={tabs} searchPlaceholder="Search these changes" historyKey="pricing-customer-shipto" apply={apply} />
             {/* THE INSIGHTS — a summary card, the highlight on the right (PRD §6). */}
             <div className="flex min-h-0 flex-col gap-3 overflow-auto">
-              <InsightsCard insights={insights} onOpen={(f) => setApply({ tab: "timeline", picked: [`${f}:Yes`], n: Date.now() })} />
+              <InsightsCard insights={insights} />
             </div>
           </div>
         </div>

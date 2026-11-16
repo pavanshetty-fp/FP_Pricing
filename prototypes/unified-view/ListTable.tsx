@@ -98,6 +98,13 @@ export interface ListTableProps<Row, K extends string> {
   /** Which column key holds the pinned chevron. */
   actionsKey: K;
   /**
+   * A ROW'S ⋯ MENU, at the row's end (UX-46), shown on hover AND on focus
+   * (IX-3) — the acts on the record, so they can be done without opening it
+   * (Pricing › Activity feed, 2026-11-16). Optional: without it the actions
+   * column is dropped, as on every other list.
+   */
+  rowMenu?: (row: Row) => React.ReactNode;
+  /**
    * SELECTION IS OPT-IN. A list with nothing to do to a selection should not
    * spend 44px on a checkbox column that leads nowhere, so the column exists
    * only when the handlers for it do — the same rule the bulk bar follows.
@@ -182,6 +189,7 @@ export function ListTable<Row, K extends string>({
   onOpenRow,
   openLabel,
   actionsKey,
+  rowMenu,
   selectedIds,
   onToggleRow,
   onToggleAll,
@@ -258,7 +266,7 @@ export function ListTable<Row, K extends string>({
      record — a click anywhere on it, or Enter on a focused row — so the
      pinned chevron cell at the end is gone from every list. `actionsKey`
      names that column so it is dropped here. */
-  const visible = cols.arrange(columns.filter((c) => !hidden?.has(c.key) && c.key !== actionsKey));
+  const visible = cols.arrange(columns.filter((c) => !hidden?.has(c.key) && (c.key !== actionsKey || !!rowMenu)));
 
   /* THE CHECKBOX COLUMN IS NOT A COLUMN. It cannot be hidden, reordered,
      resized or sorted, so it sits outside `cols` entirely and is drawn as a
@@ -575,7 +583,14 @@ export function ListTable<Row, K extends string>({
                   )}
                 >
                   <span className={cn(col.key === actionsKey && "relative")}>
-                    {col.key === actionsKey ? (
+                    {col.key === actionsKey && rowMenu ? (
+                      <div
+                        className="flex justify-end opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-visible/row:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {rowMenu(node.row)}
+                      </div>
+                    ) : col.key === actionsKey ? (
                       <div className="flex justify-end">
                         <Button
                           variant="ghost"

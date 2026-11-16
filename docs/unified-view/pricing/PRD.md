@@ -56,6 +56,12 @@ _Record each decision with its date and who made it._
 - 2026-11-16 · Yash — A list of names in a change shows the first and a "+N" pill; hover or press lists them all (Service Work's overflow chip).
 - 2026-11-16 · Yash — Sample data: frac pads are named by lease ("Hayes Unit 2H"), and every ship-to name is unique.
 - 2026-11-16 · Yash — Delivered Price Impact (the prototype's Phase 2 tab) is out.
+- 2026-11-16 · Yash — **Order price trace** (from the prototype's "Order Price Trace" tab): a List page of priced orders — search, Filters (Customer · Ship-to · Product first, Status, Changed after order, Rate type, Market), Group by (customer, ship-to, product, delivery day, status), the delivery-date window, saved views, Export — so one customer's or ship-to's orders are a filter away. Banner: orders priced with a change made after the order was placed. A row opens the trace in a record sheet: figures (gallons, $/gal, total, changed after order), one row per component (applied · how it was calculated · $/gal · amount) with its change history one layer down, the total, and Details on the right. A history row opens the change over the trace.
+- 2026-11-16 · Yash — Each change in an order's history is tagged against the order: Before order · After order placed · applied · After delivery · not applied (prototype: "After invoice").
+- 2026-11-16 · Yash — Base price history follows the prototype: rate type and market changes only, not daily rack moves.
+- Open (PM) — Which orders: delivered and invoiced only for now; open orders ("will price as") to ask the PM.
+- Open (PM) — Pricing moment: assumed at delivery; to confirm with the PM.
+- Open (PM) — Actions: trace only for now. Later phase: fold in the live app's Order Pricing Insights actions (Completed orders · Unpriced products · Configuration gaps; Fix missing fees, Configure missing products, Holiday & weekend fees).
 - Open — Freight has four pages in the live app (Customer Freight, Contract Freight Rate, Standard Freight Rate, Origin Group). The shared sidebar nests two levels, so Freight is one entry for now.
 
 ## 7. Working agreements (fixed — see `CLAUDE.md`)

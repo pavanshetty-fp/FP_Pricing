@@ -73,7 +73,18 @@ const ORDER_KIND = { Repriced: "success", "Kept price": "neutral" } as const;
 
 const cents = (n: number) => (n === 0 ? "—" : `${n > 0 ? "+" : "−"}$${Math.abs(n).toFixed(4)}`);
 
-export function ChangeSheet({ id, onClose, onOpen }: { id: string | null; onClose: () => void; onOpen: (id: string) => void }) {
+export function ChangeSheet({
+  id,
+  onClose,
+  onOpen,
+  level = 1,
+}: {
+  id: string | null;
+  onClose: () => void;
+  onOpen: (id: string) => void;
+  /** 2 when opened over another sheet — an order's trace (record sheet rule 11). */
+  level?: 1 | 2;
+}) {
   const log = useChangeLog();
   const c = log.changes.find((x) => x.id === id) ?? null;
   const [ask, setAsk] = React.useState<"undo" | "cancel" | "reschedule" | null>(null);
@@ -88,6 +99,7 @@ export function ChangeSheet({ id, onClose, onOpen }: { id: string | null; onClos
         onClose={onClose}
         onOpen={onOpen}
         onAsk={setAsk}
+        level={level}
       />
       <AlertDialog open={ask === "undo"} onOpenChange={(o) => !o && setAsk(null)}>
         <AlertDialogContent>
@@ -138,7 +150,9 @@ function ChangeSheetBody({
   onClose,
   onOpen,
   onAsk,
+  level,
 }: {
+  level: 1 | 2;
   c: ChangeRecord;
   latest: boolean;
   summary: string;
@@ -329,6 +343,7 @@ function ChangeSheetBody({
   return (
     <RecordSheet
       size="full"
+      level={level}
       open
       onOpenChange={(o) => !o && onClose()}
       mode="edit"

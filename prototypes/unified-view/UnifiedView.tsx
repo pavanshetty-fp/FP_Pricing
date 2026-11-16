@@ -64,6 +64,7 @@ import { MasterAssetsScreen } from "./masterdata/AssetsScreen";
 import { ActivityFeedScreen } from "./pricing/ActivityFeedScreen";
 import { setHeaderSlot } from "./headerSlot";
 import { CustomerShiptoDashboard } from "./pricing/CustomerShiptoDashboard";
+import { OrderTraceScreen } from "./pricing/OrderTraceScreen";
 import { MasterCustomersScreen } from "./masterdata/CustomersScreen";
 import { MasterShipTosScreen } from "./masterdata/ShipTosScreen";
 import { MasterSuppliersScreen, MasterTerminalsScreen } from "./masterdata/FuelSourceScreens";
@@ -957,6 +958,8 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         return <ActivityFeedScreen />;
       case "pricing-log-customer-shipto":
         return <CustomerShiptoDashboard />;
+      case "pricing-log-order-trace":
+        return <OrderTraceScreen />;
       case "md-suppliers":
         return (
           <MasterSuppliersScreen

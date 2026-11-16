@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ChevronRight } from "lucide-react";
 
 /*
   THE PARTS EVERY 360 SHEET SHARES (Asset 360, Customer 360): the figures
@@ -12,6 +13,7 @@ export function Figure({
   note,
   children,
   onOpen,
+  openLabel,
 }: {
   label: string;
   value: React.ReactNode;
@@ -21,10 +23,22 @@ export function Figure({
    *  2026-11-16) — the whole figure is a button that narrows the views below.
    *  Optional: Asset / Customer / Ship-to 360 pass none and are unchanged. */
   onOpen?: () => void;
+  /** What the press opens — "View ship-tos". Shown on hover and focus, in the
+   *  banner's "View details" voice (dotted underline), so the figure says it
+   *  acts without a second number beside it. */
+  openLabel?: string;
 }) {
   const parts = (
     <>
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <span className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        {onOpen && openLabel && (
+          <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium text-foreground opacity-0 transition-opacity group-hover/fig:opacity-100 group-focus-visible/fig:opacity-100">
+            <span className="underline decoration-current/50 decoration-dotted underline-offset-4">{openLabel}</span>
+            <ChevronRight className="size-3.5" />
+          </span>
+        )}
+      </span>
       <span className="truncate text-2xl font-semibold tabular-nums text-foreground">{value}</span>
       <span className="truncate text-xs text-muted-foreground">{note}</span>
       {children}
@@ -35,7 +49,8 @@ export function Figure({
     <button
       type="button"
       onClick={onOpen}
-      className="flex min-w-0 cursor-pointer flex-col gap-1 p-4 text-left outline-none transition-colors hover:bg-fp-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+      aria-label={openLabel ? `${label}: ${openLabel}` : undefined}
+      className="group/fig flex min-w-0 cursor-pointer flex-col gap-1 p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
     >
       {parts}
     </button>

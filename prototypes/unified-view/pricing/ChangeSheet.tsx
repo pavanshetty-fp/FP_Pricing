@@ -309,6 +309,7 @@ function ChangeSheetBody({
   /* A FIGURE OPENS THE ROWS IT COUNTS — the orders figures narrow Orders. */
   const [apply, setApply] = React.useState<{ tab: string; picked: string[]; n: number } | null>(null);
   const openOrders = (status: string) => setApply({ tab: "orders", picked: [`status:${status}`], n: Date.now() });
+  const openRows = (picked: string[]) => setApply({ tab: "lines", picked, n: Date.now() });
 
   const exportChange = () => toast.success(`Exporting ${plural(c.lines.length, "row")} of ${c.id} as .csv`);
 
@@ -381,29 +382,35 @@ function ChangeSheetBody({
       onSubmit={() => {}}
     >
       <div className={FIGURE_STRIP}>
-        {/* WHICH ONES, NOT ONLY HOW MANY (Yash, 2026-11-16): the first name,
-            the rest behind +N. The customers are in Details. */}
+        {/* EVERY FIGURE OPENS THE ROWS IT COUNTS (Yash, 2026-11-16) — the
+            press narrows the views below; hover says what it opens. */}
         <Figure
           label="Ship-tos"
           value={shiptos.length.toLocaleString()}
-          note={<OverflowList values={shiptos.map((id) => shiptoOf(id).name)} label="ship-tos" />}
+          note={plural(customers.length, "customer")}
+          onOpen={() => openRows([])}
+          openLabel="View ship-tos"
         />
         <Figure
-          label="Products"
-          value={products.length.toLocaleString()}
-          note={<OverflowList values={products.map((id) => productOf(id).name)} label="products" />}
+          label="Rows"
+          value={c.lines.length.toLocaleString()}
+          note={failed ? `${failed.toLocaleString()} failed · ${plural(products.length, "product")}` : plural(products.length, "product")}
+          onOpen={() => openRows(failed ? ["outcome:Failed"] : [])}
+          openLabel={failed ? "View failed rows" : "View rows"}
         />
         <Figure
           label={ahead ? "Open orders that reprice" : "Orders repriced"}
           value={repriced.length.toLocaleString()}
           note={plural(repriced.reduce((t, o) => t + o.gallons, 0), "gal", "gal")}
           onOpen={repriced.length ? () => openOrders("Repriced") : undefined}
+          openLabel="View orders"
         />
         <Figure
           label={ahead ? "Orders that keep their price" : "Orders that kept their price"}
           value={kept.length.toLocaleString()}
           note={plural(kept.reduce((t, o) => t + o.gallons, 0), "gal", "gal")}
           onOpen={kept.length ? () => openOrders("Kept price") : undefined}
+          openLabel="View orders"
         />
       </div>
 

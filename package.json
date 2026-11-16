@@ -17,6 +17,7 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "eval": "node scripts/eval.mjs",
+    "check:rules": "node scripts/rules-lock.mjs",
     "wcag": "node scripts/eval/wcag-contrast.mjs",
     "eval:boxed-tables": "node scripts/eval-boxed-tables.mjs",
     "fpds:build": "node scripts/fpds/build.mjs",

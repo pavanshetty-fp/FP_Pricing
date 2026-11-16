@@ -10,7 +10,9 @@ import { UnifiedView } from "./UnifiedView";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <PreferencesProvider>
-      <UnifiedView />
+      {/* THE pricing-work BRANCH (Pavan, 2026-11-16): opens on Pricing; every
+          other module stays reachable to read from. */}
+      <UnifiedView landing="pricing" />
       {/* §4b "Apply -> toast": the bulk-edit dialog fires a confirmation on
           commit, which needs a Toaster mounted to land anywhere. */}
       <Toaster position="bottom-right" />

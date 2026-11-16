@@ -2,12 +2,9 @@ import {
   SETTING_LABEL,
   SOURCE_LABEL,
   customerOf,
-  effectivePrice,
-  productOf,
   shiptoOf,
   uniq,
   type ChangeRecord,
-  type ConfigRow,
   type EntityMap,
   type ImpactLine,
   type Source,
@@ -47,9 +44,6 @@ export function scopeOf(changes: ChangeRecord[], customerIds: string[], shiptoId
     .sort((a, b) => b.c.effectiveAt - a.c.effectiveAt);
   return { shiptos, set, changes: scoped };
 }
-
-/** Did it take effect — the changes a price "now" is made of. */
-const tookEffect = (c: ChangeRecord) => c.status === "applied" || c.status === "partlyFailed" || c.status === "undone";
 
 export interface WhereRow {
   key: string;
@@ -119,53 +113,6 @@ export function whoOf(scope: Scope): WhoRow[] {
     .sort((a, b) => b.changes - a.changes);
 }
 
-export interface ThenNowRow {
-  id: string;
-  shipto: string;
-  customer: string;
-  product: string;
-  then: number;
-  now: number;
-  delta: number;
-  why: string;
-}
-
-/** Each ship-to × product: its configured price at the start of the window
- *  and now, and what moved it — biggest moves first. */
-export function thenNowOf(scope: Scope, rows: ConfigRow[], ents: EntityMap): ThenNowRow[] {
-  const moved = new Map<string, ImpactLine[]>();
-  scope.changes
-    .filter((x) => tookEffect(x.c))
-    .forEach((x) => x.lines.filter((l) => l.outcome === "changed").forEach((l) => moved.set(l.rowId, [...(moved.get(l.rowId) ?? []), l])));
-  return rows
-    .filter((r) => scope.set.has(r.shiptoId) && r.configured)
-    .map((r) => {
-      const lines = moved.get(r.id) ?? [];
-      const delta = Math.round(lines.reduce((t, l) => t + l.delta, 0) * 10000) / 10000;
-      const now = effectivePrice(r, ents);
-      const count: Record<string, number> = {};
-      lines.forEach((l) => (count[SETTING_LABEL[l.setting]] = (count[SETTING_LABEL[l.setting]] ?? 0) + 1));
-      return {
-        id: r.id,
-        shipto: shiptoOf(r.shiptoId).name,
-        customer: customerOf(r.customerId).name,
-        product: productOf(r.productId).name,
-        then: now - delta,
-        now,
-        delta,
-        why: Object.entries(count)
-          .map(([k, n]) => (n > 1 ? `${k} ×${n}` : k))
-          .join(" · "),
-      };
-    })
-    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-}
-
-/*
-  INSIGHTS — the prototype's "worth a review" flags, short (Yash, 2026-11-16:
-  "too text heavy"). Each is a count of CHANGES with one fact under it, and
-  each is a Timeline facet, so pressing it shows exactly the changes it counts.
-*/
 export type FlagKey = "repeated" | "fees" | "outside";
 export const FLAG_LABEL: Record<FlagKey, string> = {
   repeated: "Edited 3+ times",

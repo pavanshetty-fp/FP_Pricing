@@ -12,6 +12,9 @@ when the sample data changes, so pick live examples on the day using the cues be
 
 - Open the link and sign in. It lands on **Pricing › Change log › Activity feed**.
 - Use light mode, at 1280px wide or more.
+- **Open records as full pages:** on Activity feed press the **Settings gear** → **Information page view** →
+  **Full page**. Your browser remembers it, and every change and order trace then opens full page.
+  (FPDS's default is a side sheet; the choice is per browser, IX-92.)
 - Close any sheet that's open. Leave the sidebar expanded.
 
 ## 1. The problem (1 min, no clicking)
@@ -73,7 +76,6 @@ what it is?", for example when a customer calls.
 | **Where changes happened** (customers → ship-tos → entities), top 5 + **View N others** | Press a customer to drill in | Percentages are shares of the whole |
 | **Who made the changes**, top 5 + View others | Press a person: Timeline filtered to them | |
 | **Timeline** (search and Filters on the card's right) → press a row | Opens the same change sheet as Activity feed | One timeline on the page; no duplicate sheet |
-| **Then vs now** | Each ship-to × product: price at the start of the period vs now, and what moved it | From the prototype; configured price, not daily rack moves |
 
 ---
 
@@ -114,7 +116,6 @@ Then ask for the **PM decisions** below.
 | When is an order priced? | Assumed at delivery. **To confirm with the PM.** |
 | Open orders in the trace? | Not yet: delivered and invoiced only. **To ask the PM.** |
 | Can I fix pricing from the trace? | Not in this phase; trace only. Order Pricing Insights' actions (fix missing fees, configure products) are a later phase. |
-| Then vs now, rack moves? | Configured price only (base + margin + fees + taxes). Daily rack moves aren't in the log. |
 | Why does the date sit by the title on Customer & ship-to? | Our ask. FPDS puts it on the scope row; raised with Pavan. |
 | Can I press an insight to see those changes? | Not now. Insights are read-only; use the Timeline's search and Filters. |
 | What counts as "Outside the UI"? | Changes that came in by import or system sync. Bulk edits made on the Ship-to pricing screen are in the UI. |

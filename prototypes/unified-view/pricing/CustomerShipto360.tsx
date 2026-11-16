@@ -22,8 +22,8 @@ import {
 import { CUSTOMERS, SHIPTOS } from "./seed";
 import { useChangeLog } from "./changeLogStore";
 import { ChangeSheet } from "./ChangeSheet";
-import { insightsOf, kindOf, scopeOf, thenNowOf, whereOf, whoOf } from "./customerShipto";
-import { InsightsCard, thenNowTab, timelineTab, whereTab, whoTab } from "./customerShiptoViews";
+import { insightsOf, kindOf, scopeOf, whereOf, whoOf } from "./customerShipto";
+import { InsightsCard, timelineTab, whereTab, whoTab } from "./customerShiptoViews";
 
 /*
   KEPT, NOT ROUTED (Yash, 2026-11-16: "don't discard this … keep this in
@@ -96,7 +96,6 @@ export function CustomerShipto360Screen() {
 
   const where = React.useMemo(() => whereOf(scope), [scope]);
   const who = React.useMemo(() => whoOf(scope), [scope]);
-  const thenNow = React.useMemo(() => thenNowOf(scope, log.rows, ents), [scope, log.rows, ents]);
   const insights = React.useMemo(() => insightsOf(scope, ents), [scope, ents]);
 
   const tabs = React.useMemo<ViewTab[]>(
@@ -107,9 +106,8 @@ export function CustomerShipto360Screen() {
         applySel(new Set([`customer:${CUSTOMERS.find((c) => c.id === st.customerId)!.name}`, `shipto:${st.name}`]));
       }),
       whoTab(who),
-      thenNowTab(thenNow, range.from),
     ],
-    [scope, where, who, thenNow, ents, range] // eslint-disable-line react-hooks/exhaustive-deps
+    [scope, where, who, ents, range] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const dateWindow = React.useMemo(

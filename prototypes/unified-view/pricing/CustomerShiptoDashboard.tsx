@@ -17,7 +17,6 @@ import {
   customerOf,
   fmtDate,
   fmtWhen,
-  money,
   plural,
   productOf,
   shiptoOf,
@@ -33,7 +32,7 @@ import { ChangeText } from "./ChangeText";
 import { DashTable, type DashColumn, type DashFacet } from "./DashTable";
 import { FilterChips } from "../ListToolbar";
 import { ListFilters, type ListFacet } from "../ListFilters";
-import { insightsOf, kindOf, scopeOf, thenNowOf, whereOf, whoOf, type ThenNowRow } from "./customerShipto";
+import { insightsOf, kindOf, scopeOf, whereOf, whoOf } from "./customerShipto";
 import { InsightsCard } from "./customerShiptoViews";
 
 /*
@@ -47,7 +46,7 @@ import { InsightsCard } from "./customerShiptoViews";
     insight, a person or an entity → the Timeline with that filter on. The
     section is scrolled to and blinks once (`attend`, the DS's "this one");
     the filter shows as a chip. Last change opens that change.
-  - Timeline and Then vs now are the Sales › Dashboard table on the card,
+  - The Timeline is the Sales › Dashboard table on the card,
     under search and Filters (Customer · Ship-to · Product first), with pages.
   The 360 version is kept in CustomerShipto360.tsx.
 */
@@ -110,7 +109,6 @@ export function CustomerShiptoDashboard() {
   );
   const insights = React.useMemo(() => insightsOf(scope, ents), [scope, ents]);
   const who = React.useMemo(() => whoOf(scope), [scope]);
-  const thenNow = React.useMemo(() => thenNowOf(scope, log.rows, ents), [scope, log.rows, ents]);
 
   /* WHERE — customers, then a customer's ship-tos, then one ship-to's
      entities. A customer or ship-to bar sets the scope; an entity bar shows
@@ -196,18 +194,6 @@ export function CustomerShiptoDashboard() {
     { key: "status", label: "Status", values: (x) => [STATUS_LABEL[x.c.status]] },
   ];
 
-  const thenNowColumns: DashColumn<ThenNowRow>[] = [
-    { key: "shipto", label: "Ship-to", cell: (p) => p.shipto },
-    { key: "product", label: "Product", cell: (p) => p.product },
-    { key: "then", label: `Price on ${fmtDate(range.from.getTime())} ($/gal)`, cell: (p) => money(p.then), className: "tabular-nums" },
-    { key: "now", label: "Price now ($/gal)", cell: (p) => money(p.now), className: "tabular-nums" },
-    { key: "delta", label: "Change ($/gal)", cell: (p) => (p.delta === 0 ? "—" : `${p.delta > 0 ? "+" : "−"}${money(Math.abs(p.delta))}`), className: "tabular-nums" },
-    { key: "why", label: "What moved it", cell: (p) => <span className="text-muted-foreground">{p.why || "No changes"}</span> },
-  ];
-  const thenNowFacets: DashFacet<ThenNowRow>[] = [
-    { key: "product", label: "Product", values: (p) => [p.product], searchable: true },
-    { key: "moved", label: "Moved", values: (p) => [p.delta === 0 ? "No change" : p.delta > 0 ? "Up" : "Down"], order: ["Up", "Down", "No change"] },
-  ];
 
   const dateWindow = React.useMemo(() => dateWindowOf(log.changes.map((c) => dateKeyOf(new Date(c.effectiveAt)))), [log.changes]);
   const people = uniq(scope.changes.map((x) => x.c.by));
@@ -308,18 +294,6 @@ export function CustomerShiptoDashboard() {
             />
         </div>
 
-        <div id="cs-then-now" className={SECTION}>
-            <DashTable
-              title="Then vs now"
-              rows={thenNow}
-              rowKey={(p) => p.id}
-              columns={thenNowColumns}
-              facets={thenNowFacets}
-              searchText={(p) => `${p.customer} ${p.shipto} ${p.product} ${p.why}`}
-              searchPlaceholder="Search prices"
-              empty="No prices match."
-            />
-        </div>
       </div>
 
       <ChangeSheet id={openId} onClose={() => setOpenId(null)} onOpen={setOpenId} />

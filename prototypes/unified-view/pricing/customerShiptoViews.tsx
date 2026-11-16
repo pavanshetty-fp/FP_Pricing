@@ -11,7 +11,6 @@ import {
   changeSummary,
   fmtDate,
   fmtWhen,
-  money,
   plural,
   shiptoOf,
   uniq,
@@ -20,7 +19,7 @@ import {
 } from "./changeLog";
 import { STATUS_KIND, actionOf } from "./activityFeed";
 import { fitColumns } from "./fitColumns";
-import { kindOf, type Insight, type Scope, type ThenNowRow, type WhereRow, type WhoRow } from "./customerShipto";
+import { kindOf, type Insight, type Scope, type WhereRow, type WhoRow } from "./customerShipto";
 
 /*
   THE CUSTOMER & SHIP-TO VIEWS, shared by its two layouts (Yash, 2026-11-16):
@@ -162,40 +161,6 @@ export function whoTab(who: WhoRow[]): ViewTab {
   });
 }
 
-export function thenNowTab(rows: ThenNowRow[], from: Date): ViewTab {
-  return fitTab({
-    key: "then-now",
-    label: "Then vs now",
-    noun: "prices",
-    one: "price",
-    columns: [
-      { key: "shipto", label: "Ship-to", width: 200, sortable: true },
-      { key: "product", label: "Product", width: 180, sortable: true },
-      { key: "then", label: `Price on ${fmtDate(from.getTime())} ($/gal)`, width: 180, sortable: true },
-      { key: "now", label: "Price now ($/gal)", width: 150, sortable: true },
-      { key: "delta", label: "Change ($/gal)", width: 140, sortable: true },
-      { key: "why", label: "What moved it", width: 200, sortable: true },
-    ],
-    rows: rows.map(
-      (p): ViewRow => ({
-        id: p.id,
-        text: {
-          shipto: p.shipto,
-          product: p.product,
-          then: money(p.then),
-          now: money(p.now),
-          delta: p.delta === 0 ? "—" : `${p.delta > 0 ? "+" : "−"}${money(Math.abs(p.delta))}`,
-          why: p.why || "No changes",
-        },
-        sort: { then: p.then, now: p.now, delta: Math.abs(p.delta) },
-        status: "",
-        values: { moved: p.delta === 0 ? "No change" : p.delta > 0 ? "Up" : "Down" },
-      })
-    ),
-    facets: [{ key: "moved", label: "Moved", order: ["Up", "Down", "No change"] }],
-    nameOf: (r) => `${r.text.shipto} · ${r.text.product}`,
-  });
-}
 
 /**
  * INSIGHTS — the summary card (3PL Quotation summary shell) as the highlight,

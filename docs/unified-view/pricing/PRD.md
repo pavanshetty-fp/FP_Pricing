@@ -70,6 +70,8 @@ _Record each decision with its date and who made it._
 - 2026-11-16 · Yash — The collapsed sidebar rail scrolls instead of squeezing its icons (shared `ModuleSidebar`, `shrink-0`).
 - 2026-11-16 · Yash — Activity feed rows carry a ⋯ at the row's end (UX-46), shown on hover and focus (IX-3): Retry failed prices · Edit schedule · Cancel schedule · Undo change (latest only) · Export — the change sheet's acts, asking the same questions (shared `ChangeDialogs`). Shared `ListTable` takes an opt-in `rowMenu`.
 - 2026-11-16 · Yash — Insights are read-only, in the prototype's words: Changed most (N times · the entity — more than anything else here) · Fees removed (mostly by … — check these were intended) · Outside the UI (import or system sync). The Timeline's insight filters are gone. The order trace's figures are read-only too.
+- 2026-11-16 · Yash — **Then vs now removed** from Customer & ship-to (dashboard and the kept 360 version) and from the demo script; supersedes the earlier Then vs now decisions above.
+- 2026-11-16 · Yash — Information page view stays FPDS's default (side sheet, IX-92). For demos, Full page is chosen once in the list's Settings gear → Information page view (remembered per browser) — step 0 of `DEMO.md`.
 - Open (PM) — Which orders: delivered and invoiced only for now; open orders ("will price as") to ask the PM.
 - Open (PM) — Pricing moment: assumed at delivery; to confirm with the PM.
 - Open (PM) — Actions: trace only for now. Later phase: fold in the live app's Order Pricing Insights actions (Completed orders · Unpriced products · Configuration gaps; Fix missing fees, Configure missing products, Holiday & weekend fees).

@@ -50,6 +50,8 @@ import {
   Bell,
   Percent,
   Receipt,
+  Activity,
+  Route,
   Landmark,
   Tag,
   Plus,
@@ -59,6 +61,7 @@ import {
 } from "lucide-react";
 import { useTopBannerShown } from "./HeadFold";
 import { MasterAssetsScreen } from "./masterdata/AssetsScreen";
+import { ActivityFeedScreen } from "./pricing/ActivityFeedScreen";
 import { MasterCustomersScreen } from "./masterdata/CustomersScreen";
 import { MasterShipTosScreen } from "./masterdata/ShipTosScreen";
 import { MasterSuppliersScreen, MasterTerminalsScreen } from "./masterdata/FuelSourceScreens";
@@ -218,9 +221,11 @@ const SERVICE_NAV: NavItem[] = [
 
 /**
  * PRICING (Yash, 2026-11-16) — the product's menu, from the live Pricing app.
- * Change history sits on its own under Today's pricing. Labels are sentence
- * case (FPDS UX-167), not the live app's Title Case. No page is built yet:
- * every destination shows the not-built state.
+ * Change log sits on its own under Today's pricing (renamed from Change
+ * history, 2026-11-16), with three pages: Activity feed, Customer & ship-to,
+ * Order price trace. Labels are sentence
+ * case (FPDS UX-167), not the live app's Title Case. A page not built yet
+ * shows the not-built state.
  * Freight has four pages in the live app (Customer Freight, Contract Freight
  * Rate, Standard Freight Rate, Origin Group); the sidebar nests two levels,
  * so Freight is one page here until that is settled.
@@ -230,7 +235,7 @@ const PRICING_NAV: NavItem[] = [
   { key: "pricing-configuration", label: "Pricing configuration", icon: <SlidersHorizontal /> },
   { key: "pricing-setup", label: "Pricing setup", icon: <Settings /> },
   { key: "pricing-today", label: "Today's pricing", icon: <CalendarClock /> },
-  { key: "pricing-change-history", label: "Change history", icon: <History /> },
+  { key: "pricing-change-log", label: "Change log", icon: <History /> },
   { key: "pricing-hub", label: "Hub-based pricing", icon: <Warehouse /> },
   { key: "pricing-insights", label: "Order pricing insights", icon: <ChartColumn /> },
   { key: "pricing-notices", label: "Price notices", icon: <Bell /> },
@@ -247,6 +252,15 @@ const PRICING_NAV: NavItem[] = [
  * why nothing here needed a new one.
  */
 const SUB_NAV: Record<string, NavGroup[]> = {
+  "pricing-change-log": [
+    {
+      items: [
+        { key: "pricing-log-activity", label: "Activity feed", icon: <Activity /> },
+        { key: "pricing-log-customer-shipto", label: "Customer & ship-to", icon: <Users /> },
+        { key: "pricing-log-order-trace", label: "Order price trace", icon: <Route /> },
+      ],
+    },
+  ],
   "pricing-configuration": [
     {
       items: [
@@ -926,6 +940,8 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
             onFocusHandled={() => setDirFocus(null)}
           />
         );
+      case "pricing-log-activity":
+        return <ActivityFeedScreen />;
       case "md-suppliers":
         return (
           <MasterSuppliersScreen

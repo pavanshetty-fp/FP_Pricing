@@ -21,9 +21,15 @@ _To be written._
 _Record each decision with its date and who made it._
 
 - 2026-11-16 · Yash — Work happens on the local branch `bulk+audit-log-stream`; nothing is pushed until Yash says so.
-- 2026-11-16 · Yash — The Pricing menu follows the live Pricing app: Dashboard · Pricing configuration (Customer, Ship-to) · Pricing setup (Margin, Fee, Tax, Rate type, Market, Adders, Driver rate, Driver demurrage, Freight) · Today's pricing · Change history · Hub-based pricing · Order pricing insights · Price notices.
-- 2026-11-16 · Yash — Change history is its own page in the menu, directly under Today's pricing.
+- 2026-11-16 · Yash — The Pricing menu follows the live Pricing app: Dashboard · Pricing configuration (Customer, Ship-to) · Pricing setup (Margin, Fee, Tax, Rate type, Market, Adders, Driver rate, Driver demurrage, Freight) · Today's pricing · Change log · Hub-based pricing · Order pricing insights · Price notices.
+- 2026-11-16 · Yash — Change history (now Change log) is its own page in the menu, directly under Today's pricing.
 - 2026-11-16 · Yash — Pages are built one at a time, on request; every menu entry shows "Not built yet" until then.
+- 2026-11-16 · Yash — Change history is renamed **Change log**, with three pages: Activity feed · Customer & ship-to · Order price trace. ("Customer & Ship-to" was asked for; UX-167 spells the term lower case mid-label, so it reads "Customer & ship-to".)
+- 2026-11-16 · Yash — **Activity feed** is the old prototype's Change history: every pricing change, newest first. Built as the List page (like Customers, plus a date window), not the standard list, because it keeps the period and Group by. Columns, facets and Group by dimensions are the old page's. The date window defaults to the last 7 days; scheduled changes show whatever the window.
+- 2026-11-16 · Yash — The needs-attention strip is the alert banner: rows that failed, scheduled changes on the same rows, changes scheduled today. Each title filters the list to that status. The old stat strip is not carried over (the Pricing Dashboard is its place).
+- 2026-11-16 · Yash — A row opens the change on the 360 layout (Master Data › Ship-to 360): figures on top, tabs Ship-tos affected · Edits (when more than one) · Orders, a Details card on the right. Lists have no row menu, so the old row actions live on the sheet: Retry failed rows and Edit schedule are the footer's next act; Undo (latest change only), Cancel schedule and Export are in ⋯. Read-only otherwise, so no footer.
+- 2026-11-16 · Yash — Edit schedule moves the day and time only. Changing what a scheduled change does waits for the Review changes flow.
+- 2026-11-16 · Yash — The change log is one shared store (`pricing/changeLogStore.ts`) so the other Change log pages and the bulk edit read and write the same records. The prototype's clock is 10:40 AM today.
 - Open — Freight has four pages in the live app (Customer Freight, Contract Freight Rate, Standard Freight Rate, Origin Group). The shared sidebar nests two levels, so Freight is one entry for now.
 
 ## 7. Working agreements (fixed — see `CLAUDE.md`)

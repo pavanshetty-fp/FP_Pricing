@@ -188,7 +188,12 @@ export function BarList({
   data,
   format = (n) => n.toLocaleString(),
   share = false,
+  total: wholeTotal,
 }: {
+  /** THE WHOLE, WHEN ONLY PART OF IT IS SHOWN (Pricing, 2026-11-16) — a top
+   *  five's percentages are shares of everything, not of the five. Optional:
+   *  without it the shown bars are the whole, as before. */
+  total?: number;
   data: BarDatum[];
   format?: (n: number) => string;
   /**
@@ -199,7 +204,7 @@ export function BarList({
    */
   share?: boolean;
 }) {
-  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const total = wholeTotal || data.reduce((s, d) => s + d.value, 0) || 1;
   const max = Math.max(1, ...data.map((d) => d.value));
   if (data.length === 0)
     return <p className="py-6 text-center text-sm text-muted-foreground">Nothing in this range.</p>;

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { FilterChips } from "../ListToolbar";
 import { ListFilters, type ListFacet } from "../ListFilters";
+import { Panel } from "../DashboardParts";
 
 /*
   A DASHBOARD TABLE THAT CAN BE NARROWED (Yash, 2026-11-16) — the Sales ›
@@ -34,6 +35,7 @@ export interface DashFacet<R> {
 const HEAD = "px-2 text-xs";
 
 export function DashTable<R>({
+  title,
   rows,
   rowKey,
   columns,
@@ -45,6 +47,8 @@ export function DashTable<R>({
   empty,
   pageSize: initialSize = 10,
 }: {
+  /** The card's title; search and Filters sit on its right (Yash, 2026-11-16). */
+  title: string;
   rows: R[];
   rowKey: (r: R) => string;
   columns: DashColumn<R>[];
@@ -96,36 +100,41 @@ export function DashTable<R>({
   const shown = React.useMemo(() => narrow(sel), [narrow, sel]);
   const p = Math.min(page, Math.max(1, Math.ceil(shown.length / pageSize)));
 
-  return (
-    <div className="flex flex-col">
-      <div className="flex items-center gap-3">
-        {/* FIXED WIDTH — the list search box is the DS's 320px, the same on
-            every list (ListToolbar); it is not a row of fields. */}
-        <div className="relative w-[320px]">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
-            placeholder={searchPlaceholder}
-            aria-label={searchPlaceholder}
-            className="pl-8"
-          />
-        </div>
-        <ListFilters
-          facets={listFacets}
-          value={sel}
-          countFor={(next) => narrow(next).length}
-          onApply={(next) => {
-            setSel(next);
+  const tools = (
+    <span className="flex items-center gap-3">
+      {/* FIXED WIDTH — the list search box is the DS's 320px, the same on
+          every list (ListToolbar); it is not a row of fields. */}
+      <span className="relative w-[320px]">
+        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
             setPage(1);
           }}
+          placeholder={searchPlaceholder}
+          aria-label={searchPlaceholder}
+          className="pl-8"
         />
-      </div>
+      </span>
+      <ListFilters
+        facets={listFacets}
+        value={sel}
+        countFor={(next) => narrow(next).length}
+        onApply={(next) => {
+          setSel(next);
+          setPage(1);
+        }}
+      />
+    </span>
+  );
+
+  return (
+    <Panel title={title} aside={tools}>
+    <div className="flex flex-col">
       <FilterChips
+        className="mt-0 mb-1"
         facets={listFacets}
         selected={sel}
         onChange={(next) => {
@@ -180,5 +189,6 @@ export function DashTable<R>({
         </div>
       )}
     </div>
+    </Panel>
   );
 }

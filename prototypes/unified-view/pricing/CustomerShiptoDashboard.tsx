@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import { dateWindowOf } from "@/components/ui/date-picker";
 import { BarList, DASHBOARD_GROUND, Panel, StatTile, type BarDatum } from "../DashboardParts";
@@ -30,7 +31,8 @@ import { STATUS_KIND } from "./activityFeed";
 import { ChangeSheet } from "./ChangeSheet";
 import { ChangeText } from "./ChangeText";
 import { DashTable, type DashColumn, type DashFacet } from "./DashTable";
-import { ScopePicker } from "./ScopePicker";
+import { FilterChips } from "../ListToolbar";
+import { ListFilters, type ListFacet } from "../ListFilters";
 import { FLAG_LABEL, flagsOf, insightsOf, kindOf, scopeOf, thenNowOf, whereOf, whoOf, type FlagKey, type ThenNowRow } from "./customerShipto";
 import { InsightsCard } from "./customerShiptoViews";
 
@@ -60,13 +62,40 @@ const SECTION = "scroll-mt-4 rounded-xl";
 
 type Item = { c: ChangeRecord; lines: ImpactLine[] };
 
+/** "View N others" under a top five; the card grows to hold every bar, and
+ *  "Show top 5" folds it back — the banner's dotted-underline voice. */
+function MoreToggle({ open, others, onToggle }: { open: boolean; others: number; onToggle: () => void }) {
+  return (
+    <Button variant="ghost" size="sm" className="mt-2 h-7 px-2 text-xs font-medium text-foreground hover:bg-foreground/5" onClick={onToggle}>
+      <span className="underline decoration-current/50 decoration-dotted underline-offset-4">{open ? `Show top ${TOP}` : `View ${others} ${others === 1 ? "other" : "others"}`}</span>
+    </Button>
+  );
+}
+
 export function CustomerShiptoDashboard() {
   const log = useChangeLog();
   const ents = log.entityMap;
   const [range, setRange] = React.useState<DateRange>(lastQuarter);
   const inWindow = React.useMemo(() => inRange(range), [range]);
-  const [custs, setCusts] = React.useState<string[]>([]);
-  const [ships, setShips] = React.useState<string[]>([]);
+  /* THE SCOPE AS FACETS — the Filters panel and chip shelf Activity feed has
+     (Yash, 2026-11-16), ids `customer:Name` / `shipto:Name`. */
+  const [scopeSel, setScopeSel] = React.useState<ReadonlySet<string>>(new Set());
+  const custByName = React.useMemo(() => new Map(CUSTOMERS.map((c) => [c.name, c.id])), []);
+  const shipByName = React.useMemo(() => new Map(SHIPTOS.map((st) => [st.name, st.id])), []);
+  const idsOf = (sel: ReadonlySet<string>, facet: string, by: Map<string, string>) =>
+    [...sel].filter((id) => id.startsWith(`${facet}:`)).map((id) => by.get(id.slice(facet.length + 1))!).filter(Boolean);
+  const custs = idsOf(scopeSel, "customer", custByName);
+  const ships = idsOf(scopeSel, "shipto", shipByName);
+  /* SHIP-TOS FOLLOW THE CUSTOMERS: one of a customer taken off goes too. */
+  const applyScope = (next: ReadonlySet<string>) => {
+    const keep = idsOf(next, "customer", custByName);
+    setScopeSel(new Set([...next].filter((id) => !id.startsWith("shipto:") || !keep.length || keep.includes(shiptoOf(shipByName.get(id.slice(7))!).customerId))));
+  };
+  const setCusts = (ids: string[]) => applyScope(new Set(ids.map((id) => `customer:${customerOf(id).name}`)));
+  const setShips = (ids: string[]) =>
+    setScopeSel(new Set([...uniq(ids.map((id) => shiptoOf(id).customerId)).map((id) => `customer:${customerOf(id).name}`), ...ids.map((id) => `shipto:${shiptoOf(id).name}`)]));
+  const [whereAll, setWhereAll] = React.useState(false);
+  const [whoAll, setWhoAll] = React.useState(false);
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [timelineApply, setTimelineApply] = React.useState<{ picked: string[]; n: number } | null>(null);
 
@@ -74,14 +103,11 @@ export function CustomerShiptoDashboard() {
     setTimelineApply({ picked, n: Date.now() });
     attend("cs-timeline");
   };
-  const pickCustomers = (ids: string[]) => {
-    setCusts(ids);
-    setShips((s) => (ids.length ? s.filter((id) => ids.includes(shiptoOf(id).customerId)) : s));
-  };
+  const pickCustomers = (ids: string[]) => setCusts(ids);
 
   const scope = React.useMemo(
     () => scopeOf(log.changes, custs.length ? custs : CUSTOMERS.map((c) => c.id), ships, inWindow),
-    [log.changes, custs, ships, inWindow]
+    [log.changes, custs.join(), ships.join(), inWindow] // eslint-disable-line react-hooks/exhaustive-deps
   );
   const flags = React.useMemo(() => flagsOf(scope), [scope]);
   const insights = React.useMemo(() => insightsOf(scope, flags), [scope, flags]);
@@ -117,10 +143,7 @@ export function CustomerShiptoDashboard() {
           label: r.name,
           value: r.changes,
           detail: `${r.assignment} assignment · ${r.inherited} inherited`,
-          onOpen: () => {
-            setCusts([shiptoOf(r.key).customerId]);
-            setShips([r.key]);
-          },
+          onOpen: () => setShips([r.key]),
         })),
       };
     return {
@@ -129,7 +152,7 @@ export function CustomerShiptoDashboard() {
       many: "entities",
       bars: w.rows.map((r) => ({ key: r.key, label: r.name, value: r.changes, detail: `Last ${r.last ? fmtDate(r.last) : "—"} · ${r.lastBy}`, onOpen: () => showTimeline([`entity:${r.name}`]) })),
     };
-  }, [scope, custs, ships]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scope, custs.join(), ships.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const whereBars = where.bars.filter((b) => b.value > 0).sort((a, b) => b.value - a.value);
 
   /* THE TIMELINE — columns, and filters with Customer · Ship-to · Product first. */
@@ -197,16 +220,24 @@ export function CustomerShiptoDashboard() {
   const inherited = scope.changes.filter((x) => kindOf(x.c) === "Inherited").length;
   const touched = uniq(scope.changes.flatMap((x) => x.lines.map((l) => l.shiptoId)));
   const last = scope.changes.find((x) => x.c.status !== "scheduled" && x.c.status !== "canceled");
-  const shipOptions = (custs.length ? SHIPTOS.filter((s) => custs.includes(s.customerId)) : SHIPTOS).map((s) => ({ id: s.id, name: s.name }));
+  const scopeFacets: ListFacet[] = [
+    { key: "customer", label: "Customer", options: CUSTOMERS.map((c) => c.name), searchable: true },
+    { key: "shipto", label: "Ship-to", options: (custs.length ? SHIPTOS.filter((st) => custs.includes(st.customerId)) : SHIPTOS).map((st) => st.name), searchable: true },
+  ];
+  const scopeCount = (next: ReadonlySet<string>) => {
+    const c = idsOf(next, "customer", custByName);
+    return scopeOf(log.changes, c.length ? c : CUSTOMERS.map((x) => x.id), idsOf(next, "shipto", shipByName), inWindow).changes.length;
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-auto">
       {/* THE SCOPE AND THE WINDOW — level with the title, on the right. */}
       <HeaderAside>
-        <ScopePicker all="All customers" noun="customers" options={CUSTOMERS.map((c) => ({ id: c.id, name: c.name }))} value={custs} onChange={pickCustomers} />
-        <ScopePicker all="All ship-tos" noun="ship-tos" options={shipOptions} value={ships} onChange={setShips} />
+        <ListFilters facets={scopeFacets} value={scopeSel} countFor={(next) => scopeCount(next)} onApply={applyScope} />
         <DateRangeFilter {...dateWindow} noun="changes" value={range} onChange={setRange} />
       </HeaderAside>
+      {/* THE SCOPE'S CHIPS — Activity feed's shelf ("Customer 4 ×"). */}
+      <FilterChips className="mt-0 mb-3" facets={scopeFacets} selected={scopeSel} onChange={applyScope} />
 
       <div className={`${DASHBOARD_GROUND} flex flex-col gap-3`}>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -243,15 +274,19 @@ export function CustomerShiptoDashboard() {
             <Panel
               className="flex-1"
               title={where.title}
-              aside={whereBars.length > TOP ? `Top ${TOP} of ${plural(whereBars.length, where.one, where.many)}` : undefined}
+              aside={whereBars.length > TOP && !whereAll ? `Top ${TOP} of ${plural(whereBars.length, where.one, where.many)}` : undefined}
             >
-              <BarList data={whereBars.slice(0, TOP)} />
+              <BarList data={whereAll ? whereBars : whereBars.slice(0, TOP)} total={whereBars.reduce((t, b) => t + b.value, 0)} />
+              {whereBars.length > TOP && (
+                <MoreToggle open={whereAll} others={whereBars.length - TOP} onToggle={() => setWhereAll((o) => !o)} />
+              )}
             </Panel>
           </div>
           <div id="cs-who" className={`flex min-w-0 ${SECTION}`}>
-            <Panel className="flex-1" title="Who made the changes" aside={who.length > TOP ? `Top ${TOP} of ${who.length} people` : undefined}>
+            <Panel className="flex-1" title="Who made the changes" aside={who.length > TOP && !whoAll ? `Top ${TOP} of ${who.length} people` : undefined}>
               <BarList
-                data={who.slice(0, TOP).map((p) => ({
+                total={who.reduce((t, p) => t + p.changes, 0)}
+                data={(whoAll ? who : who.slice(0, TOP)).map((p) => ({
                   key: p.name,
                   label: p.name,
                   value: p.changes,
@@ -259,13 +294,14 @@ export function CustomerShiptoDashboard() {
                   onOpen: () => showTimeline([`by:${p.name}`]),
                 }))}
               />
+              {who.length > TOP && <MoreToggle open={whoAll} others={who.length - TOP} onToggle={() => setWhoAll((o) => !o)} />}
             </Panel>
           </div>
         </div>
 
         <div id="cs-timeline" className={SECTION}>
-          <Panel title="Timeline">
             <DashTable
+              title="Timeline"
               rows={scope.changes}
               rowKey={(x) => x.c.id}
               columns={timelineColumns}
@@ -276,12 +312,11 @@ export function CustomerShiptoDashboard() {
               apply={timelineApply}
               empty="No changes match."
             />
-          </Panel>
         </div>
 
         <div id="cs-then-now" className={SECTION}>
-          <Panel title="Then vs now">
             <DashTable
+              title="Then vs now"
               rows={thenNow}
               rowKey={(p) => p.id}
               columns={thenNowColumns}
@@ -290,7 +325,6 @@ export function CustomerShiptoDashboard() {
               searchPlaceholder="Search prices"
               empty="No prices match."
             />
-          </Panel>
         </div>
       </div>
 

@@ -28,7 +28,7 @@ export const NOW = (() => {
 })();
 export const DAY = 86_400_000;
 export const CURRENT_USER = "Yash J";
-const USERS = ["Yash J", "Priya Nair", "Cody McLelland", "Valarie Rogers", "Marcus Hale"];
+const USERS = ["Yash J", "Priya Nair", "Cody McLelland", "Valarie Rogers", "Marcus Hale", "Deepika Jain", "Ankit Rao"];
 
 function hash(s: string) {
   let h = 2166136261;

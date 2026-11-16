@@ -155,7 +155,8 @@ export function CustomerShiptoDashboard() {
   }, [scope, custs.join(), ships.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const whereBars = where.bars.filter((b) => b.value > 0).sort((a, b) => b.value - a.value);
 
-  /* THE TIMELINE — columns, and filters with Customer · Ship-to · Product first. */
+  /* THE TIMELINE — columns, and filters with Product first. Customer and
+     ship-to are the page's own scope, set once at the top (Yash, 2026-11-16). */
   const names = (x: Item, of: (l: ImpactLine) => string) => uniq(x.lines.map(of));
   const timelineColumns: DashColumn<Item>[] = [
     { key: "when", label: "Date & time", cell: (x) => fmtWhen(x.c.effectiveAt), className: "whitespace-nowrap tabular-nums" },
@@ -190,8 +191,6 @@ export function CustomerShiptoDashboard() {
     },
   ];
   const timelineFacets: DashFacet<Item>[] = [
-    { key: "customer", label: "Customer", values: (x) => names(x, (l) => customerOf(l.customerId).name), searchable: true },
-    { key: "shipto", label: "Ship-to", values: (x) => names(x, (l) => shiptoOf(l.shiptoId).name), searchable: true },
     { key: "product", label: "Product", values: (x) => names(x, (l) => productOf(l.productId).name), searchable: true },
     { key: "entity", label: "Entity", values: (x) => names(x, (l) => SETTING_LABEL[l.setting]) },
     { key: "kind", label: "Kind", values: (x) => [kindOf(x.c)] },
@@ -209,8 +208,6 @@ export function CustomerShiptoDashboard() {
     { key: "why", label: "What moved it", cell: (p) => <span className="text-muted-foreground">{p.why || "No changes"}</span> },
   ];
   const thenNowFacets: DashFacet<ThenNowRow>[] = [
-    { key: "customer", label: "Customer", values: (p) => [p.customer], searchable: true },
-    { key: "shipto", label: "Ship-to", values: (p) => [p.shipto], searchable: true },
     { key: "product", label: "Product", values: (p) => [p.product], searchable: true },
     { key: "moved", label: "Moved", values: (p) => [p.delta === 0 ? "No change" : p.delta > 0 ? "Up" : "Down"], order: ["Up", "Down", "No change"] },
   ];

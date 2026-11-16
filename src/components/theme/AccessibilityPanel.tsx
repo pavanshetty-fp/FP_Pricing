@@ -141,7 +141,7 @@ export function AccessibilityPanel() {
     /* ALWAYS FITS THE WINDOW, at any Display size — it scrolls inside. */
     <div className="flex max-h-[calc(var(--fp-vh)*0.85)] w-80 max-w-full flex-col">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <h2 className="text-base font-semibold text-foreground">Accessibility</h2>
+        <h2 className="text-base font-semibold text-foreground">User view configuration</h2>
         {/* RESET — THE ICON ALONE (Pavan, 2026-10-21). */}
         <TooltipProvider>
           <Tooltip>

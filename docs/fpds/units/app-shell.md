@@ -3,22 +3,22 @@
 `id: unit.app-shell` · `layer: unit` · `code: src/components/app-shell, prototypes/unified-view/ModuleSidebar.tsx, src/components/top-bar/TopBar.tsx, prototypes/unified-view/GlobalSearch.tsx, src/components/theme/AccessibilityPanel.tsx, src/components/theme/AccessibilityIcon.tsx, src/components/theme/a11y.ts, prototypes/unified-view/ModuleSkeleton.tsx` · `registry: fpds-app-shell`
 
 ## Purpose
-The frame every page sits in: the top bar (brand, global search, notifications, account), the one-panel navigation (modules and their pages, Accessibility at its foot) and the content layer. It answers "where am I, where can I go, and how do I find anything".
+The frame every page sits in: the top bar (brand, global search, notifications, account), the one-panel navigation (modules and their pages) and the content layer. It answers "where am I, where can I go, and how do I find anything".
 
 ## Use when / Don't use when
 - Use when building any page of the Unified View (3PL, Sales, Service Work, Pricing, Lease) or the Customer Portal — the portal reuses `AppShell`, `TopBar` and `ModuleSidebar` with one module.
 - Use `ModuleSkeleton` for a module's page while its data loads after a module switch.
 - Don't use the two-layer rail + drawer (`NavRail` + `NavigationDrawer`) — it is kept behind `NAV_STYLE = "two-layer"` and comes back only when Pavan says "Bring in the two-layer navigation drawers".
-- Don't put a theme toggle in the top bar — Light/Dark lives only in the Accessibility panel.
+- Don't put a theme toggle in the top bar — Light/Dark lives only in the User view configuration panel.
 - Don't put Profile or Settings in the navigation — they are in the account menu.
 
 ## Anatomy
 1. **`AppShell`** on the shell ground (`className="bg-fp-shell-ground"`), `headerDivider={false}`.
 2. **`TopBar`** (full width, top): left — brand tile (`Boxes` icon) + "FleetPanda"; center — search field (`Search` icon, placeholder "Search everything", `⌘K` `Kbd`) + Keyboard shortcuts ghost icon (opens the shortcuts `SideSheet`); right — Notifications bell (brand dot when unread > 0) + Account menu (avatar + chevron → name/email label · Profile · Settings · separator · Log out).
-3. **`ModuleSidebar`** (left, in a box): collapse button in the top-right corner · module rows (open module first, then the rest in `APP_MODULES` order: 3PL · Sales · Service Work · Pricing · Lease · Master Data) · under the open module its pages on a guide line — loose pages, small uppercase section headings for areas with sub-pages (3PL Orders, Directory), or a **tree** (`nested`) where a page keeps its row and its pages hang under it on bars (Customer Portal Orders; UV `SUB_NAV`) · a divider · **Accessibility** item (`AccessibilityIcon` + "Accessibility") always in view at the foot.
-4. **Collapsed rail**: expand button · rule · the open module's pages as icons (sections split by short rules) · rule · other modules as icons · Accessibility icon at the bottom; every icon has a right-side tooltip.
+3. **`ModuleSidebar`** (left, in a box): collapse button in the top-right corner · module rows (open module first, then the rest in `APP_MODULES` order: 3PL · Sales · Service Work · Pricing · Lease · Master Data) · under the open module its pages on a guide line — loose pages, small uppercase section headings for areas with sub-pages (3PL Orders, Directory), or a **tree** (`nested`) where a page keeps its row and its pages hang under it on bars (Customer Portal Orders; UV `SUB_NAV`) · nothing at the foot (User view configuration moved to the account menu, 2026-11-16).
+4. **Collapsed rail**: expand button · rule · the open module's pages as icons (sections split by short rules) · rule · other modules as icons; every icon has a right-side tooltip.
 5. **Module-switch progress**: a 2px bar along the bottom of the chosen row + "Loading data for this module." under it.
-6. **Accessibility panel** (fixed, pinned beside the nav at the window's foot): header "Accessibility" + Reset icon · Theme (Light | Dark) · Text weight (steps) · Text size (steps, − / +) · Component width & space (steps 100–150%: lanes and table columns widen) · Stroke contrast · Fill contrast · divider · Display size (steps 50–150%, − / +) · Screen (Default / Laptop / Tablet / Monitor / Large monitor / TV).
+6. **User view configuration panel** (fixed, under the avatar; opened from the account menu, under Profile): header "User view configuration" + Reset icon · Theme (Light | Dark) · Text weight (steps) · Text size (steps, − / +) · Component width & space (steps 100–150%: lanes and table columns widen) · Stroke contrast · Fill contrast · divider · Display size (steps 50–150%, − / +) · Screen (Default / Laptop / Tablet / Monitor / Large monitor / TV).
 7. **Content layer**: page title (`h1 text-xl font-semibold`) + muted count outside the container; the page body inside (see the page units).
 8. **`GlobalSearch`** dialog (opens from the top-bar field or ⌘K): query row (`Search` icon · input · `Esc`) · scope tabs + live count · results grouped by kind (icon tile · title · subtitle · kind `Pill`) · keyboard-hint footer.
 9. **`ModuleSkeleton`**: tabs + right controls · toolbar · table header + 9 rows, all shimmering `Skeleton` blocks; the page title is a `Skeleton` too.
@@ -32,7 +32,7 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 - **Progress bar:** `h-0.5 bg-brand`, CSS `.fp-nav-progress` 3000ms linear; note `text-xs text-muted-foreground`, flush with the row (`px-2.5`), no box.
 - **Top bar:** `h-12`, NO hairline under it (`divider={false}`, 2026-10-27) — the drawer and the content layer start right under it (`AppShell flushTop`, `ModuleSidebar flushTop`: no 8px top gap), no fill of its own (`bg-transparent`, sits on the shell ground), `px-3 gap-3`; brand tile `size-8 rounded-lg bg-brand text-brand-foreground`; search `h-9 rounded-md`, no rim (`border-transparent`), `max-w-md`; unread dot `size-2 bg-brand ring-2 ring-background`. `data-fp-frame` on the bar, `data-fp-on-frame` on what sits straight on it.
 - **Global search:** `Dialog` `sm:max-w-2xl`, `top-[12%]`, no padding; result icon tile `size-8 rounded-md bg-fp-card-1`; active scope `bg-accent font-medium`; list `max-h-[52vh]`.
-- **Accessibility panel:** `rounded-md border border-border bg-popover shadow-md`, `w-80`, `max-h-[calc(var(--fp-vh)*0.85)]`, scrolls inside; rows `text-sm font-medium` label + value, slider, `text-xs` end labels; `gap-6` body `p-4`.
+- **User view configuration panel:** `rounded-md border border-border bg-popover shadow-md`, `w-80`, `max-h-[calc(var(--fp-vh)*0.85)]`, scrolls inside; rows `text-sm font-medium` label + value, slider, `text-xs` end labels; `gap-6` body `p-4`.
 - **Skeleton:** DS `Skeleton` = `bg-accent` block with the `.fp-shimmer` sweep (1.4s), never a pulse; table header block on `bg-fp-table-header`, rows `h-14`.
 
 ## States
@@ -42,7 +42,7 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 - **selected** — current page `aria-current="page"`, fill + green marker (tree children show no guide marker).
 - **collapsed** — icon rail; preference saved (`fp-unified-sidebar-collapsed`).
 - **loading (module switch)** — chosen row runs the progress bar with "Loading data for this module." (`role="status"`); every other module row and the left module's pages are disabled and faint until the new module has unfolded; page title and content are `ModuleSkeleton`.
-- **open** — Accessibility item filled while its panel is open; account menu; search dialog.
+- **open** — the account menu; the User view configuration panel; search dialog.
 - **disabled** — Reset icon disabled when all accessibility settings are default; Screen size slider disabled while Auto is on.
 - **unread** — brand dot on the bell when `unread > 0`.
 - **search empty** — no query: "Recent" (All scope only) + "Pages"; no match: "No results for "…"" (+ " in <scope>").
@@ -56,7 +56,7 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 | Press a page row | Navigates to that page; it becomes current |
 | Press a collapsed-rail module icon | Switches module (no progress bar) |
 | Press the corner collapse / rail expand button | Collapses to / expands from the icon rail; remembered |
-| Press Accessibility | Opens the pinned panel; focus moves into it |
+| Account menu → User view configuration | Opens the panel under the avatar; focus moves into it |
 | Escape or press outside the panel | Closes it; focus returns to the item (menus the panel opens don't count as outside) |
 | Change Theme / a slider in the panel | Page changes live, setting saved (`fp-theme-choice`, `fp-a11y`), applies in every module |
 | Press Reset (or ⌘⌥0 / Ctrl+Alt+0, or `?a11y=reset`) | Every accessibility setting back to default; theme kept |
@@ -72,7 +72,7 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 ## Outcomes
 - A different page or module on screen (with its skeleton first after a module switch).
 - A record's sheet opened from search.
-- Accessibility settings saved and applied app-wide; or reset.
+- User view configuration saved and applied app-wide; or reset.
 - Navigation collapsed/expanded and remembered.
 - Nothing, when pressing a disabled module during a switch or the already-open module.
 
@@ -91,7 +91,7 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 5. **Skeletons shimmer, never pulse** — `(source: ui §11c)`.
 6. **A page with sub-pages stays a page row, its pages on tree bars** (`nested`) — `(source: project_nav_style 2026-10-15)`.
 7. **Module order 3PL · Sales · Service Work · Pricing · Lease** — `(source: project_nav_style 2026-10-09)`.
-8. **Accessibility lives at the foot of the navigation in every module; no header theme icon** — `(source: ui §10n; memory feedback_wcag_modes)`.
+8. **User view configuration lives in the account menu, under Profile, in every module (was "Accessibility" at the foot of the nav, renamed and moved 2026-11-16); no header theme icon** — `(source: ui §10n; memory feedback_wcag_modes)`.
 9. **Panel order: Theme · Text weight · Text size · Component width & space · Stroke contrast · Fill contrast · divider · Display size · Screen; Reset is the icon alone** — no Text color slider (text follows Fill contrast) — `(source: ui §10n, Pavan 2026-10-21 → 2026-10-26)`
 10. **Text size grows the text only** — no box widens; text wraps inside its box and the box grows taller; record numbers and dates never wrap — their table column widens just enough — *"only the text size should increase without the card size increasing"* — `(source: Pavan 2026-10-23)`
 11. **Always reachable, always resettable** — panel pinned beside the nav, never wider/taller than the window; ⌘⌥0 and `?a11y=reset`; a narrow zoomed window scrolls sideways — `(source: ui §10n)`.
@@ -113,7 +113,7 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 - ✅ Write a new fixed width holding text as `w-[calc(Npx*var(--fp-scale))]` or with `--fp-nav-k` / `--fp-lane-k`.
 - ❌ Don't add section headings inside a module's collapsed rail beyond the short rules, or a second drawer.
 - ❌ Don't use `100vw`, `100vh` or `h-screen`.
-- ❌ Don't make the Accessibility panel a Radix popover (CSS zoom misplaces it).
+- ❌ Don't make the User view configuration panel a Radix popover (CSS zoom misplaces it).
 - ❌ Don't fill a surface with a stroke token.
 
 ## Checks
@@ -127,4 +127,4 @@ The frame every page sits in: the top bar (brand, global search, notifications, 
 - Unified View — every page (3PL › Delivery Orders, Sales › Orders, Service Work › Service Orders); switch modules from the sidebar to see the progress bar and skeleton.
 - Customer Portal — same shell, one module, Orders as a tree (Order Requests · Recurring Orders).
 - Top bar ⌘K → Global search (Unified View).
-- Navigation foot › Accessibility panel (all modules).
+- Navigation foot › User view configuration panel (all modules).

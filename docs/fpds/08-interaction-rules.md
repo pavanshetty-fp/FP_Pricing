@@ -119,9 +119,9 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 - **Check:** review
 - **Source:** 3PL README (Export)
 
-**IX-18. The Accessibility panel changes the page LIVE and is saved; there is no Apply.**
+**IX-18. The User view configuration panel changes the page LIVE and is saved; there is no Apply.**
 - **Why:** contrast and size are judged by looking at the real page.
-- **Applies to:** Accessibility panel.
+- **Applies to:** User view configuration panel.
 - **Check:** review
 - **Source:** `ui/2-rules.md` §10n
 
@@ -239,9 +239,9 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 - **Check:** review
 - **Source:** `interactions/2-rules.md` §1; 3PL README (gear moved to header)
 
-**IX-36. The Accessibility panel is a fixed element pinned beside the nav at the window's foot — not a measured popover — and never wider or taller than the window.**
+**IX-36. The User view configuration panel (was "Accessibility") opens from the account menu, under Profile, as a fixed panel under the avatar — not a measured popover — and never wider or taller than the window (Pavan, 2026-11-16; it was a row at the foot of the nav).**
 - **Why:** a zoomed page misplaces a popover; the panel must always be reachable.
-- **Applies to:** Accessibility panel.
+- **Applies to:** User view configuration panel.
 - **Check:** review
 - **Source:** `ui/2-rules.md` §10n; memory `feedback_wcag_modes.md`
 
@@ -571,7 +571,7 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 
 ---
 
-## 15. Accessibility panel behavior
+## 15. User view configuration panel behavior
 
 **IX-85. "Reset to default" (the icon at the top of the panel) resets every accessibility setting and keeps the theme. The same reset is ⌘⌥0 (Ctrl+Alt+0) anywhere and `?a11y=reset` in the address.**
 - **Why:** Pavan, 2026-10-21 — always reachable, always resettable, even from a page made unreadable.
@@ -714,7 +714,7 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 | IX-15 | Applying any narrowing resets the list to page 1 |
 | IX-16 | A new record is revealed by WIDENING the list's window to take it in — never by moving the window |
 | IX-17 | Export sheet: "Export data" summary card + applied filters as chips; calendar and filter icons on the title line open their own sheets; no Cancel |
-| IX-18 | The Accessibility panel changes the page LIVE and is saved; there is no Apply |
+| IX-18 | The User view configuration panel changes the page LIVE and is saved; there is no Apply |
 | IX-19 | An existing record autosaves 600ms after a change settles |
 | IX-20 | The draft is built once per RECORD, not per save: the row coming back from the sheet's own save never rebuilds the form |
 | IX-21 | Every field a sheet collects is carried by all four places — the model, the draft builder, the save and the create — so nothing is silently dropped |
@@ -732,7 +732,7 @@ Where things go and what they mean is in `07-ux-rules.md`. This file says **how 
 | IX-33 | A dialog (AlertDialog) is only for a short, single-purpose question with something to lose: removing a section with content, discarding an unsaved create, confirming a… |
 | IX-34 | A row's own delete is never a dialog: the bin swaps in place for ✕ cancel over ✓ confirm (`TableRowRemove`) |
 | IX-35 | "Things that open rather than change" — history, a preview, the order-form settings gear — sit in the sheet header (left of Close), not in the form |
-| IX-36 | The Accessibility panel is a fixed element pinned beside the nav at the window's foot — not a measured popover — and never wider or taller than the window |
+| IX-36 | The User view configuration panel is a fixed element pinned beside the nav at the window's foot — not a measured popover — and never wider or taller than the window |
 | IX-37 | Every ACT raises a toast (sent, finalized, created, moved, saved a view); typing and autosave never do |
 | IX-38 | An act that moves a record between lanes says so in its toast ("Moved to Quoting") |
 | IX-39 | In the CP, events arrive as one-line toasts with a View action (and in the top bar's bell) |

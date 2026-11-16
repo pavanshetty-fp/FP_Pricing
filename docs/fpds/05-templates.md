@@ -255,7 +255,7 @@ Set how a module behaves for the whole tenant.
 
 ### Use when / Don't use when
 - Use for module-wide configuration.
-- Don't use for personal preferences (→ Accessibility panel) or one record (→ Record sheet).
+- Don't use for personal preferences (→ User view configuration panel) or one record (→ Record sheet).
 
 ### Anatomy
 Section list; each section a titled group of fields or an editable table.

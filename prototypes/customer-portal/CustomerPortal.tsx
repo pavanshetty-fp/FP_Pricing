@@ -14,6 +14,7 @@ import { useEventToasts } from "./notifications";
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
+import { AccessibilityPanel } from "@/components/theme";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ModuleSidebar } from "../unified-view/ModuleSidebar";
 import { OrdersScreen } from "./OrdersScreen";
@@ -132,6 +133,7 @@ export function CustomerPortal() {
         className="bg-fp-shell-ground"
         topBar={
           <TopBar
+            viewConfig={<AccessibilityPanel />}
             divider={false}
             user={{
               name: "Pavan Shetty",

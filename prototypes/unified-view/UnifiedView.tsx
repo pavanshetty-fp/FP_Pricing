@@ -53,6 +53,7 @@ import { MasterSuppliersScreen, MasterTerminalsScreen } from "./masterdata/FuelS
 import { AppShell } from "@/components/app-shell";
 import type { NavGroup, NavItem } from "@/components/navigation-drawer";
 import { TopBar } from "@/components/top-bar";
+import { AccessibilityPanel } from "@/components/theme";
 import { NavRail, NavigationDrawer } from "@/components/navigation-drawer";
 import { ModuleSidebar } from "./ModuleSidebar";
 import { ModuleSkeleton } from "./ModuleSkeleton";
@@ -957,6 +958,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         flushTop={flushTop}
         topBar={
           <TopBar
+            viewConfig={<AccessibilityPanel />}
             divider={!flushTop}
             user={user}
             unread={3 + salesUnread}

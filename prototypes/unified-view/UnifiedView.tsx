@@ -475,9 +475,14 @@ function readEntityBoot(): { module: string; nav: string; sub: string; record: s
  * Service Work build (`service.html`, `npm run build:service`). The switcher
  * lists just that module, and the stored module is ignored.
  */
-export function UnifiedView({ only }: { only?: string } = {}) {
+/**
+ * `only` locks the app to one module (FP_Service-Work). `landing` only picks
+ * where it opens — the pricing-work branch opens on Pricing with every other
+ * module still there to read from (Pavan, 2026-11-16).
+ */
+export function UnifiedView({ only, landing }: { only?: string; landing?: string } = {}) {
   const boot = React.useRef(only ? null : readEntityBoot()).current;
-  const startModule = React.useRef(only ?? boot?.module ?? readStoredModule()).current;
+  const startModule = React.useRef(only ?? boot?.module ?? landing ?? readStoredModule()).current;
   const [moduleKey, setModuleKey] = React.useState(startModule);
   /* Two nav levels, two pieces of state. `navKey` is the RAIL selection
      (Tier-1); `subKey` is the DRAWER selection (Tier-2) and is null for a rail

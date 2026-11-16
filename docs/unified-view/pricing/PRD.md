@@ -66,6 +66,8 @@ _Record each decision with its date and who made it._
 - 2026-11-16 · Yash — The trace's figures take the price apart: Total (gallons · $/gal) · Base price · Margin (with adders and discount; share of the price) · Fees & taxes (share of the price); each opens its rows in the table. "Changed after order" is no longer a figure (zero on most orders): it is a caution pill beside the status, only when it happened, and opens those rows.
 - 2026-11-16 · Yash — In the trace, Associated records (customer, ship-to, product) is the first card; the header keeps only the invoice.
 - 2026-11-16 · Yash — Sample data: seven bulk changes in ten span three to six customers; the story changes reach a region's accounts (Louisiana, Texas, Gulf Coast). Single-row edits and customer pricing stay on one account, as they are.
+- 2026-11-16 · Yash — Demo: v3 published to https://fp-mockups.vercel.app/change-history (the fp-mockups site, `Pricing/site`, gallery password; v1, v2 kept). Script in `DEMO.md`.
+- 2026-11-16 · Yash — The collapsed sidebar rail scrolls instead of squeezing its icons (shared `ModuleSidebar`, `shrink-0`).
 - Open (PM) — Which orders: delivered and invoiced only for now; open orders ("will price as") to ask the PM.
 - Open (PM) — Pricing moment: assumed at delivery; to confirm with the PM.
 - Open (PM) — Actions: trace only for now. Later phase: fold in the live app's Order Pricing Insights actions (Completed orders · Unpriced products · Configuration gaps; Fix missing fees, Configure missing products, Holiday & weekend fees).

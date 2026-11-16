@@ -422,7 +422,7 @@ export function ActivityFeedScreen() {
             <span className="flex items-center gap-2">
               {view(c.id)}
               <Button variant="outline" size="sm" onClick={() => retryChange(c.id)}>
-                Retry failed rows
+                Retry failed prices
               </Button>
             </span>
           ),

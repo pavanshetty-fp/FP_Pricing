@@ -363,7 +363,7 @@ function ChangeSheetBody({
         c.status === "partlyFailed" ? (
           <Button onClick={() => retryChange(c.id)}>
             <RotateCw />
-            Retry failed rows
+            Retry failed prices
           </Button>
         ) : c.status === "scheduled" ? (
           <Button onClick={() => onAsk("reschedule")}>

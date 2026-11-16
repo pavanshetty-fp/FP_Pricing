@@ -294,7 +294,10 @@ export function ModuleSidebar({
     );
     const iconBtn = (on: boolean) =>
       cn(
-        "flex size-9 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-[18px]",
+        /* shrink-0 — A LONG MENU SCROLLS, IT DOES NOT SQUEEZE (Yash,
+           2026-11-16): Pricing has 25 pages; without it the flex column
+           shrank every button to fit and the icons crowded together. */
+        "flex size-9 shrink-0 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 [&_svg]:size-[18px]",
         on
           ? "bg-fp-shell-selected text-sidebar-foreground"
           : "text-sidebar-foreground/70 hover:bg-fp-shell-selected hover:text-sidebar-foreground",

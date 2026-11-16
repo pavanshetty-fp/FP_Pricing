@@ -3,7 +3,6 @@ import {
   SOURCE_LABEL,
   customerOf,
   effectivePrice,
-  fmtDate,
   productOf,
   shiptoOf,
   uniq,
@@ -162,69 +161,57 @@ export function thenNowOf(scope: Scope, rows: ConfigRow[], ents: EntityMap): The
     .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 }
 
+/*
+  INSIGHTS — the prototype's "worth a review" flags, short (Yash, 2026-11-16:
+  "too text heavy"). Each is a count of CHANGES with one fact under it, and
+  each is a Timeline facet, so pressing it shows exactly the changes it counts.
+*/
+export type FlagKey = "repeated" | "fees" | "outside";
+export const FLAG_LABEL: Record<FlagKey, string> = {
+  repeated: "Edited 3+ times",
+  fees: "Fees removed",
+  outside: "Outside pricing screens",
+};
+
 export interface Insight {
-  key: string;
-  title: string;
+  key: FlagKey;
+  label: string;
   count: number;
-  /** A fact about the set, not an explanation. */
-  why?: string;
-  items: string[];
+  note: string;
 }
 
-/** WORTH A REVIEW — the prototype's flags, read off the log. */
-export function insightsOf(scope: Scope, ents: EntityMap): Insight[] {
-  const out: Insight[] = [];
-  const name = (id: string) => ents.get(id)?.name ?? id;
+/** Which flags each change in scope carries. */
+export function flagsOf(scope: Scope): Map<string, Set<FlagKey>> {
+  const flags = new Map<string, Set<FlagKey>>();
+  const add = (id: string, f: FlagKey) => flags.set(id, new Set([...(flags.get(id) ?? []), f]));
+  const rep = new Map<string, string[]>();
+  scope.changes.forEach((x) => uniq(x.lines.map((l) => `${l.setting}|${l.rowId}`)).forEach((k) => rep.set(k, [...(rep.get(k) ?? []), x.c.id])));
+  rep.forEach((ids) => ids.length >= 3 && ids.forEach((id) => add(id, "repeated")));
+  scope.changes.forEach((x) => {
+    if (x.lines.some((l) => l.setting === "fee" && l.beforeIds.some((id) => !l.afterIds.includes(id)))) add(x.c.id, "fees");
+    if (OUTSIDE_UI.includes(x.c.source)) add(x.c.id, "outside");
+  });
+  return flags;
+}
 
-  const rep = new Map<string, number[]>();
-  scope.changes.forEach((x) =>
-    uniq(x.lines.map((l) => `${l.setting}|${l.rowId}`)).forEach((k) => rep.set(k, [...(rep.get(k) ?? []), x.c.effectiveAt]))
-  );
-  const repeated = [...rep].filter(([, ts]) => ts.length >= 3).sort((a, b) => b[1].length - a[1].length);
-  if (repeated.length) {
-    const lineOf = (k: string) => scope.changes.flatMap((x) => x.lines).find((l) => `${l.setting}|${l.rowId}` === k)!;
-    out.push({
-      key: "repeated",
-      title: "Edited repeatedly",
-      count: repeated.length,
-      items: repeated.slice(0, 3).map(([k, ts]) => {
-        const l = lineOf(k);
-        return `${SETTING_LABEL[l.setting]} on ${shiptoOf(l.shiptoId).name} · ${productOf(l.productId).name} — ${ts.length} times, last ${fmtDate(ts[0])}`;
-      }),
-    });
-  }
-
-  const removed = scope.changes.flatMap((x) =>
-    x.lines
-      .filter((l) => l.setting === "fee" && l.beforeIds.some((id) => !l.afterIds.includes(id)))
-      .map((l) => ({ l, c: x.c }))
-  );
-  if (removed.length) {
-    const by: Record<string, number> = {};
-    removed.forEach(({ c }) => (by[c.by] = (by[c.by] ?? 0) + 1));
-    const top = Object.keys(by).sort((a, b) => by[b] - by[a])[0];
-    out.push({
-      key: "fees",
-      title: "Fees removed",
-      count: removed.length,
-      why: removed.length > 1 ? `Mostly by ${top}` : `By ${top}`,
-      items: removed.slice(0, 3).map(
-        ({ l, c }) =>
-          `${l.beforeIds.filter((id) => !l.afterIds.includes(id)).map(name).join(", ")} from ${shiptoOf(l.shiptoId).name} · ${productOf(l.productId).name} (${fmtDate(c.effectiveAt)}, ${c.by})`
-      ),
-    });
-  }
-
-  const outside = scope.changes.filter((x) => OUTSIDE_UI.includes(x.c.source));
-  if (outside.length) {
-    const by: Record<string, number> = {};
-    outside.forEach((x) => (by[SOURCE_LABEL[x.c.source]] = (by[SOURCE_LABEL[x.c.source]] ?? 0) + 1));
-    out.push({
+export function insightsOf(scope: Scope, flags: Map<string, Set<FlagKey>>): Insight[] {
+  const of = (f: FlagKey) => scope.changes.filter((x) => flags.get(x.c.id)?.has(f)).map((x) => x.c);
+  const top = (list: string[]) => {
+    const n: Record<string, number> = {};
+    list.forEach((v) => (n[v] = (n[v] ?? 0) + 1));
+    return Object.keys(n).sort((a, b) => n[b] - n[a]);
+  };
+  const repeated = of("repeated");
+  const fees = of("fees");
+  const outside = of("outside");
+  return [
+    { key: "repeated", label: FLAG_LABEL.repeated, count: repeated.length, note: repeated.length ? `Mostly ${top(repeated.flatMap((c) => uniq(c.lines.map((l) => SETTING_LABEL[l.setting]))))[0]}` : "None" },
+    { key: "fees", label: FLAG_LABEL.fees, count: fees.length, note: fees.length ? `Mostly by ${top(fees.map((c) => c.by))[0]}` : "None" },
+    {
       key: "outside",
-      title: "Changed outside the pricing screens",
+      label: FLAG_LABEL.outside,
       count: outside.length,
-      items: Object.entries(by).map(([k, n]) => `${k}: ${n} ${n === 1 ? "change" : "changes"}`),
-    });
-  }
-  return out;
+      note: outside.length ? top(outside.map((c) => SOURCE_LABEL[c.source])).map((k) => `${k}: ${outside.filter((c) => SOURCE_LABEL[c.source] === k).length}`).join(" · ") : "None",
+    },
+  ];
 }

@@ -37,6 +37,10 @@ _Record each decision with its date and who made it._
 - 2026-11-16 · Yash — Every Pricing table sizes its columns from the widest rendered cell (UX-45, `pricing/fitColumns.ts`), so no value runs over the next column.
 - 2026-11-16 · Yash — A change's figures are Ship-tos (customers), Rows (failed, products), Orders repriced, Orders kept their price. Each is a button that opens the rows it counts below (stat tile rule); hover shows "View ship-tos / rows / orders ›" in the banner's dotted-underline voice. Customers are named in Details.
 - 2026-11-16 · Yash — Edit schedule's time is the DS select on a half-hour grid (the delivery window's), clock icon leading, not the browser's time input.
+- 2026-11-16 · Yash — **Customer & ship-to** (from `pricing-change-log-prototype.html`, tab "Customer & ShipTo"): the change history of one customer, or a few of its ship-tos, over a period — who changed what, where, and how the price moved. Laid out on the 360 layout: pickers (customer, ship-tos cascading from it, period) on top, the figure strip (changes · assignment / inherited, changed by, last change), then the work area — tabs as full lists (Timeline · Where changes happened · Who made the changes · Then vs now) with cards on the right.
+- 2026-11-16 · Yash — Insights go in a summary card on the right (the 3PL Quotation / Order summary shell), as a highlight; no AI badge. Together with them, "Worth a review" (edited repeatedly, fees removed, changed outside the UI), each with its reason and items.
+- 2026-11-16 · Yash — Assignment vs inherited: Ship-to pricing (inline, bulk) and imports are assignment; Pricing setup and Customer pricing edits are inherited.
+- 2026-11-16 · Yash — "Then vs now" is on the page: each ship-to × product's price at the start of the period vs today, biggest moves first, with why it moved.
 - Open — Freight has four pages in the live app (Customer Freight, Contract Freight Rate, Standard Freight Rate, Origin Group). The shared sidebar nests two levels, so Freight is one entry for now.
 
 ## 7. Working agreements (fixed — see `CLAUDE.md`)

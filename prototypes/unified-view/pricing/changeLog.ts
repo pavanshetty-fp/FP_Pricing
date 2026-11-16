@@ -599,6 +599,10 @@ function backgroundPlans(): Plan[] {
         });
       } else if (h < 0.82) {
         // Bulk: a customer's rows, often one product category; now and then two edits in one submit.
+        /* ACROSS ACCOUNTS (Yash, 2026-11-16: "why always 1 customer?") — a
+           market or rate-type move, a new fee, hits several customers at once,
+           so four bulk changes in ten span two or three of them. */
+        const custs = hash(`sp${seed}`) > 0.6 ? uniq([cust, pick(CUSTOMERS, `c2${seed}`).id, pick(CUSTOMERS, `c3${seed}`).id]) : [cust];
         const cat = hash(`cat${seed}`) > 0.4 ? pick(["diesel", "gasoline", "def", "bio"], `cc${seed}`) : null;
         const kind = pick(["margin", "margin", "fee", "market", "rateType", "tax", "pair"] as const, `bk${seed}`);
         out.push({
@@ -606,7 +610,7 @@ function backgroundPlans(): Plan[] {
           by,
           source: hash(`src${seed}`) > 0.9 ? "import" : "shiptoBulk",
           edits: (rows) => {
-            const ids = rowsOf(rows, (r) => r.customerId === cust && (!cat || catOf(r) === cat) && !DEMO_SHIPTOS.includes(r.shiptoId));
+            const ids = rowsOf(rows, (r) => custs.includes(r.customerId) && (!cat || catOf(r) === cat) && !DEMO_SHIPTOS.includes(r.shiptoId));
             const margin: Edit = { setting: "margin", operation: hash(`mo${seed}`) > 0.6 ? "add" : "replace", entityIds: [pick(marginIds, `me${seed}`)], rowIds: ids };
             const market: Edit = { setting: "market", operation: "set", entityIds: [`k-${slug(pick(MARKETS, `km${seed}`))}`], rowIds: ids };
             if (kind === "margin") return [margin];

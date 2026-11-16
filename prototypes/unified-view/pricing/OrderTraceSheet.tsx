@@ -28,6 +28,9 @@ import { ORDER_STATUS_KIND, PHASE_LABEL, money2, money3, orderLabel, type Phase,
 
 const PHASE_KIND: Record<Phase, "neutral" | "caution"> = { before: "neutral", applied: "caution", after: "neutral" };
 const HEAD = "px-3 text-xs";
+/** A change's stamp in the narrow first column — "Nov 10, 2:15 PM", one line. */
+const fmtStamp = (t: number) =>
+  new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(t);
 
 /** A record this one belongs to — label above, a muted detail after "·". */
 export function Linked({ label, value, detail }: { label: string; value: string; detail?: string }) {
@@ -103,22 +106,22 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]">
           <section id="trace-price" className="min-w-0 scroll-mt-4 overflow-hidden rounded-lg border border-border">
             {/* FIXED COLUMNS (Yash, 2026-11-16) — the widths are set once, so
-                opening a component's history never moves a column; "How it
-                was calculated" takes the room that is left. */}
+                opening a component's history never moves a column. What was
+                applied and how it was calculated share one column, the name
+                over its working (the list's two-line cell), so the working
+                gets the width instead of a narrow column of its own. */}
             <Table className="table-fixed">
               <colgroup>
-                <col style={{ width: 112 }} />
-                <col style={{ width: 190 }} />
+                <col style={{ width: 132 }} />
                 <col />
-                <col style={{ width: 90 }} />
-                <col style={{ width: 112 }} />
-                <col style={{ width: 176 }} />
+                <col style={{ width: 96 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 216 }} />
               </colgroup>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className={HEAD}>Component</TableHead>
-                  <TableHead className={HEAD}>Applied</TableHead>
-                  <TableHead className={HEAD}>How it was calculated</TableHead>
+                  <TableHead className={HEAD}>Applied · how it was calculated</TableHead>
                   <TableHead className={HEAD}>$/gal</TableHead>
                   <TableHead className={HEAD}>Amount</TableHead>
                   <TableHead className={HEAD}>History</TableHead>
@@ -145,8 +148,12 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
                             <span className="text-muted-foreground">{c.group}</span>
                           </span>
                         </TableCell>
-                        <TableCell className="px-3 whitespace-normal font-medium">{c.name}</TableCell>
-                        <TableCell className="px-3 whitespace-normal text-muted-foreground">{c.how}</TableCell>
+                        <TableCell className="px-3 py-2.5 whitespace-normal">
+                          <span className="flex min-w-0 flex-col">
+                            <span className="font-medium text-foreground">{c.name}</span>
+                            <span className="text-xs text-muted-foreground">{c.how}</span>
+                          </span>
+                        </TableCell>
                         <TableCell className="px-3 tabular-nums">{money3(c.perGal)}</TableCell>
                         <TableCell className="px-3 tabular-nums">{money2(c.amount)}</TableCell>
                         <TableCell className="px-3">
@@ -164,9 +171,9 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
                         c.history.map((h) => (
                           <TableRow key={`${c.key}-${h.changeId}-${h.at}`} className="cursor-pointer" onClick={() => setChangeId(h.changeId)}>
                             <TableCell className="relative px-3 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-status-success/70">
-                              <span className="block pl-6 text-xs whitespace-normal text-muted-foreground tabular-nums">{fmtDateTime(h.at)}</span>
+                              <span className="block pl-6 text-xs text-muted-foreground tabular-nums">{fmtStamp(h.at)}</span>
                             </TableCell>
-                            <TableCell className="px-3 text-sm whitespace-normal" colSpan={2}>
+                            <TableCell className="px-3 text-sm whitespace-normal">
                               {h.what} <span className="text-muted-foreground">· {h.changeId}</span>
                             </TableCell>
                             <TableCell className="px-3 text-sm text-muted-foreground" colSpan={2}>
@@ -182,7 +189,7 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
                 })}
                 {/* A TOTAL ROW DRAWS border-t ONLY (record sheet rule 26). */}
                 <TableRow className="border-t border-border hover:bg-transparent">
-                  <TableCell className="px-3 font-semibold" colSpan={3}>
+                  <TableCell className="px-3 font-semibold" colSpan={2}>
                     Total
                   </TableCell>
                   <TableCell className="px-3 font-semibold tabular-nums">{money3(o.perGal)}</TableCell>

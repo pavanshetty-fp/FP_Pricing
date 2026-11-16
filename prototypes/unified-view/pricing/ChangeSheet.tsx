@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Ban, CalendarClock, Clock, Download, History, MoreHorizontal, RotateCw, Undo2, Users } from "lucide-react";
+import { Ban, CalendarClock, Clock, Download, History, MoreHorizontal, RotateCw, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pill } from "@/components/ui/pill";
@@ -27,7 +27,6 @@ import {
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RecordSheet } from "../RecordSheet";
 import { RailCard, RailRow } from "../SheetCards";
-import { OverflowList } from "../ListTable";
 import { fitColumns } from "./fitColumns";
 import { kindTone } from "../statusKind";
 import { RecordViews, type ViewRow, type ViewTab } from "../masterdata/RecordViews";
@@ -106,7 +105,7 @@ export function ChangeSheet({
           <AlertDialogHeader>
             <AlertDialogTitle>Undo {c.id}?</AlertDialogTitle>
             <AlertDialogDescription>
-              {plural(c.lines.filter((l) => l.outcome === "changed").length, "row")} go back to their earlier values. The undo is
+              {plural(c.lines.filter((l) => l.outcome === "changed").length, "price")} go back to their earlier values. The undo is
               logged as a new change.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -169,15 +168,22 @@ function ChangeSheetBody({
   const repriced = c.orders.filter((o) => o.status === "repriced");
   const kept = c.orders.filter((o) => o.status === "kept");
   const ahead = c.status === "scheduled" || c.status === "canceled";
+  /* HOW FAR THE PRICES MOVED, on average — only where a value moved (a rate
+     type or market change names, it does not price). */
+  const moved = c.lines.filter((l) => l.delta !== 0);
+  const avg = moved.length ? moved.reduce((t, l) => t + l.delta, 0) / moved.length : 0;
+  const avgMove = moved.length ? `avg ${avg > 0 ? "+" : "−"}$${Math.abs(avg).toFixed(4)}/gal` : "";
   const action = actionOf(c);
 
   const tabs = React.useMemo<ViewTab[]>(() => {
     const t: ViewTab[] = [
       {
         key: "lines",
-        label: "Ship-tos affected",
-        noun: "rows",
-        one: "row",
+        /* EACH ROW IS ONE PRICE — a ship-to × product — so the tab says so
+           (Yash, 2026-11-16: "rows" meant nothing to a reader). */
+        label: ahead ? "Prices that change" : "Prices changed",
+        noun: "prices",
+        one: "price",
         columns: [
           { key: "customer", label: "Customer", width: 200, sortable: true },
           { key: "shipto", label: "Ship-to", width: 200, sortable: true },
@@ -250,7 +256,7 @@ function ChangeSheetBody({
           { key: "setting", label: "Entity", width: 140, sortable: true },
           { key: "action", label: "Action", width: 140, sortable: true },
           { key: "value", label: "Change", width: 360, sortable: true },
-          { key: "rows", label: "Rows", width: 100, sortable: true },
+          { key: "rows", label: "Prices", width: 100, sortable: true },
         ],
         rows: c.edits.map(
           (e, i): ViewRow => ({
@@ -335,10 +341,10 @@ function ChangeSheetBody({
   }, [c, editLines]);
   /* A FIGURE OPENS THE ROWS IT COUNTS — the orders figures narrow Orders. */
   const [apply, setApply] = React.useState<{ tab: string; picked: string[]; n: number } | null>(null);
-  const openOrders = (status: string) => setApply({ tab: "orders", picked: [`status:${status}`], n: Date.now() });
+  const openOrders = (status: string | null) => setApply({ tab: "orders", picked: status ? [`status:${status}`] : [], n: Date.now() });
   const openRows = (picked: string[]) => setApply({ tab: "lines", picked, n: Date.now() });
 
-  const exportChange = () => toast.success(`Exporting ${plural(c.lines.length, "row")} of ${c.id} as .csv`);
+  const exportChange = () => toast.success(`Exporting ${plural(c.lines.length, "price")} of ${c.id} as .csv`);
 
   return (
     <RecordSheet
@@ -409,35 +415,53 @@ function ChangeSheetBody({
       }
       onSubmit={() => {}}
     >
-      <div className={FIGURE_STRIP}>
-        {/* EVERY FIGURE OPENS THE ROWS IT COUNTS (Yash, 2026-11-16) — the
-            press narrows the views below; hover says what it opens. */}
+      {/* THE FIGURES, EACH SAYING WHAT IT COUNTS (Yash, 2026-11-16): who and
+          where — customers, ship-tos, products, each listed by name on a
+          press — then what moved — the prices (ship-to × product) and the
+          orders — each opening its tab below. */}
+      <div className={FIGURE_STRIP.replace("lg:grid-cols-4", "lg:grid-cols-5")}>
+        <Figure
+          label="Customers"
+          value={customers.length.toLocaleString()}
+          note={customers.length === 1 ? customerOf(customers[0]).name : `${customerOf(customers[0]).name} +${customers.length - 1}`}
+          list={{
+            title: plural(customers.length, "customer"),
+            rows: customers.map((id) => ({ label: customerOf(id).name, value: plural(uniq(c.lines.filter((l) => l.customerId === id).map((l) => l.shiptoId)).length, "ship-to") })),
+          }}
+          openLabel="View list"
+        />
         <Figure
           label="Ship-tos"
           value={shiptos.length.toLocaleString()}
-          note={plural(customers.length, "customer")}
-          onOpen={() => openRows([])}
-          openLabel="View ship-tos"
+          note={shiptos.length === 1 ? shiptoOf(shiptos[0]).name : `${shiptoOf(shiptos[0]).name} +${shiptos.length - 1}`}
+          list={{
+            title: plural(shiptos.length, "ship-to"),
+            rows: shiptos.map((id) => ({ label: shiptoOf(id).name, sub: customerOf(shiptoOf(id).customerId).name })),
+          }}
+          openLabel="View list"
         />
         <Figure
-          label="Rows"
+          label="Products"
+          value={products.length.toLocaleString()}
+          note={products.length === 1 ? productOf(products[0]).name : `${productOf(products[0]).name} +${products.length - 1}`}
+          list={{
+            title: plural(products.length, "product"),
+            rows: products.map((id) => ({ label: productOf(id).name, value: plural(uniq(c.lines.filter((l) => l.productId === id).map((l) => l.shiptoId)).length, "ship-to") })),
+          }}
+          openLabel="View list"
+        />
+        <Figure
+          label={ahead ? "Prices that change" : "Prices changed"}
           value={c.lines.length.toLocaleString()}
-          note={failed ? `${failed.toLocaleString()} failed · ${plural(products.length, "product")}` : plural(products.length, "product")}
+          note={[failed ? `${failed.toLocaleString()} failed` : "", avgMove].filter(Boolean).join(" · ") || "Ship-to × product"}
           onOpen={() => openRows(failed ? ["outcome:Failed"] : [])}
-          openLabel={failed ? "View failed rows" : "View rows"}
+          openLabel={failed ? "View failed" : "View prices"}
         />
         <Figure
-          label={ahead ? "Open orders that reprice" : "Orders repriced"}
-          value={repriced.length.toLocaleString()}
-          note={plural(repriced.reduce((t, o) => t + o.gallons, 0), "gal", "gal")}
-          onOpen={repriced.length ? () => openOrders("Repriced") : undefined}
-          openLabel="View orders"
-        />
-        <Figure
-          label={ahead ? "Orders that keep their price" : "Orders that kept their price"}
-          value={kept.length.toLocaleString()}
-          note={plural(kept.reduce((t, o) => t + o.gallons, 0), "gal", "gal")}
-          onOpen={kept.length ? () => openOrders("Kept price") : undefined}
+          label={ahead ? "Open orders" : "Orders"}
+          value={c.orders.length.toLocaleString()}
+          note={`${repriced.length.toLocaleString()} ${ahead ? "reprice" : "repriced"} · ${kept.length.toLocaleString()} ${ahead ? "keep" : "kept"} price`}
+          onOpen={c.orders.length ? () => openOrders(null) : undefined}
           openLabel="View orders"
         />
       </div>
@@ -459,7 +483,7 @@ function ChangeSheetBody({
               <RailRow label="Change" value={c.id} />
               <RailRow label="Action" value={action} />
               <RailRow label="Entity" value={uniq(c.edits.map((e) => SETTING_LABEL[e.setting])).join(", ")} />
-              <RailRow label="Rows" value={failed ? `${c.lines.length.toLocaleString()} · ${failed.toLocaleString()} failed` : c.lines.length.toLocaleString()} />
+              <RailRow label="Prices changed" value={failed ? `${c.lines.length.toLocaleString()} · ${failed.toLocaleString()} failed` : c.lines.length.toLocaleString()} />
               <RailRow label="Made via" value={SOURCE_LABEL[c.source]} />
               <RailRow label="Made by" value={c.by} />
               <RailRow label="Made on" value={fmtDateTime(c.madeAt)} />
@@ -473,27 +497,10 @@ function ChangeSheetBody({
               {c.retriedAt && <RailRow label="Failed rows retried" value={fmtWhen(c.retriedAt)} />}
               {c.undoOf && <RailRow label="Undoes" value={<ChangeLink id={c.undoOf} onOpen={onOpen} />} />}
               {c.undoneBy && <RailRow label="Undone by" value={<ChangeLink id={c.undoneBy} onOpen={onOpen} />} />}
-              {c.noChange > 0 && <RailRow label="Rows already set" value={c.noChange.toLocaleString()} />}
+              {c.noChange > 0 && <RailRow label="Prices already set" value={c.noChange.toLocaleString()} />}
             </dl>
           </RailCard>
-          {/* THE RECORDS IT TOUCHED — label above, as Associated records reads
-              in every record sheet (3PL's order sheet). */}
-          <RailCard title="Associated records" icon={<Users />}>
-            <dl className="flex flex-col gap-3 px-4 py-3">
-              <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-muted-foreground">{customers.length === 1 ? "Customer" : "Customers"}</dt>
-                <dd className="min-w-0">
-                  <OverflowList values={customers.map((id) => customerOf(id).name)} label="customers" />
-                </dd>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-muted-foreground">Ship-tos</dt>
-                <dd className="min-w-0">
-                  <OverflowList values={shiptos.map((id) => shiptoOf(id).name)} label="ship-tos" />
-                </dd>
-              </div>
-            </dl>
-          </RailCard>
+
         </div>
       </div>
     </RecordSheet>

@@ -112,7 +112,7 @@ export function retryChange(id: string) {
     ),
     tick: s.tick + 1,
   });
-  toast.success(`${failedRows.size} failed ${failedRows.size === 1 ? "row" : "rows"} applied`);
+  toast.success(`${failedRows.size} failed ${failedRows.size === 1 ? "price" : "prices"} applied`);
 }
 
 /** Move a scheduled change to another time; it keeps its id and history. */

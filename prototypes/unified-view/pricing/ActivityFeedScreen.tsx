@@ -202,7 +202,7 @@ export function ActivityFeedScreen() {
           return SOURCE_LABEL[c.source];
         case "scope": {
           const cs = customersOf(c);
-          return `${plural(shiptosOf(c).length, "ship-to")} ${plural(c.lines.length, "row")} ${cs.length === 1 ? cs[0] : plural(cs.length, "customer")}`;
+          return `${plural(shiptosOf(c).length, "ship-to")} ${plural(c.lines.length, "price")} ${cs.length === 1 ? cs[0] : plural(cs.length, "customer")}`;
         }
         case "orders":
           return repricedOf(c) ? repricedOf(c).toLocaleString() : "—";
@@ -318,7 +318,7 @@ export function ActivityFeedScreen() {
             case "change":
               return [changeSummary(c, ents), c.id];
             case "scope":
-              return [plural(shiptosOf(c).length, "ship-to"), `${plural(c.lines.length, "row")} · ${cs.length === 1 ? cs[0] : plural(cs.length, "customer")}`];
+              return [plural(shiptosOf(c).length, "ship-to"), `${plural(c.lines.length, "price")} · ${cs.length === 1 ? cs[0] : plural(cs.length, "customer")}`];
             case "when":
               return [fmtWhen(c.effectiveAt), c.effectiveAt !== c.madeAt ? `Made ${fmtWhen(c.madeAt)}` : ""];
             default:
@@ -351,7 +351,7 @@ export function ActivityFeedScreen() {
         return (
           <TwoLineCell
             title={plural(shiptosOf(c).length, "ship-to")}
-            description={`${plural(c.lines.length, "row")} · ${cs.length === 1 ? cs[0] : plural(cs.length, "customer")}`}
+            description={`${plural(c.lines.length, "price")} · ${cs.length === 1 ? cs[0] : plural(cs.length, "customer")}`}
           />
         );
       }
@@ -409,7 +409,7 @@ export function ActivityFeedScreen() {
         tag: "Needs action",
         title: `${plural(
           failed.reduce((n, c) => n + c.lines.filter((l) => l.outcome === "failed").length, 0),
-          "row"
+          "price"
         )} failed to update`,
         count: failed.length,
         onApply: apply("failed", STATUS_LABEL.partlyFailed),
@@ -455,7 +455,7 @@ export function ActivityFeedScreen() {
         items: today.map((c) => ({
           id: c.id,
           title: `${c.title} · ${c.id}`,
-          detail: `Runs ${fmtWhen(c.effectiveAt)} · ${plural(c.lines.length, "row")}`,
+          detail: `Runs ${fmtWhen(c.effectiveAt)} · ${plural(c.lines.length, "price")}`,
           onApply: () => setOpenId(c.id),
           action: view(c.id),
         })),
@@ -704,7 +704,7 @@ export function ActivityFeedScreen() {
               collapsedGroups={g.collapsed}
               onToggleGroupCollapse={g.toggleGroupCollapse}
               groupNoun="change"
-              groupUnit="rows"
+              groupUnit="prices"
               columns={columns}
               hidden={g.effectiveHidden}
               sort={sort}
@@ -764,7 +764,7 @@ export function ActivityFeedScreen() {
             rowCount={g.groups.rowCount}
             noun="change"
             total={g.total}
-            unit="rows"
+            unit="prices"
             overCounts={g.groups.overCounts}
             allCollapsed={g.allCollapsed}
             onExpandAll={g.expandAll}

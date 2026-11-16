@@ -1,5 +1,6 @@
 import * as React from "react";
 import { ChevronRight } from "lucide-react";
+import { BreakdownPopover, type BreakdownCardProps } from "../BreakdownCard";
 
 /*
   THE PARTS EVERY 360 SHEET SHARES (Asset 360, Customer 360): the figures
@@ -14,7 +15,12 @@ export function Figure({
   children,
   onOpen,
   openLabel,
+  list,
 }: {
+  /** A FIGURE THAT LISTS WHAT IT COUNTS (Pricing, 2026-11-16) — pressed, the
+   *  "+N" chip's card opens on it: the customers, ship-tos or products by
+   *  name. Optional, like `onOpen`. */
+  list?: BreakdownCardProps;
   label: string;
   value: React.ReactNode;
   note: React.ReactNode;
@@ -32,7 +38,7 @@ export function Figure({
     <>
       <span className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        {onOpen && openLabel && (
+        {(onOpen || list) && openLabel && (
           <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium text-foreground opacity-0 transition-opacity group-hover/fig:opacity-100 group-focus-visible/fig:opacity-100">
             <span className="underline decoration-current/50 decoration-dotted underline-offset-4">{openLabel}</span>
             <ChevronRight className="size-3.5" />
@@ -44,6 +50,16 @@ export function Figure({
       {children}
     </>
   );
+  if (list)
+    return (
+      <BreakdownPopover
+        label={openLabel ? `${label}: ${openLabel}` : label}
+        card={list}
+        width={320}
+        className="group/fig flex w-full min-w-0 flex-col gap-1 rounded-none p-4 text-left focus-visible:ring-inset"
+        trigger={parts}
+      />
+    );
   if (!onOpen) return <div className="flex min-w-0 flex-col gap-1 p-4">{parts}</div>;
   return (
     <button

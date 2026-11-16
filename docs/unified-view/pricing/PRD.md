@@ -61,6 +61,9 @@ _Record each decision with its date and who made it._
 - 2026-11-16 · Yash — Base price history follows the prototype: rate type and market changes only, not daily rack moves.
 - 2026-11-16 · Yash — The trace table has fixed columns, so opening a component's history never moves a column; "How it was calculated" takes the room left.
 - 2026-11-16 · Yash — Right-column cards follow the record sheets: every card titled with its icon; the record's own facts read label · value on one line (Record, Pricing); the records it belongs to are "Associated records", label above, a muted detail after "·" (3PL's order sheet). The change sheet's Details became Record + Associated records too.
+- 2026-11-16 · Yash — The trace table is five columns: what was applied and how it was calculated share one, the name over its working; a change's stamp in the history is one line ("Nov 10, 2:15 PM").
+- 2026-11-16 · Yash — A change's figures say what they count: Customers · Ship-tos · Products (each lists its names in the "+N" card on a press) · Prices changed (one price = a ship-to × product; failed, average move) · Orders (repriced · kept). "Rows" is gone from every screen — it is "prices"; the change's first tab is "Prices changed". Associated records left the change sheet (the figures name everything).
+- 2026-11-16 · Yash — Sample data: four bulk changes in ten span two or three customers (a market, rate type or fee moving across accounts).
 - Open (PM) — Which orders: delivered and invoiced only for now; open orders ("will price as") to ask the PM.
 - Open (PM) — Pricing moment: assumed at delivery; to confirm with the PM.
 - Open (PM) — Actions: trace only for now. Later phase: fold in the live app's Order Pricing Insights actions (Completed orders · Unpriced products · Configuration gaps; Fix missing fees, Configure missing products, Holiday & weekend fees).

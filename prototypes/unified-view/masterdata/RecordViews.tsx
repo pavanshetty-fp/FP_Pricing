@@ -67,6 +67,9 @@ export interface ViewTab {
   /** The drawer's value for a column, when not its printed text. */
   readValue?: (r: ViewRow, key: string) => React.ReactNode | undefined;
   nameOf?: (r: ViewRow) => string;
+  /** A row press of the tab's own — opens the real record (a pricing change)
+   *  or narrows the page — instead of the read drawer (Pricing, 2026-11-16). */
+  onOpen?: (r: ViewRow) => void;
 }
 
 /** Per-tab table state — each view keeps its own sort, columns and page. */
@@ -345,7 +348,7 @@ export function RecordViews({
             columnWidths={t.widths}
             onResizeColumns={(widths) => patch({ widths })}
             openLabel={(r) => `Open ${def.one} ${nameOf(r)}`}
-            onOpenRow={setOpen}
+            onOpenRow={def.onOpen ?? setOpen}
             showColumnFilters={t.colFiltersOpen}
             onToggleColumnFilters={() =>
               patch(t.colFiltersOpen ? { colFiltersOpen: false, colFilters: {}, page: 1 } : { colFiltersOpen: true })

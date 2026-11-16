@@ -41,6 +41,8 @@ _Record each decision with its date and who made it._
 - 2026-11-16 · Yash — Insights go in a summary card on the right (the 3PL Quotation / Order summary shell), as a highlight; no AI badge. Together with them, "Worth a review" (edited repeatedly, fees removed, changed outside the UI), each with its reason and items.
 - 2026-11-16 · Yash — Assignment vs inherited: Ship-to pricing (inline, bulk) and imports are assignment; Pricing setup and Customer pricing edits are inherited.
 - 2026-11-16 · Yash — "Then vs now" is on the page: each ship-to × product's price at the start of the period vs today, biggest moves first, with why it moved.
+- 2026-11-16 · Yash — Customer & ship-to, built: Filters (Customer, Ship-to cascading from it) and the date window (default last 3 months) on top; opens on the busiest customer; with none chosen, "Choose a customer". Figures: Changes (assignment · inherited), Ship-tos changed, Changed by, Last change — each opens its rows. Tabs: Timeline (one row per change; "N of M ship-tos" when it covers several; a row opens the change) · Where changes happened (per ship-to; one ship-to → What changed, per entity; a ship-to row narrows the page to it) · Who made the changes · Then vs now. Insights summary card on the right: Edited repeatedly · Fees removed · Changed outside the pricing screens.
+- 2026-11-16 · Yash — Delivered Price Impact (the prototype's Phase 2 tab) is out.
 - Open — Freight has four pages in the live app (Customer Freight, Contract Freight Rate, Standard Freight Rate, Origin Group). The shared sidebar nests two levels, so Freight is one entry for now.
 
 ## 7. Working agreements (fixed — see `CLAUDE.md`)

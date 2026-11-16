@@ -44,6 +44,18 @@ import {
   Warehouse,
   Factory,
   FileText,
+  Settings,
+  History,
+  ChartColumn,
+  Bell,
+  Percent,
+  Receipt,
+  Landmark,
+  Tag,
+  Plus,
+  Fuel,
+  Timer,
+  Building2,
 } from "lucide-react";
 import { useTopBannerShown } from "./HeadFold";
 import { MasterAssetsScreen } from "./masterdata/AssetsScreen";
@@ -205,6 +217,26 @@ const SERVICE_NAV: NavItem[] = [
 ];
 
 /**
+ * PRICING (Yash, 2026-11-16) — the product's menu, from the live Pricing app.
+ * Change history sits on its own under Today's pricing. Labels are sentence
+ * case (FPDS UX-167), not the live app's Title Case. No page is built yet:
+ * every destination shows the not-built state.
+ * Freight has four pages in the live app (Customer Freight, Contract Freight
+ * Rate, Standard Freight Rate, Origin Group); the sidebar nests two levels,
+ * so Freight is one page here until that is settled.
+ */
+const PRICING_NAV: NavItem[] = [
+  { key: "pricing-dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
+  { key: "pricing-configuration", label: "Pricing configuration", icon: <SlidersHorizontal /> },
+  { key: "pricing-setup", label: "Pricing setup", icon: <Settings /> },
+  { key: "pricing-today", label: "Today's pricing", icon: <CalendarClock /> },
+  { key: "pricing-change-history", label: "Change history", icon: <History /> },
+  { key: "pricing-hub", label: "Hub-based pricing", icon: <Warehouse /> },
+  { key: "pricing-insights", label: "Order pricing insights", icon: <ChartColumn /> },
+  { key: "pricing-notices", label: "Price notices", icon: <Bell /> },
+];
+
+/**
  * TIER 2 — the contextual sub-nav for the active rail item, keyed by that
  * item. Only areas with a second nav level appear here; a rail item with no
  * entry is a destination in its own right and the content layer takes the full
@@ -215,6 +247,29 @@ const SERVICE_NAV: NavItem[] = [
  * why nothing here needed a new one.
  */
 const SUB_NAV: Record<string, NavGroup[]> = {
+  "pricing-configuration": [
+    {
+      items: [
+        { key: "pricing-config-customer", label: "Customer", icon: <Users /> },
+        { key: "pricing-config-shipto", label: "Ship-to", icon: <MapPin /> },
+      ],
+    },
+  ],
+  "pricing-setup": [
+    {
+      items: [
+        { key: "pricing-setup-margin", label: "Margin", icon: <Percent /> },
+        { key: "pricing-setup-fee", label: "Fee", icon: <Receipt /> },
+        { key: "pricing-setup-tax", label: "Tax", icon: <Landmark /> },
+        { key: "pricing-setup-rate-type", label: "Rate type", icon: <Tag /> },
+        { key: "pricing-setup-market", label: "Market", icon: <Building2 /> },
+        { key: "pricing-setup-adders", label: "Adders", icon: <Plus /> },
+        { key: "pricing-setup-driver-rate", label: "Driver rate", icon: <Fuel /> },
+        { key: "pricing-setup-driver-demurrage", label: "Driver demurrage", icon: <Timer /> },
+        { key: "pricing-setup-freight", label: "Freight", icon: <Truck /> },
+      ],
+    },
+  ],
   "3pl-orders": [
     {
       label: "Order types",
@@ -327,7 +382,7 @@ const MODULE_NAV: Record<string, NavItem[]> = {
   "3pl": THREE_PL_NAV,
   service: SERVICE_NAV,
   lease: [],
-  pricing: [],
+  pricing: PRICING_NAV,
   "master-data": MASTER_DATA_NAV,
   archive: ARCHIVE_NAV,
 };

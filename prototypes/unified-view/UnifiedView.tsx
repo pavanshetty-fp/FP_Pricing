@@ -477,7 +477,7 @@ function readEntityBoot(): { module: string; nav: string; sub: string; record: s
  */
 /**
  * `only` locks the app to one module (FP_Service-Work). `landing` only picks
- * where it opens — the pricing-work branch opens on Pricing with every other
+ * where it opens — FP_Pricing opens on Pricing with every other
  * module still there to read from (Pavan, 2026-11-16).
  */
 export function UnifiedView({ only, landing }: { only?: string; landing?: string } = {}) {

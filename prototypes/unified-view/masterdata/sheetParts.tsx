@@ -11,19 +11,34 @@ export function Figure({
   value,
   note,
   children,
+  onOpen,
 }: {
   label: string;
   value: React.ReactNode;
   note: React.ReactNode;
   children?: React.ReactNode;
+  /** A FIGURE THAT OPENS THE ROWS IT COUNTS (stat tile rule 1; Pricing,
+   *  2026-11-16) — the whole figure is a button that narrows the views below.
+   *  Optional: Asset / Customer / Ship-to 360 pass none and are unchanged. */
+  onOpen?: () => void;
 }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1 p-4">
+  const parts = (
+    <>
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <span className="truncate text-2xl font-semibold tabular-nums text-foreground">{value}</span>
       <span className="truncate text-xs text-muted-foreground">{note}</span>
       {children}
-    </div>
+    </>
+  );
+  if (!onOpen) return <div className="flex min-w-0 flex-col gap-1 p-4">{parts}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex min-w-0 cursor-pointer flex-col gap-1 p-4 text-left outline-none transition-colors hover:bg-fp-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+    >
+      {parts}
+    </button>
   );
 }
 

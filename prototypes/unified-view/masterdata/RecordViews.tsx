@@ -106,7 +106,11 @@ export function RecordViews({
   historyKey,
   onTabChange,
   initialPicked,
+  apply,
 }: {
+  /** Picks a tab and its facets from outside — a figure above the views
+   *  narrows them to the rows it counts. `n` changes on every press. */
+  apply?: { tab: string; picked: readonly string[]; n: number } | null;
   /** Facets ticked when the record opens, as `facet:value` ids — a change
    *  opened with failed rows starts on them (Pricing, 2026-11-16). */
   initialPicked?: readonly string[];
@@ -131,6 +135,14 @@ export function RecordViews({
     setTables(fresh());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new record resets
   }, [resetKey]);
+
+  React.useEffect(() => {
+    if (!apply) return;
+    setTabKey(apply.tab);
+    setPicked(new Set(apply.picked));
+    setTables((prev) => (prev[apply.tab] ? { ...prev, [apply.tab]: { ...prev[apply.tab], page: 1 } } : prev));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- each press is one `n`
+  }, [apply?.n]);
 
   const def = tabs.find((t) => t.key === tabKey) ?? tabs[0];
   React.useEffect(() => onTabChange?.(def.key), [def.key, onTabChange]);

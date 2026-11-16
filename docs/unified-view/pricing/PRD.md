@@ -33,6 +33,10 @@ _Record each decision with its date and who made it._
 - 2026-11-16 · Yash — Pricing opens on Change log › Activity feed while it is being built (Dashboard stays first in the menu).
 - 2026-11-16 · Yash — A change with failed rows opens on them: Ship-tos affected filtered to Outcome: Failed (the chip clears it), failed rows first, the reason under "Failed". Outcome sits after Product.
 - 2026-11-16 · Yash — Export changes carries the Overview (ship-tos, customers, products) and the changes by status, as Sales › Orders does.
+- 2026-11-16 · Yash — FP_Pricing always opens on Pricing › Activity feed: the address (Master Data's `?entity=`) is ignored and cleared on load.
+- 2026-11-16 · Yash — Every Pricing table sizes its columns from the widest rendered cell (UX-45, `pricing/fitColumns.ts`), so no value runs over the next column.
+- 2026-11-16 · Yash — A change's figures name what they count: Ship-tos and Products show the first name and +N; the customers are in Details. Orders repriced / kept their price are buttons that open Orders filtered to that status (stat tile rule: a figure opens the rows it counts).
+- 2026-11-16 · Yash — Edit schedule's time is the DS select on a half-hour grid (the delivery window's), clock icon leading, not the browser's time input.
 - Open — Freight has four pages in the live app (Customer Freight, Contract Freight Rate, Standard Freight Rate, Origin Group). The shared sidebar nests two levels, so Freight is one entry for now.
 
 ## 7. Working agreements (fixed — see `CLAUDE.md`)

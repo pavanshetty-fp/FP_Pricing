@@ -53,6 +53,7 @@ import {
   type FeedColumnKey,
 } from "./activityFeed";
 import { ChangeSheet } from "./ChangeSheet";
+import { fitColumns } from "./fitColumns";
 
 /*
   CHANGE LOG › ACTIVITY FEED (Yash, 2026-11-16) — the old Pricing prototype's
@@ -300,6 +301,32 @@ export function ActivityFeedScreen() {
     });
     setPage(1);
   };
+
+  /* WIDTHS FROM WHAT EACH COLUMN PRINTS (UX-45) — every change, so the
+     columns hold still while the list narrows. */
+  const textSize = typeof document === "undefined" ? "" : getComputedStyle(document.documentElement).fontSize;
+  const columns = React.useMemo(
+    () =>
+      fitColumns(
+        FEED_COLUMNS,
+        log.changes,
+        (c, key) => {
+          const cs = customersOf(c);
+          switch (key) {
+            case "change":
+              return [changeSummary(c, ents), c.id];
+            case "scope":
+              return [plural(shiptosOf(c).length, "ship-to"), `${plural(c.lines.length, "row")} · ${cs.length === 1 ? cs[0] : plural(cs.length, "customer")}`];
+            case "when":
+              return [fmtWhen(c.effectiveAt), c.effectiveAt !== c.madeAt ? `Made ${fmtWhen(c.madeAt)}` : ""];
+            default:
+              return [columnText(c, key)];
+          }
+        },
+        ["action", "status"]
+      ),
+    [log.changes, ents, columnText, textSize]
+  );
 
   const renderCell = (c: ChangeRecord, key: FeedColumnKey) => {
     switch (key) {
@@ -670,7 +697,7 @@ export function ActivityFeedScreen() {
               onToggleGroupCollapse={g.toggleGroupCollapse}
               groupNoun="change"
               groupUnit="rows"
-              columns={FEED_COLUMNS}
+              columns={columns}
               hidden={g.effectiveHidden}
               sort={sort}
               onSort={onSort}

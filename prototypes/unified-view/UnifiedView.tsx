@@ -555,7 +555,14 @@ function readEntityBoot(): { module: string; nav: string; sub: string; record: s
  * module still there to read from (Pavan, 2026-11-16).
  */
 export function UnifiedView({ only, landing }: { only?: string; landing?: string } = {}) {
-  const boot = React.useRef(only ? null : readEntityBoot()).current;
+  /* A `landing` BUILD ALWAYS OPENS THERE (Yash, 2026-11-16) — FP_Pricing opens
+     on Pricing › Activity feed on every load. Master Data writes its list into
+     the address, so a reload after visiting it used to reopen Master Data; the
+     address is ignored and cleared instead. */
+  const boot = React.useRef(only || landing ? null : readEntityBoot()).current;
+  React.useEffect(() => {
+    if (landing && window.location.search) window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+  }, [landing]);
   const startModule = React.useRef(only ?? boot?.module ?? landing ?? readStoredModule()).current;
   const [moduleKey, setModuleKey] = React.useState(startModule);
   /* Two nav levels, two pieces of state. `navKey` is the RAIL selection

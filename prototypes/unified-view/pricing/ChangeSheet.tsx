@@ -1,8 +1,8 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Ban, CalendarClock, Download, MoreHorizontal, RotateCw, Undo2 } from "lucide-react";
+import { Ban, CalendarClock, Clock, Download, MoreHorizontal, RotateCw, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
 import { DateField } from "@/components/ui/date-picker";
@@ -27,6 +27,8 @@ import {
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RecordSheet } from "../RecordSheet";
 import { RailCard, RailRow } from "../SheetCards";
+import { OverflowList } from "../ListTable";
+import { fitColumns } from "./fitColumns";
 import { kindTone } from "../statusKind";
 import { RecordViews, type ViewRow, type ViewTab } from "../masterdata/RecordViews";
 import { FIGURE_STRIP, Figure, WORK_AREA, useDockedWorkArea } from "../masterdata/sheetParts";
@@ -292,8 +294,21 @@ function ChangeSheetBody({
           </StatusChip>
         ) : undefined,
     });
-    return t;
+    /* WIDTHS FROM WHAT EACH COLUMN PRINTS (UX-45) — a long product or
+       margin name no longer runs over the next column. */
+    return t.map((tab) => ({
+      ...tab,
+      columns: fitColumns(
+        tab.columns,
+        tab.rows,
+        (r, key) => (key === "status" ? [r.status, r.text.error ?? ""] : [r.text[key] ?? ""]),
+        ["status", "action"]
+      ),
+    }));
   }, [c, editLines]);
+  /* A FIGURE OPENS THE ROWS IT COUNTS — the orders figures narrow Orders. */
+  const [apply, setApply] = React.useState<{ tab: string; picked: string[]; n: number } | null>(null);
+  const openOrders = (status: string) => setApply({ tab: "orders", picked: [`status:${status}`], n: Date.now() });
 
   const exportChange = () => toast.success(`Exporting ${plural(c.lines.length, "row")} of ${c.id} as .csv`);
 
@@ -366,21 +381,29 @@ function ChangeSheetBody({
       onSubmit={() => {}}
     >
       <div className={FIGURE_STRIP}>
-        <Figure label="Ship-tos" value={shiptos.length.toLocaleString()} note={plural(customers.length, "customer")} />
+        {/* WHICH ONES, NOT ONLY HOW MANY (Yash, 2026-11-16): the first name,
+            the rest behind +N. The customers are in Details. */}
         <Figure
-          label="Rows"
-          value={c.lines.length.toLocaleString()}
-          note={failed ? `${failed.toLocaleString()} failed` : plural(products.length, "product")}
+          label="Ship-tos"
+          value={shiptos.length.toLocaleString()}
+          note={<OverflowList values={shiptos.map((id) => shiptoOf(id).name)} label="ship-tos" />}
+        />
+        <Figure
+          label="Products"
+          value={products.length.toLocaleString()}
+          note={<OverflowList values={products.map((id) => productOf(id).name)} label="products" />}
         />
         <Figure
           label={ahead ? "Open orders that reprice" : "Orders repriced"}
           value={repriced.length.toLocaleString()}
           note={plural(repriced.reduce((t, o) => t + o.gallons, 0), "gal", "gal")}
+          onOpen={repriced.length ? () => openOrders("Repriced") : undefined}
         />
         <Figure
           label={ahead ? "Orders that keep their price" : "Orders that kept their price"}
           value={kept.length.toLocaleString()}
           note={plural(kept.reduce((t, o) => t + o.gallons, 0), "gal", "gal")}
+          onOpen={kept.length ? () => openOrders("Kept price") : undefined}
         />
       </div>
 
@@ -393,6 +416,7 @@ function ChangeSheetBody({
           /* A CHANGE WITH FAILED ROWS OPENS ON THEM (Yash, 2026-11-16) — the
              Outcome filter is on; its chip clears it to see every row. */
           initialPicked={failed ? ["outcome:Failed"] : undefined}
+          apply={apply}
         />
         <div className="flex min-h-0 flex-col gap-3 overflow-auto">
           <RailCard title="Details">
@@ -400,6 +424,11 @@ function ChangeSheetBody({
               <RailRow label="Change" value={c.id} />
               <RailRow label="Action" value={action} />
               <RailRow label="Entity" value={uniq(c.edits.map((e) => SETTING_LABEL[e.setting])).join(", ")} />
+              <RailRow
+                label={customers.length === 1 ? "Customer" : "Customers"}
+                value={<OverflowList values={customers.map((id) => customerOf(id).name)} label="customers" />}
+              />
+              <RailRow label="Rows" value={failed ? `${c.lines.length.toLocaleString()} · ${failed.toLocaleString()} failed` : c.lines.length.toLocaleString()} />
               <RailRow label="Made via" value={SOURCE_LABEL[c.source]} />
               <RailRow label="Made by" value={c.by} />
               <RailRow label="Made on" value={fmtDateTime(c.madeAt)} />
@@ -435,6 +464,18 @@ const hhmm = (t: number) => {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
+const timeLabel = (v: string) => {
+  const [h, m] = v.split(":").map(Number);
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+};
+/** Every half hour, plus the change's own time when it is off the grid. */
+function timeOptions(current: string) {
+  const grid: string[] = [];
+  for (let h = 0; h < 24; h++) for (const m of [0, 30]) grid.push(`${String(h).padStart(2, "0")}:${m ? "30" : "00"}`);
+  if (!grid.includes(current)) grid.push(current);
+  return grid.sort().map((value) => ({ value, label: timeLabel(value) }));
+}
+
 /** Move a scheduled change: a day and a time. */
 function RescheduleDialog({ change, onClose }: { change: ChangeRecord | null; onClose: () => void }) {
   const [day, setDay] = React.useState<Date | null>(null);
@@ -464,7 +505,22 @@ function RescheduleDialog({ change, onClose }: { change: ChangeRecord | null; on
           </Field>
           <Field>
             <FieldLabel htmlFor="reschedule-time">Time</FieldLabel>
-            <Input id="reschedule-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            {/* THE DELIVERY WINDOW'S HALF-HOUR GRID (threepl TIME_OPTIONS) in the
+                DS select — not the browser's own time picker. The clock leads,
+                as the calendar does in the date field. */}
+            <Select value={time} onValueChange={setTime}>
+              <SelectTrigger id="reschedule-time" className="w-full">
+                <Clock />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                {timeOptions(time).map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
         </div>
         <DialogFooter>

@@ -6,9 +6,11 @@ import {
   buildSeed,
   ordersFor,
   project,
+  recordTitle,
   undoProjection,
   type ChangeRecord,
   type ConfigRow,
+  type Edit,
   type Entity,
   type EntityMap,
 } from "./changeLog";
@@ -26,11 +28,14 @@ interface State {
   rows: ConfigRow[];
   entities: Entity[];
   changes: ChangeRecord[];
+  /** Customers' own pricing records, set up on Customer pricing before any
+   *  ship-to inherits them. */
+  customerOwn: Record<string, ConfigRow>;
   tick: number;
 }
 
 const SEED = buildSeed();
-let state: State = { rows: SEED.rows, entities: SEED.entities, changes: SEED.changes, tick: 0 };
+let state: State = { rows: SEED.rows, entities: SEED.entities, changes: SEED.changes, customerOwn: {}, tick: 0 };
 const listeners = new Set<() => void>();
 const set = (next: Partial<State>) => {
   state = { ...state, ...next };
@@ -132,9 +137,77 @@ export function cancelChange(id: string) {
   toast.success(`${id} canceled`);
 }
 
+/**
+ * SAVE A PRICING SHEET (Yash, 2026-11-17). A sheet autosaves; every save of
+ * one open sheet is ONE change in the log, rewritten as the sheet changes —
+ * a pick per autosave would bury the log. `baseline` holds the rows as the
+ * sheet found them; each save puts those back and applies the edits again.
+ * A save that ends where the sheet started removes its change. Returns the
+ * change's id (null when there is none).
+ *
+ * `configure` sets pricing up on rows (or a customer) that had none — that
+ * one is the footer's act, not an autosave.
+ */
+export function savePricing(opts: {
+  changeId: string | null;
+  baseline: ConfigRow[];
+  edits: Edit[];
+  source: "shiptoInline" | "customer";
+  configure?: boolean;
+  /** A customer's own record — written when no ship-to inherits it. */
+  customer?: { id: string; before: ConfigRow | null; after: ConfigRow };
+}): string | null {
+  const s = state;
+  const ents = entityMapOf(s);
+  const base = new Map(opts.baseline.map((r) => [r.id, r]));
+  const rows0 = s.rows.map((r) => base.get(r.id) ?? r);
+  const proj = project(rows0, opts.edits, ents);
+  const own = { ...s.customerOwn };
+  if (opts.customer) {
+    if (opts.customer.before) own[opts.customer.id] = opts.customer.after;
+    else if (opts.configure) own[opts.customer.id] = opts.customer.after;
+  }
+  const ownMoved = !!opts.customer && JSON.stringify(opts.customer.before) !== JSON.stringify(opts.customer.after);
+  const without = s.changes.filter((c) => c.id !== opts.changeId);
+  if (proj.lines.length === 0 && !ownMoved) {
+    set({ rows: rows0, changes: without, customerOwn: own });
+    return null;
+  }
+  const id = opts.changeId ?? nextId(s);
+  const prev = s.changes.find((c) => c.id === opts.changeId);
+  const t = prev?.madeAt ?? nowOf(s) + 60_000;
+  const rows = rows0.map((r) => {
+    const n = proj.next.get(r.id);
+    if (!n) return r;
+    return {
+      ...n,
+      ...(opts.configure ? { configured: true } : {}),
+      /* A ship-to edited on its own stops inheriting its customer's pricing. */
+      ...(opts.source === "shiptoInline" && r.applied === "customer" ? { applied: "shipto" as const } : {}),
+    };
+  });
+  const rec: ChangeRecord = {
+    id,
+    title: recordTitle(opts.edits, ents),
+    edits: opts.edits,
+    source: opts.source,
+    by: CURRENT_USER,
+    madeAt: t,
+    effectiveAt: t,
+    status: "applied",
+    noChange: proj.noChange,
+    lines: proj.lines,
+    orders: ordersFor(proj.lines, new Map(rows.map((r) => [r.id, r])), t, id),
+    configures: opts.configure || undefined,
+    customerId: opts.customer?.id,
+  };
+  set({ rows, changes: [rec, ...without], customerOwn: own, tick: prev ? s.tick : s.tick + 1 });
+  return id;
+}
+
 export function useChangeLog() {
   const s = React.useSyncExternalStore(subscribe, () => state);
   const entityMap = React.useMemo(() => entityMapOf(s), [s.entities]); // eslint-disable-line react-hooks/exhaustive-deps
   const latestId = React.useMemo(() => latestIdOf(s.changes), [s.changes]);
-  return { changes: s.changes, rows: s.rows, entityMap, latestId, now: nowOf(s) };
+  return { changes: s.changes, rows: s.rows, customerOwn: s.customerOwn, entityMap, latestId, now: nowOf(s) };
 }

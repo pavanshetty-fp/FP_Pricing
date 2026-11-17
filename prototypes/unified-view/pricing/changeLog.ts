@@ -341,6 +341,8 @@ export interface ChangeRecord {
   configures?: boolean;
   /** Put ShipTo rows back on their customer's pricing. */
   resets?: boolean;
+  /** A customer's own pricing, when no ship-to inherits it yet (no lines). */
+  customerId?: string;
 }
 
 export const scopeOf = (c: { edits: Edit[] }) => [...new Set(c.edits.flatMap((e) => e.rowIds))];

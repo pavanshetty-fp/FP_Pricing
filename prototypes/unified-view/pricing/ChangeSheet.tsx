@@ -240,7 +240,9 @@ function ChangeSheetBody({
 }) {
   const work = useDockedWorkArea();
   const shiptos = uniq(c.lines.map((l) => l.shiptoId));
-  const customers = uniq(c.lines.map((l) => l.customerId));
+  /* A customer's own pricing, set up before any ship-to inherits it, has no
+     lines — it still names its customer (Yash, 2026-11-17). */
+  const customers = uniq([...c.lines.map((l) => l.customerId), ...(c.customerId ? [c.customerId] : [])]);
   const products = uniq(c.lines.map((l) => l.productId));
   const failed = c.lines.filter((l) => l.outcome === "failed").length;
   const repriced = c.orders.filter((o) => o.status === "repriced");
@@ -501,7 +503,7 @@ function ChangeSheetBody({
         <Figure
           label="Customers"
           value={customers.length.toLocaleString()}
-          note={customers.length === 1 ? customerOf(customers[0]).name : `${customerOf(customers[0]).name} +${customers.length - 1}`}
+          note={customers.length === 0 ? "—" : customers.length === 1 ? customerOf(customers[0]).name : `${customerOf(customers[0]).name} +${customers.length - 1}`}
           list={{
             title: plural(customers.length, "customer"),
             rows: customers.map((id) => ({ label: customerOf(id).name, value: plural(uniq(c.lines.filter((l) => l.customerId === id).map((l) => l.shiptoId)).length, "ship-to") })),
@@ -511,7 +513,7 @@ function ChangeSheetBody({
         <Figure
           label="Ship-tos"
           value={shiptos.length.toLocaleString()}
-          note={shiptos.length === 1 ? shiptoOf(shiptos[0]).name : `${shiptoOf(shiptos[0]).name} +${shiptos.length - 1}`}
+          note={shiptos.length === 0 ? "—" : shiptos.length === 1 ? shiptoOf(shiptos[0]).name : `${shiptoOf(shiptos[0]).name} +${shiptos.length - 1}`}
           list={{
             title: plural(shiptos.length, "ship-to"),
             rows: shiptos.map((id) => ({ label: shiptoOf(id).name, sub: customerOf(shiptoOf(id).customerId).name })),
@@ -521,7 +523,7 @@ function ChangeSheetBody({
         <Figure
           label="Products"
           value={products.length.toLocaleString()}
-          note={products.length === 1 ? productOf(products[0]).name : `${productOf(products[0]).name} +${products.length - 1}`}
+          note={products.length === 0 ? "—" : products.length === 1 ? productOf(products[0]).name : `${productOf(products[0]).name} +${products.length - 1}`}
           list={{
             title: plural(products.length, "product"),
             rows: products.map((id) => ({ label: productOf(id).name, value: plural(uniq(c.lines.filter((l) => l.productId === id).map((l) => l.shiptoId)).length, "ship-to") })),

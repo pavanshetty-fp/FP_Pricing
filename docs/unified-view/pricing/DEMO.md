@@ -68,14 +68,14 @@ what it is?", for example when a customer calls.
 
 | Show | Say | Why |
 |---|---|---|
-| Top right: **Filters** (Customer, Ship-to) and the date window, level with the title | "Pick the scope once; everything below follows." Ship-tos follow the customers picked. | Activity feed's Filters and chip shelf. *Date beside the title is outside FPDS; flagged for Pavan.* |
-| Pick 2 customers → chip "Customer 2 ×" | Scope shows as a chip | |
+| Top right: **Customer** and **Ship-to** pickers (search, several at a time) and the date window | "Pick the scope once; everything below follows." Ship-tos follow the customers picked. Nothing else on the page changes them. | *Date beside the title is outside FPDS; flagged for Pavan.* |
+| Pick 2 customers in the Customer picker | The picker reads "2 customers"; every card follows | |
 | **Stat tiles:** Changes (assignment · inherited) · Ship-tos changed · Changed by · Last change | Each one jumps to its section and blinks it once | Dashboard rule: every number opens what it counts |
 | **Assignment vs inherited** | "Assignment = changed on the ship-to itself (inline, bulk, import). Inherited = a shared entity or the customer's pricing changed." | PRD §6 |
-| **Insights** card, read only: **Changed most** ("23 times · Environmental Fee — more than anything else here") · **Fees removed** ("Mostly by … — check these were intended") · **Outside the UI** (came through import or system sync) | "What a pricing lead should look at first, in plain words." Don't press it; it's for reading. | Highlight card (Quotation/Order summary shell); wording from the prototype |
-| **Where changes happened** (customers → ship-tos → entities), top 5 + **View N others** | Press a customer to drill in | Percentages are shares of the whole |
-| **Who made the changes**, top 5 + View others | Press a person: Timeline filtered to them | |
-| **Timeline** (search and Filters on the card's right) → press a row | Opens the same change sheet as Activity feed | One timeline on the page; no duplicate sheet |
+| **Insights**: the switch on the card, **Compact · Descriptive · Grouped** | Show all three and ask the PMs which to keep. Compact: three figures, **View all 10** opens a side sheet. Descriptive: a sentence per insight, **View all 10** grows the card. Grouped: all ten in Needs a look · Activity · Patterns. | Read-only in every version; the switch is for this review only |
+| **Where changes happened**: press a customer (the chevron says it opens) → its ship-tos → one ship-to's fees, taxes, margins | "It drills inside the card. The pickers at the top don't move." Walk back with the breadcrumb or ‹ | In-card drill (team feedback, 2026-11-17) |
+| **Who made the changes**: press a person → the customers they changed → that customer's ship-tos | Same in-card drill and breadcrumb | |
+| **Timeline**: days down the page; each change with its time, what changed, **how it was made** (Manual, Bulk, Pricing setup, Import), who, and **N ship-tos** | Press "N ship-tos" to list them by customer, with a search. "Show more" adds the next 20, so the run of changes stays in order. | What happened and when; no row opens |
 
 ---
 
@@ -118,6 +118,7 @@ Then ask for the **PM decisions** below.
 | Can I fix pricing from the trace? | Not in this phase; trace only. Order Pricing Insights' actions (fix missing fees, configure products) are a later phase. |
 | Why does the date sit by the title on Customer & ship-to? | Our ask. FPDS puts it on the scope row; raised with Pavan. |
 | Can I press an insight to see those changes? | Not now. Insights are read-only; use the Timeline's search and Filters. |
+| Why can't I open a change from the Timeline? | It shows what happened and when. Activity feed opens any change. |
 | What counts as "Outside the UI"? | Changes that came in by import or system sync. Bulk edits made on the Ship-to pricing screen are in the UI. |
 
 ## Open for the PM (from PRD §6)

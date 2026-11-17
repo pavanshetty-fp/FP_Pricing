@@ -504,6 +504,11 @@ export interface TableCellMultiSelectProps {
   unitLabel?: string;
   /** What the closed cell prints, when the caller shows the rest elsewhere (e.g. as sub-rows). */
   summary?: string;
+  /** An "All …" row first that stands for every option, now and later — it is
+   *  ticked ALONE: ticking it clears the rest, ticking any other clears it
+   *  (opt-in; Pricing's hub margins and fees, Yash 2026-11-17 — to confirm
+   *  with Pavan). Its label is the value `onChange` returns. */
+  allOption?: string;
   onChange: (next: string[]) => void;
   /**
    * Take focus when the cell MOUNTS — pass it to the first editable cell of a
@@ -535,6 +540,7 @@ export function TableCellMultiSelect({
   disabled,
   unitLabel = "selected",
   summary: summaryOverride,
+  allOption,
   onChange,
   "aria-label": ariaLabel,
   autoFocus,
@@ -552,7 +558,11 @@ export function TableCellMultiSelect({
         : `${values.length} ${unitLabel}${unitLabel.endsWith("s") ? "" : "s"}`);
 
   const toggle = (opt: string) =>
-    setDraft((d) => (d.includes(opt) ? d.filter((v) => v !== opt) : [...d, opt]));
+    setDraft((d) =>
+      opt === allOption
+        ? d.includes(opt) ? [] : [opt]
+        : d.includes(opt) ? d.filter((v) => v !== opt) : [...d.filter((v) => v !== allOption), opt]
+    );
 
   return (
     <Popover
@@ -591,6 +601,22 @@ export function TableCellMultiSelect({
           <CommandList>
             <CommandEmpty>No options.</CommandEmpty>
             <CommandGroup>
+              {allOption && (
+                <CommandItem
+                  value={allOption}
+                  onSelect={() => toggle(allOption)}
+                  aria-checked={draft.includes(allOption)}
+                  icon={
+                    <Checkbox
+                      checked={draft.includes(allOption)}
+                      className="pointer-events-none"
+                      tabIndex={-1}
+                    />
+                  }
+                >
+                  <span className="flex-1 truncate">{allOption}</span>
+                </CommandItem>
+              )}
               {options.map((opt) => (
                 <CommandItem
                   key={opt}
@@ -618,7 +644,7 @@ export function TableCellMultiSelect({
           <Button
             size="sm"
             onClick={() => {
-              onChange(options.filter((o) => draft.includes(o)));
+              onChange(allOption && draft.includes(allOption) ? [allOption] : options.filter((o) => draft.includes(o)));
               setOpen(false);
             }}
           >

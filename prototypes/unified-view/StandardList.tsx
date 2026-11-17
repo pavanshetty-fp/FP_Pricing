@@ -94,6 +94,9 @@ export interface StandardListProps<R, K extends string> {
   onFacetsChange?: (ids: string[]) => void;
   /** Omit for a list whose rows open nothing (yet). */
   onOpen?: (r: R) => void;
+  /** The row's ⋯ menu in the pinned actions column (opt-in; Pricing setup,
+   *  Yash 2026-11-17). */
+  rowMenu?: (r: R) => React.ReactNode;
   openLabel: (r: R) => string;
   emptyIcon: React.ReactNode;
   /** Beside the Filters button — e.g. Recommendations (3PL's place for it). */
@@ -124,6 +127,7 @@ export function StandardList<R, K extends string>({
   applyFacets,
   onFacetsChange,
   onOpen,
+  rowMenu,
   openLabel,
   emptyIcon,
   segments,
@@ -429,6 +433,7 @@ export function StandardList<R, K extends string>({
             rowId={rowId}
             renderCell={renderCell}
             actionsKey={"actions" as K}
+            rowMenu={rowMenu}
             columnOrder={columnOrder}
             onReorderColumns={setColumnOrder}
             columnWidths={columnWidths}

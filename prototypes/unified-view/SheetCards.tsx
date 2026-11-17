@@ -225,8 +225,15 @@ export function ActivityCard({
   entries,
   timeZone,
   fill = false,
+  action,
+  title = "Activity",
 }: {
   entries?: TimelineEntry[];
+  /** Pricing calls it History (Yash, 2026-11-17). */
+  title?: string;
+  /** Controls on the card's header — Pricing's View all and Roll back
+   *  (Yash, 2026-11-17). */
+  action?: React.ReactNode;
   /** Print the stamps in this zone — Sales' Preferences (2026-10-07). */
   timeZone?: string;
   /** THE ONLY CARD IN THE RAIL (Pavan, 2026-11-13) — it runs the rail's
@@ -245,7 +252,7 @@ export function ActivityCard({
       })
     : AUDIT_FMT;
   return (
-    <RailCard title="Activity" icon={<HistoryIcon />} className={cn(fill && "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col")}>
+    <RailCard title={title} icon={<HistoryIcon />} action={action} className={cn(fill && "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col")}>
       {!entries || entries.length === 0 ? (
         <p className="px-4 py-3 text-sm text-muted-foreground">
           Nothing has changed yet.
@@ -338,8 +345,10 @@ export function SheetRail({
       const cs = getComputedStyle(port);
       const top = parseFloat(cs.paddingTop) || 0;
       const view = port.clientHeight - top - (parseFloat(cs.paddingBottom) || 0);
-      const formH = form && !rail.hasAttribute("data-fill") ? form.offsetHeight : view;
-      rail.style.setProperty("--rail-max", `${Math.max(0, Math.min(view, formH))}px`);
+      /* THE VIEW'S HEIGHT, NOT THE FORM'S (Yash, 2026-11-17) — a short form
+         (a customer priced from its ship-tos) cut Activity off mid-card with
+         empty sheet below it. */
+      rail.style.setProperty("--rail-max", `${Math.max(0, view)}px`);
     };
     fit();
     const ro = new ResizeObserver(fit);

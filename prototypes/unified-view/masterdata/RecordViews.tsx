@@ -115,7 +115,11 @@ export function RecordViews({
   onTabChange,
   initialPicked,
   apply,
+  hideSingleTab = false,
 }: {
+  /** No tab strip when there is only one view — a record's activity
+   *  (Pricing, Yash 2026-11-17). */
+  hideSingleTab?: boolean;
   /** Picks a tab and its facets from outside — a figure above the views
    *  narrows them to the rows it counts. `n` changes on every press. */
   apply?: { tab: string; picked: readonly string[]; n: number } | null;
@@ -238,6 +242,7 @@ export function RecordViews({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* THE VIEW — the tabs. */}
+      {!(hideSingleTab && tabs.length === 1) && (
       <Tabs value={def.key} onValueChange={setTabKey} className="shrink-0">
         <div className="overflow-x-auto border-b border-border">
           <TabsList variant="line" className="h-9 w-max justify-start">
@@ -255,6 +260,7 @@ export function RecordViews({
           </TabsList>
         </div>
       </Tabs>
+      )}
 
       {/* THE LIST TOOLBAR — one search and Filters for every view. */}
       <div className="mt-4 shrink-0">

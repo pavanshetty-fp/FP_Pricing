@@ -66,6 +66,7 @@ import { setHeaderSlot } from "./headerSlot";
 import { CustomerShiptoDashboard } from "./pricing/CustomerShiptoDashboard";
 import { OrderTraceScreen } from "./pricing/OrderTraceScreen";
 import { CustomerPricingScreen, ShiptoPricingScreen } from "./pricing/ConfigScreens";
+import { MarginSetupScreen, MarketSetupScreen, RateTypeSetupScreen } from "./pricing/SetupScreens";
 import { MasterCustomersScreen } from "./masterdata/CustomersScreen";
 import { MasterShipTosScreen } from "./masterdata/ShipTosScreen";
 import { MasterSuppliersScreen, MasterTerminalsScreen } from "./masterdata/FuelSourceScreens";
@@ -114,6 +115,8 @@ import {
 import { ProfileScreen } from "./ProfileScreen";
 import { SettingsScreen } from "./SettingsScreen";
 import { GlobalSearch } from "./GlobalSearch";
+import { backTo, clearTrail, usePricingNav } from "./pricing/pricingNav";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import type { AccountUser } from "./types";
 /*
   Unified View — the FleetPanda Sales Console recreated on FP-DS.
@@ -238,8 +241,9 @@ const PRICING_NAV: NavItem[] = [
   { key: "pricing-dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
   { key: "pricing-configuration", label: "Pricing configuration", icon: <SlidersHorizontal /> },
   { key: "pricing-setup", label: "Pricing setup", icon: <Settings /> },
-  { key: "pricing-today", label: "Today's pricing", icon: <CalendarClock /> },
+  /* CHANGE LOG ABOVE TODAY'S PRICING (Yash, 2026-11-17). */
   { key: "pricing-change-log", label: "Change log", icon: <History /> },
+  { key: "pricing-today", label: "Today's pricing", icon: <CalendarClock /> },
   { key: "pricing-hub", label: "Hub-based pricing", icon: <Warehouse /> },
   { key: "pricing-insights", label: "Order pricing insights", icon: <ChartColumn /> },
   { key: "pricing-notices", label: "Price notices", icon: <Bell /> },
@@ -415,9 +419,9 @@ const MODULE_LANDING: Record<string, string> = {
   sales: "sales-orders",
   "master-data": "md-directory",
   archive: "3pl-directory",
-  /* PRICING OPENS ON THE PAGE BEING BUILT (Yash, 2026-11-16) — Change log ›
-     Activity feed. Dashboard stays first in the menu. */
-  pricing: "pricing-change-log",
+  /* PRICING OPENS ON PRICING CONFIGURATION › CUSTOMER (Yash, 2026-11-17).
+     Dashboard stays first in the menu. */
+  pricing: "pricing-configuration",
 };
 /** THE PAGE A MODULE OPENS ON, inside its landing area — Master Data opens on
  *  Customers, the first page of its Directory (Assets until Customers was
@@ -425,7 +429,7 @@ const MODULE_LANDING: Record<string, string> = {
 const MODULE_LANDING_SUB: Record<string, string> = {
   "master-data": "md-customers",
   archive: "3pl-customers",
-  pricing: "pricing-log-activity",
+  pricing: "pricing-config-customer",
 };
 const landingKey = (moduleKey: string): string =>
   MODULE_LANDING[moduleKey] ?? MODULE_NAV[moduleKey]?.[0]?.key ?? "";
@@ -670,6 +674,27 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
   const activeSub = subItems.find((i) => i.key === subKey) ?? null;
   /** The screen is the drawer's selection when there is one, else the rail's. */
   const screenKey = subKey ?? navKey;
+  /* PRICING'S VIEW ALL → THE ACTIVITY FEED, with the path back in the title
+     (pricingNav.ts; Yash, 2026-11-17). Leaving the feed drops the path. */
+  const pricingNav = usePricingNav();
+  React.useEffect(() => {
+    if (!pricingNav.go) return;
+    setNavKey(pricingNav.go.key.startsWith("pricing-log") ? "pricing-change-log" : "pricing-configuration");
+    setSubKey(pricingNav.go.key);
+  }, [pricingNav.go]);
+  /* THE CURRENT PAGE SCROLLS INTO VIEW IN THE SIDE NAV (Yash, 2026-11-17) —
+     Pricing's View all lands on Activity feed, low in a long drawer, where
+     its selected row was out of sight. */
+  React.useEffect(() => {
+    const t = window.setTimeout(() => {
+      document.querySelector<HTMLElement>('nav [aria-current="page"]')?.scrollIntoView({ block: "nearest" });
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [subKey]);
+  React.useEffect(() => {
+    if (screenKey !== "pricing-log-activity") clearTrail();
+  }, [screenKey]);
+  const feedTrail = screenKey === "pricing-log-activity" ? pricingNav.trail : null;
   /* Leaving Recurring closes its archive, so coming back opens the live screen. */
   React.useEffect(() => {
     if (screenKey !== "3pl-recurring-orders") setRecurringArchive(false);
@@ -965,6 +990,12 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         return <CustomerPricingScreen />;
       case "pricing-config-shipto":
         return <ShiptoPricingScreen />;
+      case "pricing-setup-rate-type":
+        return <RateTypeSetupScreen />;
+      case "pricing-setup-market":
+        return <MarketSetupScreen />;
+      case "pricing-setup-margin":
+        return <MarginSetupScreen />;
       case "md-suppliers":
         return (
           <MasterSuppliersScreen
@@ -1010,9 +1041,39 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
               /* THE TITLE LOADS WITH THE PAGE (Pavan, 2026-10-10). */
               <Skeleton className="h-6 w-40" />
             ) : (
+            feedTrail ? (
+              /* THE PATH IS THE TITLE (UX rule L2): where the feed was opened
+                 from, each crumb a way back; the page itself last. */
+              <Breadcrumb className="min-w-0">
+                <BreadcrumbList className="flex-nowrap gap-1 text-xl font-semibold leading-none sm:gap-1">
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <button type="button" onClick={() => backTo(feedTrail.from, null)}>
+                        {feedTrail.fromLabel}
+                      </button>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem className="min-w-0">
+                    <BreadcrumbLink asChild>
+                      <button type="button" className="truncate" onClick={() => backTo(feedTrail.from, feedTrail.record)}>
+                        {feedTrail.recordLabel}
+                      </button>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage className="font-semibold">
+                      <h1 className="truncate">{activeSub?.label}</h1>
+                    </BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            ) : (
             <h1 className="truncate text-xl font-semibold leading-none text-foreground">
               {accountTitle ?? activeSub?.label ?? active?.label ?? MODULE_LABEL[moduleKey] ?? "FleetPanda"}
             </h1>
+            )
             )}
             {listTotal && (
               <span className="shrink-0 text-sm tabular-nums text-muted-foreground">

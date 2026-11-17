@@ -45,9 +45,9 @@ export function timelineTab(scope: Scope, ents: EntityMap, onOpen: (id: string) 
     one: "change",
     columns: [
       { key: "when", label: "Date & time", width: 180, sortable: true },
-      { key: "change", label: "Change", width: 300, sortable: true },
       { key: "setting", label: "Entity", width: 120, sortable: true },
       { key: "action", label: "Action", width: 120, sortable: true },
+      { key: "change", label: "Change", width: 300, sortable: true },
       { key: "kind", label: "Kind", width: 120, sortable: true },
       { key: "applies", label: "Applies to", width: 200, sortable: true },
       { key: "by", label: "Made by", width: 140, sortable: true },

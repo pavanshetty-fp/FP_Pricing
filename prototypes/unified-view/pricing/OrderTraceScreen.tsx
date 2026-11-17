@@ -20,7 +20,7 @@ import { kindTone } from "../statusKind";
 import { TERM_ICONS } from "@/components/ui/term-icons";
 import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
 import { dateKeyOf, startOfDay } from "../data";
-import { DAY, NOW, fmtDate, fmtWhen, plural, uniq } from "./changeLog";
+import { DAY, NOW, fmtDate, fmtWhen, plural, shiptoOf, uniq } from "./changeLog";
 import { useChangeLog } from "./changeLogStore";
 import { fitColumns } from "./fitColumns";
 import { ORDER_STATUS_KIND, buildOrders, money2, money3, orderLabel, type PricedOrder } from "./orderTrace";
@@ -160,7 +160,8 @@ export function OrderTraceScreen() {
       case "customer":
         return [n.customer];
       case "shipto":
-        return [n.shipto];
+        /* THE ADDRESS UNDER THE SHIP-TO, everywhere (Yash, 2026-11-17). */
+        return [n.shipto, shiptoOf(o.shiptoId).address];
       case "product":
         return [n.product];
       case "delivered":
@@ -256,6 +257,7 @@ export function OrderTraceScreen() {
     switch (key) {
       case "order":
       case "delivered":
+      case "shipto":
         return <TwoLineCell title={l[0]} description={l[1]} />;
       case "after":
         return o.appliedAfterOrder ? <Pill kind="caution">{l[0]}</Pill> : "—";

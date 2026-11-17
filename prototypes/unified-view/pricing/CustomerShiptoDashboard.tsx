@@ -57,12 +57,19 @@ export function CustomerShiptoDashboard() {
   const ents = log.entityMap;
   const [range, setRange] = React.useState<DateRange>(lastQuarter);
   const inWindow = React.useMemo(() => inRange(range), [range]);
-  const [custs, setCustsRaw] = React.useState<string[]>([]);
-  const [ships, setShips] = React.useState<string[]>([]);
+  /* THE SCOPE AS FACETS — the Filters panel and chip shelf (Yash,
+     2026-11-17: back from the pickers), ids `customer:Name` / `shipto:Name`. */
+  const [scopeSel, setScopeSel] = React.useState<ReadonlySet<string>>(new Set());
+  const custByName = React.useMemo(() => new Map(CUSTOMERS.map((c) => [c.name, c.id])), []);
+  const shipByName = React.useMemo(() => new Map(SHIPTOS.map((st) => [st.name, st.id])), []);
+  const idsOf = (sel: ReadonlySet<string>, facet: string, by: Map<string, string>) =>
+    [...sel].filter((id) => id.startsWith(`${facet}:`)).map((id) => by.get(id.slice(facet.length + 1))!).filter(Boolean);
+  const custs = idsOf(scopeSel, "customer", custByName);
+  const ships = idsOf(scopeSel, "shipto", shipByName);
   /* SHIP-TOS FOLLOW THE CUSTOMERS: one of a customer taken off goes too. */
-  const setCusts = (ids: string[]) => {
-    setCustsRaw(ids);
-    if (ids.length) setShips((s) => s.filter((id) => ids.includes(shiptoOf(id).customerId)));
+  const applyScope = (next: ReadonlySet<string>) => {
+    const keep = idsOf(next, "customer", custByName);
+    setScopeSel(new Set([...next].filter((id) => !id.startsWith("shipto:") || !keep.length || keep.includes(shiptoOf(shipByName.get(id.slice(7))!).customerId))));
   };
   const [openId, setOpenId] = React.useState<string | null>(null);
 
@@ -164,16 +171,37 @@ export function CustomerShiptoDashboard() {
   const inherited = scope.changes.filter((x) => kindOf(x.c) === "Inherited").length;
   const touched = uniq(scope.changes.flatMap((x) => x.lines.map((l) => l.shiptoId)));
   const last = scope.changes.find((x) => x.c.status !== "scheduled" && x.c.status !== "canceled");
-  const shipOptions = (custs.length ? SHIPTOS.filter((st) => custs.includes(st.customerId)) : SHIPTOS).map((st) => ({ id: st.id, name: st.name }));
+  const scopeFacets: ListFacet[] = [
+    { key: "customer", label: "Customer", options: CUSTOMERS.map((c) => c.name), searchable: true },
+    { key: "shipto", label: "Ship-to", options: (custs.length ? SHIPTOS.filter((st) => custs.includes(st.customerId)) : SHIPTOS).map((st) => st.name), searchable: true },
+  ];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+    <div className={`flex min-h-0 flex-1 flex-col overflow-auto${scopeSel.size ? " -mt-4" : ""}`}>
       {/* THE SCOPE AND THE WINDOW — outside the cards, level with the title. */}
       <HeaderAside>
-        <ScopePicker all="All customers" noun="customers" options={CUSTOMERS.map((c) => ({ id: c.id, name: c.name }))} value={custs} onChange={setCusts} />
-        <ScopePicker all="All ship-tos" noun="ship-tos" options={shipOptions} value={ships} onChange={setShips} />
+        <ScopePicker
+          all="All customers"
+          noun="customers"
+          options={CUSTOMERS.map((c) => c.name)}
+          value={custs.map((id) => customerOf(id).name)}
+          onChange={(names) => applyScope(new Set([...names.map((n) => `customer:${n}`), ...[...scopeSel].filter((id) => id.startsWith("shipto:"))]))}
+        />
+        <ScopePicker
+          all="All ship-tos"
+          noun="ship-tos"
+          options={(custs.length ? SHIPTOS.filter((st) => custs.includes(st.customerId)) : SHIPTOS).map((st) => st.name)}
+          value={ships.map((id) => shiptoOf(id).name)}
+          onChange={(names) => applyScope(new Set([...[...scopeSel].filter((id) => id.startsWith("customer:")), ...names.map((n) => `shipto:${n}`)]))}
+        />
         <DateRangeFilter {...dateWindow} noun="changes" value={range} onChange={setRange} />
       </HeaderAside>
+      {/* THE SCOPE'S CHIPS — stay in view while the page scrolls. */}
+      {scopeSel.size > 0 && (
+        <div className="sticky top-0 z-20 bg-fp-surface-1b pb-2">
+          <FilterChips className="mt-0" facets={scopeFacets} selected={scopeSel} onChange={applyScope} />
+        </div>
+      )}
 
       <div className={`${DASHBOARD_GROUND} flex flex-col gap-3`}>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

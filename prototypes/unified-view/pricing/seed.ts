@@ -89,8 +89,21 @@ const CUSTOMER_SEED: { id: string; name: string; account: string; sites: number;
   { id: "natchez", name: "Natchez Timber Co.", account: "9878114", sites: 6, region: ["Natchez, MS", "Vidalia, LA"] },
 ];
 
-const SITE_WORDS = ["Yard", "Plant", "Batch Site", "Laydown", "Depot", "Terminal", "Shop", "Hub", "Pad", "Field Office", "Quarry", "Dock"];
-const SITE_LEADS = ["North", "South", "East", "West", "Main", "Riverside", "Highway 90", "Industrial", "Airport", "Harbor", "Pine Ridge", "County Road 12", "FM 1960", "Loop 250"];
+/* SITES NAMED THE WAY THE CUSTOMER WOULD (Yash, 2026-11-17: "use some
+   sensible names") — the town, then the kind of site that business runs:
+   "Lake Charles Batch Plant", "Houma Fuel Dock". */
+const SITE_TYPES: Record<string, string[]> = {
+  onsite: ["Batch Plant", "Ready-Mix Yard", "Equipment Yard", "Job Site", "Aggregate Yard"],
+  mustang: ["Field Office", "Rig Yard", "Pipe Yard", "Truck Shop", "Water Station", "Supply Yard", "Field Camp"],
+  gulf: ["Fleet Yard", "Truck Terminal", "Maintenance Shop", "Distribution Center", "Cross-Dock", "Trailer Yard", "Fuel Island", "Service Center"],
+  bayou: ["Equipment Yard", "Job Site", "Shop", "Laydown Yard", "Material Yard"],
+  lonestar: ["Distribution Center", "Truck Terminal", "Cross-Dock", "Fleet Yard", "Service Center", "Trailer Yard", "Warehouse"],
+  pelican: ["Fuel Dock", "Supply Base", "Boat Yard", "Marine Terminal"],
+  redriver: ["Quarry", "Sand Pit", "Crushing Plant", "Gravel Pit", "Stockpile Yard", "Asphalt Plant"],
+  "delta-ag": ["Grain Elevator", "Farm Shop", "Seed Warehouse", "Gin", "Fertilizer Plant", "Equipment Shed", "Dryer Site", "Co-op Store"],
+  coastal: ["Transfer Station", "Landfill", "Recycling Center", "Truck Yard", "Hauling Depot"],
+  natchez: ["Sawmill", "Log Yard", "Logging Camp"],
+};
 const STREETS = ["Highway 90", "Broad St", "Industrial Pkwy", "Airline Hwy", "Main St", "County Rd 12", "Harborside Dr", "Loop 250", "FM 1960", "Timberland Dr"];
 /* FRAC PADS BY LEASE (Yash, 2026-11-16: "keep realistic data") — the way
    operators name well pads: lease or unit, then the well, e.g. "Hayes Unit 2H". */
@@ -109,7 +122,7 @@ const SHIPTOS_RAW: ShipTo[] = CUSTOMER_SEED.flatMap((c) =>
     const frac = c.id === "adamas" || c.id === "permian";
     const name = frac
       ? `${LEASES[i % LEASES.length]} ${1 + Math.floor(i / LEASES.length)}H`
-      : `${city.split(",")[0]} ${pick(SITE_LEADS, c.id + i + "l")} ${pick(SITE_WORDS, c.id + i)}`;
+      : `${city.split(",")[0]} ${SITE_TYPES[c.id][Math.floor(i / c.region.length) % SITE_TYPES[c.id].length]}`;
     return {
       id: `${c.id}-${i + 1}`,
       customerId: c.id,

@@ -226,30 +226,34 @@ export const OPERATION_LABEL: Record<Operation, string> = {
 };
 
 /** What happened, read at a glance — the Action column. */
-export type Action = "Configured" | "Reset" | "Added" | "Removed" | "Replaced" | "Changed" | "Value changed" | "Created" | "Multiple";
-export const ACTIONS: Action[] = ["Configured", "Reset", "Added", "Removed", "Replaced", "Changed", "Value changed", "Created", "Multiple"];
+/* FOUR WORDS (Yash, 2026-11-17) — "Replaced" misled: one tax is not
+   replaced by three. Something went on (Added), came off (Deleted), or
+   changed (Updated); Deactivated is a setup record switched off. A change
+   that both adds and deletes reads as Updated. */
+export type Action = "Added" | "Deleted" | "Updated" | "Deactivated";
+export const ACTIONS: Action[] = ["Added", "Deleted", "Updated", "Deactivated"];
 const OP_ACTION: Record<Operation, Action> = {
   add: "Added",
-  remove: "Removed",
-  replace: "Replaced",
-  set: "Changed",
-  edit: "Value changed",
-  create: "Created",
+  remove: "Deleted",
+  replace: "Updated",
+  set: "Updated",
+  edit: "Updated",
+  create: "Added",
 };
 export const editAction = (e: { operation: Operation }) => OP_ACTION[e.operation];
-export function recordAction(c: { edits: { operation: Operation }[]; undoOf?: string; configures?: boolean; resets?: boolean }): Action {
-  if (c.configures) return "Configured";
-  if (c.resets) return "Reset";
+export function recordAction(c: { edits: { operation: Operation }[]; undoOf?: string; configures?: boolean; resets?: boolean; rollbackOf?: string }): Action {
+  if (c.configures) return "Added";
+  if (c.resets || c.rollbackOf || c.undoOf) return "Updated";
   const a = [...new Set(c.edits.map(editAction))];
-  return a.length === 1 ? a[0] : "Multiple";
+  return a.length === 1 ? a[0] : "Updated";
 }
 /** One line's action: for a list, did things come off, go on, or both. */
 export function lineAction(l: ImpactLine): Action {
-  if (!IS_LIST[l.setting]) return "Changed";
-  if (l.before.includes(" · ")) return "Value changed";
+  if (!IS_LIST[l.setting]) return "Updated";
+  if (l.before.includes(" · ")) return "Updated";
   const off = l.beforeIds.some((id) => !l.afterIds.includes(id));
   const on = l.afterIds.some((id) => !l.beforeIds.includes(id));
-  return off && on ? "Replaced" : on ? "Added" : "Removed";
+  return off && on ? "Updated" : on ? "Added" : "Deleted";
 }
 
 /** One edit: what it does, to which rows. A submit carries one or more. */
@@ -341,6 +345,8 @@ export interface ChangeRecord {
   configures?: boolean;
   /** Put ShipTo rows back on their customer's pricing. */
   resets?: boolean;
+  /** Reverses this one change on a ship-to's or a customer's rows. */
+  rollbackOf?: string;
   /** A customer's own pricing, when no ship-to inherits it yet (no lines). */
   customerId?: string;
 }
@@ -519,11 +525,11 @@ export function editTitle(e: Edit, ents: EntityMap): string {
     case "add":
       return e.setting === "adder" ? `Adjustment ${names} added` : `${names} added`;
     case "replace":
-      return `${s} replaced with ${names}`;
+      return `${s} updated: ${names}`;
     case "set":
       return `${s} set to ${names}`;
     case "remove":
-      return `${names} removed`;
+      return `${names} deleted`;
     case "edit":
       return `${names} changed to ${money(e.amount ?? 0)}`;
     case "create":
@@ -574,7 +580,7 @@ function backgroundPlans(): Plan[] {
       const cust = pick(CUSTOMERS, `c${seed}`).id;
       if (h < 0.42) {
         // Inline: one row, one setting.
-        const kind = pick(["fee", "rateType", "margin"] as const, `k${seed}`);
+        const kind = pick(["fee", "fee", "rateType", "margin"] as const, `k${seed}`);
         out.push({
           at: time,
           by,
@@ -612,7 +618,8 @@ function backgroundPlans(): Plan[] {
             ? uniq([cust, ...Array.from({ length: many * 2 }, (_, k) => pick(CUSTOMERS, `c${k}${seed}`).id)]).slice(0, many)
             : [cust];
         const cat = hash(`cat${seed}`) > 0.4 ? pick(["diesel", "gasoline", "def", "bio"], `cc${seed}`) : null;
-        const kind = pick(["margin", "margin", "fee", "market", "rateType", "tax", "pair"] as const, `bk${seed}`);
+        /* FEES, TAXES AND ADDERS LEAD (Yash, 2026-11-17) — margin is the small one. */
+        const kind = pick(["fee", "fee", "tax", "tax", "adder", "adder", "feeTax", "feeAdder", "margin", "pair"] as const, `bk${seed}`);
         out.push({
           at: time,
           by,
@@ -625,7 +632,13 @@ function backgroundPlans(): Plan[] {
             if (kind === "pair") return [{ setting: "rateType", operation: "set", entityIds: [pick(["r-contract-rack", "r-opis-rack-low"], `pr${seed}`)], rowIds: ids }, market];
             if (kind === "fee")
               return [{ setting: "fee", operation: "add", entityIds: [pick(["f-small-drop-fee", "f-inspection-fee", "f-fuel-surcharge", "f-delivery-fee"], `bf${seed}`)], rowIds: ids }];
-            if (kind === "tax") return [{ setting: "tax", operation: "add", entityIds: ["t-lust-fee"], rowIds: ids }];
+            const tax: Edit = { setting: "tax", operation: hash(`to${seed}`) > 0.7 ? "remove" : "add", entityIds: [pick(["t-lust-fee", "t-la-parish-sales-tax"], `bt${seed}`)], rowIds: ids };
+            const fee: Edit = { setting: "fee", operation: hash(`fo${seed}`) > 0.7 ? "remove" : "add", entityIds: [pick(["f-small-drop-fee", "f-inspection-fee", "f-fuel-surcharge", "f-weekend-delivery-fee"], `bf2${seed}`)], rowIds: ids };
+            const adder: Edit = { setting: "adder", operation: hash(`ao${seed}`) > 0.75 ? "remove" : "add", entityIds: [pick(["a-hurricane-season-surcharge", "a-winter-blend-adder", "a-river-access-adder"], `ba${seed}`)], rowIds: ids };
+            if (kind === "tax") return [tax];
+            if (kind === "adder") return [adder];
+            if (kind === "feeTax") return [fee, tax];
+            if (kind === "feeAdder") return [fee, adder];
             if (kind === "market") return [market];
             return [{ setting: "rateType", operation: "set", entityIds: [pick(["r-contract-rack", "r-opis-rack-low", "r-opis-rack-avg"], `rr${seed}`)], rowIds: ids }];
           },
@@ -633,9 +646,9 @@ function backgroundPlans(): Plan[] {
       } else {
         // Pricing Setup: an entity's own value.
         // Routine value edits stay off the entities every demo row carries.
-        const id = hash(`sk${seed}`) > 0.3
+        const id = hash(`sk${seed}`) > 0.75
           ? pick(["m-municipal-bid-margin", "m-marine-bunker-margin", "m-oilfield-account-margin", "m-ag-co-op-margin"], `se${seed}`)
-          : pick(["f-small-drop-fee", "f-inspection-fee"], `sf${seed}`);
+          : pick(["f-small-drop-fee", "f-inspection-fee", "f-fuel-surcharge", "t-la-parish-sales-tax", "t-lust-fee", "a-river-access-adder", "a-winter-blend-adder"], `sf${seed}`);
         out.push({
           at: time,
           by,
@@ -738,24 +751,48 @@ function storyPlans(): Plan[] {
       fail: 0.06,
     },
     // Today, before 10:40.
-    { at: at(0, 7, 12), by: "Yash J", source: "setup", edits: () => [{ setting: "margin", operation: "edit", entityIds: ["m-ag-co-op-margin"], amount: 0.135, rowIds: [] }] },
+    { at: at(0, 7, 12), by: "Yash J", source: "setup", edits: () => [{ setting: "tax", operation: "edit", entityIds: ["t-la-parish-sales-tax"], amount: 0.035, rowIds: [] }] },
     { at: at(0, 8, 3), by: "Cody McLelland", source: "shiptoBulk", edits: one("fee", "add", ["f-small-drop-fee"], cust(["lonestar", "gulf", "coastal", "mustang"], "gasoline")) },
     { at: at(0, 8, 40), by: "Valarie Rogers", source: "shiptoInline", edits: one("rateType", "set", ["r-opis-rack-low"], (r) => cust("redriver")(r).slice(1, 2)) },
-    { at: at(0, 9, 15), by: "Priya Nair", source: "shiptoBulk", edits: one("margin", "replace", ["m-marine-bunker-margin"], cust(["gulf", "coastal", "pelican", "bayou"])) },
+    {
+      at: at(0, 9, 15),
+      by: "Priya Nair",
+      source: "shiptoBulk",
+      /* A BULK CHANGE CARRIES SEVERAL EDITS (Yash, 2026-11-17: "fees, adders and bulk are the complex ones"). */
+      /* A BULK CHANGE READS LIKE A REAL ONE (Yash, 2026-11-17) — each edit
+         on its own accounts, so the prices inside differ row to row:
+         an adder added, a fee added, a tax deleted, a margin updated. */
+      edits: (r) => [
+        { setting: "adder", operation: "add", entityIds: ["a-hurricane-season-surcharge"], rowIds: cust("coastal")(r) },
+        { setting: "fee", operation: "add", entityIds: ["f-weekend-delivery-fee"], rowIds: cust("bayou")(r) },
+        { setting: "tax", operation: "remove", entityIds: ["t-lust-fee"], rowIds: cust("onsite")(r) },
+        { setting: "margin", operation: "replace", entityIds: ["m-contractor-margin"], rowIds: cust("bayou", "gasoline")(r) },
+      ],
+    },
     { at: at(0, 9, 52), by: "Marcus Hale", source: "import", edits: one("market", "set", ["k-austin"], cust(["lonestar", "adamas", "mustang"])) },
     {
       at: at(0, 10, 18),
       by: "Yash J",
       source: "shiptoBulk",
-      edits: (r, ents) => [{ setting: "margin", operation: "add", entityIds: [dynamicMargin(0.015, ents).id], rowIds: cust(["onsite", "bayou", "pelican", "delta-ag", "natchez"], "diesel")(r) }],
+      edits: (r) => [
+        { setting: "tax", operation: "add", entityIds: ["t-lust-fee"], rowIds: cust(["natchez", "delta-ag"], "gasoline")(r) },
+        { setting: "fee", operation: "remove", entityIds: ["f-delivery-fee"], rowIds: cust("onsite", "diesel")(r) },
+        { setting: "margin", operation: "replace", entityIds: ["m-fleet-contract-margin"], rowIds: cust("natchez")(r) },
+        { setting: "adder", operation: "add", entityIds: ["a-winter-blend-adder"], rowIds: cust("delta-ag")(r) },
+      ],
     },
     // Two schedules on the same Gulf Coast rows: the one that runs later wins.
-    { at: at(0, 9, 30), by: "Yash J", source: "shiptoBulk", edits: one("margin", "add", ["m-freight-recovery-margin"], cust(["gulf", "coastal", "pelican", "bayou"], "diesel")), status: "scheduled", effectiveAt: at(0, 14, 0) },
+    { at: at(0, 9, 30), by: "Yash J", source: "shiptoBulk", edits: one("adder", "add", ["a-winter-blend-adder"], cust(["gulf", "coastal", "pelican", "bayou"], "diesel")), status: "scheduled", effectiveAt: at(0, 14, 0) },
     {
       at: at(0, 10, 5),
       by: "Priya Nair",
       source: "shiptoBulk",
-      edits: (r, ents) => [{ setting: "margin", operation: "replace", entityIds: [dynamicMargin(0.21, ents).id], rowIds: cust(["gulf", "coastal", "pelican", "bayou"])(r) }],
+      edits: (r) => [
+        { setting: "fee", operation: "add", entityIds: ["f-weekend-delivery-fee"], rowIds: cust("gulf", "gasoline")(r) },
+        { setting: "adder", operation: "add", entityIds: ["a-river-access-adder"], rowIds: cust("coastal")(r) },
+        { setting: "tax", operation: "add", entityIds: ["t-lust-fee"], rowIds: cust("lonestar", "gasoline")(r) },
+        { setting: "margin", operation: "replace", entityIds: ["m-winter-fleet-margin"], rowIds: cust("mustang")(r) },
+      ],
       status: "scheduled",
       effectiveAt: at(-1, 6, 0),
     },
@@ -774,7 +811,13 @@ export function buildSeed(): Seed {
     r.configured ? r : { ...r, rateType: "", market: "", margins: [], fees: [], taxes: [], adders: [], discount: 0, applied: "shipto" as const },
   );
   const ents: EntityMap = new Map(ENTITIES.map((e) => [e.id, { ...e }]));
-  const plans = [...backgroundPlans(), ...storyPlans()].sort((a, b) => a.at - b.at);
+  /* EVERY CHANGE APPLIES ON THE SPOT AND SUCCEEDS (Yash, 2026-11-17) — no
+     schedules, cancellations or failed runs for now: a scheduled plan applies
+     when it was made, a canceled one never happened, failures are dropped. */
+  const plans = [...backgroundPlans(), ...storyPlans()]
+    .filter((p) => p.status !== "canceled")
+    .map((p) => ({ ...p, status: undefined, effectiveAt: undefined, fail: undefined }))
+    .sort((a, b) => a.at - b.at);
   const changes: ChangeRecord[] = [];
   let n = 1000;
   const pending: Plan[] = [];
@@ -819,7 +862,13 @@ export function buildSeed(): Seed {
       pending.push(p);
       continue;
     }
-    const edits = p.edits(rows, ents).filter((e) => e.operation === "edit" || e.rowIds.length);
+    let edits = p.edits(rows, ents).filter((e) => e.operation === "edit" || e.rowIds.length);
+    /* A SAMPLE EDIT THAT MOVES NOTHING IS LEFT OUT (Yash, 2026-11-17) — no
+       "0 product prices" line in a bulk change. */
+    if (edits.length > 1) {
+      const moved = new Set(project(rows, edits, ents).lines.map((l) => l.setting));
+      edits = edits.filter((e) => e.operation === "edit" || e.operation === "create" || moved.has(e.setting));
+    }
     if (!edits.length) continue;
     const rec = commit(p, edits);
     if (rec && p.undoAfter) {
@@ -874,6 +923,71 @@ export function undoProjection(rows: ConfigRow[], rec: ChangeRecord, ents: Entit
     next.set(row.id, back);
   }
   return { lines: lines.reverse(), noChange: 0, next };
+}
+
+/** Rows put to the given states: a line for every setting that moves. */
+export function stateProjection(rows: ConfigRow[], targets: Map<string, ConfigRow>, ents: EntityMap): Projection {
+  const next = new Map<string, ConfigRow>();
+  const lines: ImpactLine[] = [];
+  for (const row of rows) {
+    const t = targets.get(row.id);
+    if (!t) continue;
+    let moved = t.applied !== row.applied;
+    for (const st of SETTINGS) {
+      const was = readSetting(row, st, ents);
+      const now = readSetting(t, st, ents);
+      if (was.text === now.text) continue;
+      lines.push({ ...lineBase(row, st), before: was.text, after: now.text, beforeIds: was.ids, afterIds: now.ids, delta: Math.round((now.value - was.value) * 10000) / 10000 });
+      moved = true;
+    }
+    if (moved) next.set(row.id, t);
+  }
+  return { lines, noChange: 0, next };
+}
+
+/* ROLL BACK ONE CHANGE (Yash, 2026-11-17) — on one ship-to's or customer's
+   rows only, and only while nothing later has touched what it moved. */
+
+const DONE: ChangeStatus[] = ["applied", "partlyFailed", "undone"];
+/** The rows of `rowIds` this change reached — its lines, or a reset's rows. */
+const reachOf = (c: ChangeRecord, ids: Set<string>) => ({
+  lines: c.lines.filter((l) => l.outcome === "changed" && ids.has(l.rowId)),
+  resetRows: c.resets ? c.edits.flatMap((e) => e.rowIds).filter((id) => ids.has(id)) : [],
+});
+
+/** Can this change be rolled back on these rows? */
+export function rollbackEligible(changes: ChangeRecord[], rec: ChangeRecord, rowIds: string[]): boolean {
+  if (rec.undoOf || rec.rollbackOf || rec.configures || (rec.status !== "applied" && rec.status !== "partlyFailed")) return false;
+  const ids = new Set(rowIds);
+  const mine = reachOf(rec, ids);
+  if (!mine.lines.length && !mine.resetRows.length) return false;
+  const keys = new Set([...mine.lines.map((l) => `${l.rowId}|${l.setting}`)]);
+  const rows = new Set([...mine.lines.map((l) => l.rowId), ...mine.resetRows]);
+  return !changes.some(
+    (c) =>
+      c.id !== rec.id &&
+      DONE.includes(c.status) &&
+      c.effectiveAt > rec.effectiveAt &&
+      (c.lines.some((l) => l.outcome === "changed" && (keys.has(`${l.rowId}|${l.setting}`) || (mine.resetRows.length > 0 && rows.has(l.rowId)))) ||
+        (c.resets && c.edits.some((e) => e.rowIds.some((id) => rows.has(id)))))
+  );
+}
+
+/** The rows of `rowIds` with this change taken back. */
+export function revertRows(rows: ConfigRow[], rec: ChangeRecord, rowIds: string[]): Map<string, ConfigRow> {
+  const ids = new Set(rowIds);
+  const work = new Map(rows.filter((r) => ids.has(r.id)).map((r) => [r.id, r]));
+  const mine = reachOf(rec, ids);
+  for (const id of mine.resetRows) {
+    const row = work.get(id);
+    if (row) work.set(id, { ...row, applied: "shipto" });
+  }
+  for (const l of [...mine.lines].reverse()) {
+    const row = work.get(l.rowId);
+    if (!row) continue;
+    work.set(row.id, IS_LIST[l.setting] ? { ...row, [ROW_KEY[l.setting as keyof typeof ROW_KEY]]: l.beforeIds } : { ...row, [l.setting]: l.beforeIds[0] });
+  }
+  return work;
 }
 
 // ------------------------------------------------------------- formatting --
@@ -940,7 +1054,11 @@ export function editParts(e: Edit, lines: ImpactLine[], ents: EntityMap): Summar
   }
   const mine = lines.filter((l) => l.setting === e.setting);
   const off = uniq(mine.flatMap((l) => l.beforeIds.filter((id) => !l.afterIds.includes(id))));
-  return off.length ? [list(off), " → ", list(e.entityIds)] : [list(e.entityIds)];
+  /* A LIST SWAP SAYS WHAT CAME OFF AND WHAT WENT ON — not "A → B, C, D",
+     which read as one tax turned into three. A single value (rate type,
+     market) still reads old → new. */
+  if (!off.length) return [list(e.entityIds)];
+  return IS_LIST[e.setting] ? ["Deleted ", list(off), " · Added ", list(e.entityIds)] : [list(off), " → ", list(e.entityIds)];
 }
 
 export const editSummary = (e: Edit, lines: ImpactLine[], ents: EntityMap) => partsText(editParts(e, lines, ents));
@@ -948,9 +1066,12 @@ export const editSummary = (e: Edit, lines: ImpactLine[], ents: EntityMap) => pa
 export function changeParts(c: ChangeRecord, ents: EntityMap): SummaryPart[] {
   if (c.undoOf) return [`Undo of ${c.undoOf}`];
   if (c.resets) return ["Reset to customer pricing"];
+  if (c.rollbackOf) return [`Rollback of ${c.rollbackOf}`];
   return c.edits.flatMap((e, i) => [
     ...(i > 0 ? [" · "] : []),
-    ...(c.edits.length > 1 ? [`${SETTING_LABEL[e.setting]}: `] : []),
+    /* SEVERAL EDITS SAY EACH ONE'S VERB (Yash, 2026-11-17): "Tax added:
+       LUST Fee · Fees deleted: Delivery Fee". */
+    ...(c.edits.length > 1 ? [`${SETTING_LABEL[e.setting]} ${editAction(e).toLowerCase()}: `] : []),
     ...editParts(e, c.lines, ents),
   ]);
 }

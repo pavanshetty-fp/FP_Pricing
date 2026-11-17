@@ -1,12 +1,28 @@
 import * as React from "react";
+import { toast } from "sonner";
+import { RotateCcw } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Pill } from "@/components/ui/pill";
+import { BreakdownPopover } from "../BreakdownCard";
+import { ShiptoCount } from "./customerShiptoParts";
 import { TERM_ICONS } from "@/components/ui/term-icons";
 import type { GroupDim } from "@/components/tables-layout";
 import { TwoLineCell, type ListColumn } from "../ListTable";
-import { customerOf, effectivePrice, fmtWhen, plural, productOf, readSetting, shiptoOf, uniq, type ConfigRow } from "./changeLog";
-import { useChangeLog } from "./changeLogStore";
+import { customerOf, effectivePrice, fmtWhen, plural, productOf, readSetting, shiptoOf, uniq, type ConfigRow, type Setting } from "./changeLog";
+import { customerRecordFor, resetToCustomer, useChangeLog } from "./changeLogStore";
 import { ConfigList } from "./ConfigList";
-import { PricingHistorySheet, PricingSheet } from "./PricingSheet";
+import { PricingSheet } from "./PricingSheet";
+import { openFeedFor, takeReopen } from "./pricingNav";
 import {
   APPLIED_LABEL,
   UNCONFIGURED,
@@ -28,24 +44,24 @@ import {
   opens its pricing sheet (bulk and inline edits come later).
 */
 
-/** The sheets a configuration page opens: the pricing, or its history. */
+/** The trail a record's View all leaves for the Activity feed. */
+const feedFor = (t: PricingTarget) => {
+  if (t.kind === "row") {
+    const name = shiptoOf(t.shiptoId).name;
+    openFeedFor({ from: "pricing-config-shipto", fromLabel: "Ship-to", record: t, recordLabel: name, facet: `shipto:${name}` });
+  } else {
+    const name = customerOf(t.customerId).name;
+    openFeedFor({ from: "pricing-config-customer", fromLabel: "Customer", record: t, recordLabel: name, facet: `customer:${name}` });
+  }
+};
+
+/** The pricing sheet a configuration page opens. Its history is the Activity
+ *  feed, filtered to it (Yash, 2026-11-17); coming back by the path opens
+ *  the sheet again. */
 function useSheets() {
-  const [pricing, setPricing] = React.useState<PricingTarget | null>(null);
-  const [history, setHistory] = React.useState<PricingTarget | null>(null);
-  const sheets = (
-    <>
-      <PricingSheet
-        target={pricing}
-        onClose={() => setPricing(null)}
-        onHistory={(t) => {
-          setPricing(null);
-          setHistory(t);
-        }}
-      />
-      <PricingHistorySheet target={history} onClose={() => setHistory(null)} />
-    </>
-  );
-  return { setPricing, setHistory, sheets };
+  const [pricing, setPricing] = React.useState<PricingTarget | null>(takeReopen);
+  const sheets = <PricingSheet target={pricing} onClose={() => setPricing(null)} onHistory={feedFor} />;
+  return { setPricing, setHistory: feedFor, sheets };
 }
 
 // ------------------------------------------------------------------ ship-to --
@@ -75,7 +91,6 @@ const SHIPTO_COLUMNS: ListColumn<SKey>[] = [
   { key: "customer", label: "Customer", width: 200, sortable: true },
   { key: "fee", label: "Fee", width: 180, sortable: true },
   { key: "product", label: "Product", width: 200, sortable: true },
-  { key: "category", label: "Category", width: 140, sortable: true },
   { key: "market", label: "Market", width: 140, sortable: true },
   { key: "rateType", label: "Rate type", width: 150, sortable: true },
   { key: "base", label: "Base price ($/gal)", width: 150, sortable: true },
@@ -84,19 +99,52 @@ const SHIPTO_COLUMNS: ListColumn<SKey>[] = [
   { key: "adders", label: "Adders", width: 140, sortable: true },
   { key: "effective", label: "Effective price ($/gal)", width: 170, sortable: true },
   { key: "lastDelivery", label: "Last delivery", width: 170, sortable: true },
-  { key: "hub", label: "Hub", width: 160, sortable: true },
-  { key: "state", label: "State", width: 90, sortable: true },
-  { key: "county", label: "County", width: 180, sortable: true },
   { key: "applied", label: "Applied pricing", width: 150, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 
 const appliedOf = (r: ConfigRow) => (r.configured ? APPLIED_LABEL[r.applied] : UNCONFIGURED);
 
+const LIST_SETTING: Record<string, Setting | undefined> = { fee: "fee", margin: "margin", tax: "tax", adders: "adder" };
+
+/** A fee, margin, tax or adder cell: the amounts, then the count — press the
+ *  count for which ones apply (the shared breakdown card; ON CLICK, Pavan
+ *  2026-10-14 — one way everywhere). */
+function ListValueCell({ row, setting, title, count }: { row: ConfigRow; setting: Setting; title: string; count: string }) {
+  const { entityMap } = useChangeLog();
+  const ids = readSetting(row, setting, entityMap).ids;
+  return (
+    <div className="flex min-w-0 flex-col">
+      <span className="truncate text-sm text-foreground tabular-nums">{title}</span>
+      {ids.length ? (
+        <span onClick={(e) => e.stopPropagation()} className="w-fit">
+          <BreakdownPopover
+            label={`Show the ${count}`}
+            className="rounded-sm"
+            card={{
+              title: count,
+              rows: ids.map((id) => ({ label: entityMap.get(id)?.name ?? id, value: perGal(entityMap.get(id)?.value ?? 0) })),
+              total: ids.length > 1 ? { label: "Total ($/gal)", value: perGal(ids.reduce((t, id) => t + (entityMap.get(id)?.value ?? 0), 0)) } : undefined,
+            }}
+            trigger={<span className="text-xs text-muted-foreground underline decoration-dotted underline-offset-2">{count}</span>}
+          />
+        </span>
+      ) : (
+        <span className="text-xs text-muted-foreground">{count}</span>
+      )}
+    </div>
+  );
+}
+
+const possessive = (n: string) => (n.endsWith("s") ? `${n}'` : `${n}'s`);
+
 export function ShiptoPricingScreen() {
   const log = useChangeLog();
   const ents = log.entityMap;
   const { setPricing, setHistory, sheets } = useSheets();
+  /* RESET TO CUSTOMER PRICING (Yash, 2026-11-17) — a ship-to priced on its
+     own goes back to its customer's pricing. Asks first; logged as a change. */
+  const [resetting, setResetting] = React.useState<ConfigRow | null>(null);
   const facts = React.useMemo(() => new Map(log.rows.map((r) => [r.id, factsOf(r, ents)])), [log.rows, ents]);
 
   const lines = React.useCallback(
@@ -110,7 +158,8 @@ export function ShiptoPricingScreen() {
         case "customer":
           return [customerOf(r.customerId).name];
         case "product":
-          return [productOf(r.productId).name];
+          /* CATEGORY UNDER THE PRODUCT (2026-11-17) — one column, not two. */
+          return [productOf(r.productId).name, f.category];
         case "category":
           return [f.category];
         case "state":
@@ -118,7 +167,8 @@ export function ShiptoPricingScreen() {
         case "county":
           return [f.county];
         case "applied":
-          return [appliedOf(r)];
+          /* THE HUB UNDER "Hub" — the Hub column folded in (2026-11-17). */
+          return f.hub ? [appliedOf(r), f.hub] : [appliedOf(r)];
         case "base":
           return [perGal(r.base)];
         case "market":
@@ -127,17 +177,17 @@ export function ShiptoPricingScreen() {
         case "fee": {
           if (dash) return ["—"];
           const c = listCell(r, "fee", ents, "fee", "fees");
-          return [c.names, c.count];
+          return [c.values, c.count];
         }
         case "margin": {
           if (dash) return ["—"];
           const c = listCell(r, "margin", ents, "margin", "margins");
-          return [c.names, c.count];
+          return [c.values, c.count];
         }
         case "tax": {
           if (dash) return ["—"];
           const c = listCell(r, "tax", ents, "tax", "taxes");
-          return [c.names, c.count];
+          return [c.values, c.count];
         }
         case "adders": {
           if (dash) return ["—"];
@@ -187,6 +237,8 @@ export function ShiptoPricingScreen() {
 
   const renderCell = (r: ConfigRow, key: SKey) => {
     const l = lines(r, key);
+    const set = LIST_SETTING[key];
+    if (set && r.configured) return <ListValueCell row={r} setting={set} title={l[0]} count={l[1]} />;
     switch (key) {
       case "shipto":
       case "fee":
@@ -194,8 +246,15 @@ export function ShiptoPricingScreen() {
       case "tax":
       case "adders":
         return l.length > 1 ? <TwoLineCell title={l[0]} description={l[1]} /> : <span className="text-muted-foreground">—</span>;
+      case "product":
+        return <TwoLineCell title={l[0]} description={l[1]} />;
       case "applied":
-        return r.configured ? <Pill>{l[0]}</Pill> : <Pill kind="caution">{l[0]}</Pill>;
+        return (
+          <span className="flex min-w-0 flex-col items-start gap-0.5">
+            {r.configured ? <Pill>{l[0]}</Pill> : <Pill kind="caution">{l[0]}</Pill>}
+            {l[1] && <span className="truncate text-xs text-muted-foreground">{l[1]}</span>}
+          </span>
+        );
       default:
         return l[0] === "—" ? <span className="text-muted-foreground">—</span> : l[0];
     }
@@ -240,6 +299,14 @@ export function ShiptoPricingScreen() {
         nameOf={(r) => `${productOf(r.productId).name} at ${shiptoOf(r.shiptoId).name}`}
         onOpen={open}
         onHistory={(r) => setHistory({ kind: "row", rowId: r.id, shiptoId: r.shiptoId })}
+        menuExtra={(r) =>
+          r.applied === "shipto" && customerRecordFor(log.rows, log.customerOwn, r) ? (
+            <DropdownMenuItem onSelect={() => setResetting(r)}>
+              <RotateCcw />
+              Reset to customer pricing
+            </DropdownMenuItem>
+          ) : null
+        }
         exportSummary={(rows) => ({
           tilesTitle: "Overview",
           tiles: [
@@ -249,6 +316,30 @@ export function ShiptoPricingScreen() {
         })}
       />
       {sheets}
+      <AlertDialog open={!!resetting} onOpenChange={(o) => !o && setResetting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset to customer pricing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {resetting &&
+                `${productOf(resetting.productId).name} at ${shiptoOf(resetting.shiptoId).name} takes ${possessive(customerOf(resetting.customerId).name)} pricing again. Its own pricing is replaced. The reset is logged as a new change.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep ship-to pricing</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!resetting) return;
+                const id = resetToCustomer(resetting.id);
+                toast.success(`Reset to customer pricing${id ? ` · ${id}` : ""}`);
+                setResetting(null);
+              }}
+            >
+              Reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -260,14 +351,12 @@ type CKey = "customer" | "shiptos" | "rateType" | "market" | "margin" | "tax" | 
 const CUSTOMER_COLUMNS: ListColumn<CKey>[] = [
   { key: "customer", label: "Customer", width: 220, sortable: true },
   { key: "shiptos", label: "Ship-tos", width: 120, sortable: true },
+  { key: "fee", label: "Fee", width: 180, sortable: true },
   { key: "rateType", label: "Rate type", width: 150, sortable: true },
   { key: "market", label: "Market", width: 140, sortable: true },
   { key: "margin", label: "Margin", width: 200, sortable: true },
   { key: "tax", label: "Tax", width: 200, sortable: true },
-  { key: "fee", label: "Fee", width: 180, sortable: true },
-  { key: "discount", label: "Discount ($/gal)", width: 140, sortable: true },
   { key: "adders", label: "Adders", width: 140, sortable: true },
-  { key: "status", label: "Pricing status", width: 140, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
 const CONFIGURED = "Configured";
@@ -277,6 +366,7 @@ export function CustomerPricingScreen() {
   const ents = log.entityMap;
   const { setPricing, setHistory, sheets } = useSheets();
   const rows = React.useMemo(() => customerPricing(log.rows, log.customerOwn), [log.rows, log.customerOwn]);
+  const rowById = React.useMemo(() => new Map(log.rows.map((r) => [r.id, r])), [log.rows]);
   const statusOf = (c: CustomerPricing) => (c.record ? CONFIGURED : UNCONFIGURED);
 
   const lines = React.useCallback(
@@ -284,7 +374,7 @@ export function CustomerPricingScreen() {
       const r = c.record;
       switch (key) {
         case "customer":
-          return [customerOf(c.customerId).name, customerOf(c.customerId).account];
+          return [customerOf(c.customerId).name, `ID: ${customerOf(c.customerId).account}`];
         case "shiptos":
           return [c.shiptos ? plural(c.shiptos, "ship-to") : "None inherit"];
         case "status":
@@ -297,17 +387,17 @@ export function CustomerPricingScreen() {
         case "fee": {
           if (!r) return ["—"];
           const x = listCell(r, "fee", ents, "fee", "fees");
-          return [x.names, x.count];
+          return [x.values, x.count];
         }
         case "margin": {
           if (!r) return ["—"];
           const x = listCell(r, "margin", ents, "margin", "margins");
-          return [x.names, x.count];
+          return [x.values, x.count];
         }
         case "tax": {
           if (!r) return ["—"];
           const x = listCell(r, "tax", ents, "tax", "taxes");
-          return [x.names, x.count];
+          return [x.values, x.count];
         }
         case "adders": {
           if (!r) return ["—"];
@@ -329,6 +419,8 @@ export function CustomerPricingScreen() {
   };
   const renderCell = (c: CustomerPricing, key: CKey) => {
     const l = lines(c, key);
+    const set = LIST_SETTING[key];
+    if (set && c.record) return <ListValueCell row={c.record} setting={set} title={l[0]} count={l[1]} />;
     switch (key) {
       case "customer":
       case "fee":
@@ -339,7 +431,17 @@ export function CustomerPricingScreen() {
       case "status":
         return c.record ? <Pill>{l[0]}</Pill> : <Pill kind="caution">{l[0]}</Pill>;
       case "shiptos":
-        return c.shiptos ? l[0] : <span className="text-muted-foreground">{l[0]}</span>;
+        return c.shiptos ? (
+          <ShiptoCount
+            inCell
+            shiptoIds={uniq(c.rowIds.map((id) => rowById.get(id)!.shiptoId))}
+            rowIds={c.rowIds}
+            title={`${customerOf(c.customerId).name} ship-tos`}
+            subtitle="Ship-tos that inherit this customer's pricing"
+          />
+        ) : (
+          <span className="text-muted-foreground">{l[0]}</span>
+        );
       default:
         return l[0] === "—" ? <span className="text-muted-foreground">—</span> : l[0];
     }

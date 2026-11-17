@@ -5,18 +5,17 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { StatusChip } from "@/components/ui/status-chip";
-import { AlertBanner, type BannerAlert } from "@/components/ui/alert-banner";
 import { dateWindowOf } from "@/components/ui/date-picker";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { TablePagination } from "@/components/tables-layout/TablePagination";
 import { GroupedListFooter, useGrouping } from "@/components/tables-layout";
 import { FuelOrdersViewBar } from "../FuelOrdersViewBar";
-import { HeadFold, displayViewsFor, topBannerClass, useHeadFold, useTopBanner } from "../HeadFold";
+import { HeadFold, displayViewsFor, useHeadFold } from "../HeadFold";
 import { ListToolbar, ColumnSearchChip, FilterChips, type ListView, useViewBar, ViewStatement } from "../ListToolbar";
 import { ListFilters, type ListFacet } from "../ListFilters";
 import { ExportSheet, type ExportFilterRow, type ExportSummary } from "../ExportSheet";
 import { TERM_ICONS } from "@/components/ui/term-icons";
-import { ListTable, TwoLineCell, type ListSort } from "../ListTable";
+import { ListTable, type ListSort } from "../ListTable";
 import { useSavedViews } from "../useSavedViews";
 import { KIND_TONE, kindTone } from "../statusKind";
 import { DateRangeFilter, type DateRange } from "../threepl/DateRangeFilter";
@@ -27,19 +26,20 @@ import {
   NOW,
   SETTINGS,
   SETTING_LABEL,
+  editAction,
+  editSummary,
   SOURCE_LABEL,
   STATUS_LABEL,
   changeSummary,
   fmtWhen,
-  isSameDay,
   plural,
-  scopeOf,
-  settingsOf,
   uniq,
   type ChangeRecord,
   type ChangeStatus,
 } from "./changeLog";
-import { retryChange, useChangeLog } from "./changeLogStore";
+import { useChangeLog } from "./changeLogStore";
+import { ShiptoCount } from "./customerShiptoParts";
+import { peekTrail } from "./pricingNav";
 import {
   FEED_COLUMNS,
   FEED_GROUP_DIMS,
@@ -48,11 +48,10 @@ import {
   customersOf,
   entitiesOf,
   productsOf,
-  repricedOf,
   shiptosOf,
   type FeedColumnKey,
 } from "./activityFeed";
-import { ChangeDialogs, ChangeRowMenu, ChangeSheet, type ChangeAsk } from "./ChangeSheet";
+import { ChangeDialogs, ChangeSheet, type ChangeAsk } from "./ChangeSheet";
 import { fitColumns } from "./fitColumns";
 import { ChangeText } from "./ChangeText";
 
@@ -121,7 +120,13 @@ export function ActivityFeedScreen() {
   const [openId, setOpenId] = React.useState<string | null>(null);
   /* An act asked for from a row's ⋯ — the same dialogs the sheet uses. */
   const [rowAsk, setRowAsk] = React.useState<{ id: string; ask: ChangeAsk } | null>(null);
-  const [range, setRange] = React.useState<DateRange>(lastWeek);
+  /* OPENED FROM A RECORD'S VIEW ALL — filtered to it (pricingNav.ts; Yash,
+     2026-11-17). */
+  const trail = React.useRef(peekTrail()).current;
+  /* ALL DATES BY DEFAULT (Yash, 2026-11-17) — a logbook opens on everything;
+     a range or a single day is picked from the date control. */
+  const allDates = (): DateRange => dateWindowOf(log.changes.map((c) => dateKeyOf(new Date(c.effectiveAt)))).all ?? lastWeek();
+  const [range, setRange] = React.useState<DateRange>(allDates);
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<ListSort<FeedColumnKey> | null>(null);
   const [page, setPage] = React.useState(1);
@@ -134,11 +139,8 @@ export function ActivityFeedScreen() {
   const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>({});
   const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
-  const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
+  const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(() => new Set(trail ? [trail.facet] : []));
   const [exporting, setExporting] = React.useState(false);
-  const [dismissed, setDismissed] = React.useState<string[]>([]);
-  const [snoozedUntil, setSnoozedUntil] = React.useState(0);
-  const [appliedAlert, setAppliedAlert] = React.useState<string | null>(null);
   const activeColFilters = React.useMemo(() => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""), [colFilters]);
 
   const current: ViewState = {
@@ -188,30 +190,34 @@ export function ActivityFeedScreen() {
     setFacetSel(new Set(s.facets ?? []));
     setPage(1);
   };
-  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState, storageKey: "pricing-activity-feed" });
+  const savedViews = useSavedViews({ current, defaultState, keyOf, apply: applyState, storageKey: "pricing-activity-feed", restore: !trail });
 
   /* WHAT EACH COLUMN PRINTS — search, the column boxes and the sort read it. */
   const columnText = React.useCallback(
     (c: ChangeRecord, key: FeedColumnKey): string => {
       switch (key) {
-        case "change":
-          return `${changeSummary(c, ents)} ${c.id}`;
-        case "action":
-          return actionOf(c);
+        case "when":
+          return fmtWhen(c.effectiveAt);
+        case "id":
+          return c.id;
         case "entity":
           return entitiesOf(c).join(", ");
-        case "source":
-          return SOURCE_LABEL[c.source];
-        case "scope": {
-          const cs = customersOf(c);
-          return `${plural(shiptosOf(c).length, "ship-to")} ${plural(c.lines.length, "price")} ${cs.length === 1 ? cs[0] : plural(cs.length, "customer")}`;
-        }
-        case "orders":
-          return repricedOf(c) ? repricedOf(c).toLocaleString() : "—";
+        case "action":
+          return actionOf(c);
         case "by":
           return c.by;
-        case "when":
-          return `${fmtWhen(c.effectiveAt)}${c.effectiveAt !== c.madeAt ? ` Made ${fmtWhen(c.madeAt)}` : ""}`;
+        case "source":
+          return SOURCE_LABEL[c.source];
+        case "customers": {
+          const cs = customersOf(c);
+          return cs.length === 1 ? cs[0] : cs.length ? plural(cs.length, "customer") : "—";
+        }
+        case "shiptos":
+          return shiptosOf(c).length ? shiptosOf(c).length.toLocaleString() : "—";
+        case "orders":
+          return c.orders.length ? c.orders.length.toLocaleString() : "—";
+        case "change":
+          return changeSummary(c, ents);
         case "status":
           return STATUS_LABEL[c.status];
         default:
@@ -222,8 +228,9 @@ export function ActivityFeedScreen() {
   );
   const sortValue = (c: ChangeRecord, key: FeedColumnKey): string | number => {
     if (key === "when") return c.effectiveAt;
-    if (key === "orders") return repricedOf(c);
-    if (key === "scope") return shiptosOf(c).length;
+    if (key === "id") return Number(c.id.replace(/\D/g, ""));
+    if (key === "orders") return c.orders.length;
+    if (key === "shiptos") return shiptosOf(c).length;
     return columnText(c, key).toLowerCase();
   };
 
@@ -235,7 +242,7 @@ export function ActivityFeedScreen() {
       { key: "customer", label: "Customer", options: opts("customer"), searchable: true },
       { key: "shipto", label: "Ship-to", options: opts("shipto"), searchable: true },
       { key: "product", label: "Product", options: opts("product"), searchable: true },
-      { key: "action", label: "Action", options: [...ACTIONS, "Undo"] },
+      { key: "action", label: "Action", options: ACTIONS.filter((a) => a !== "Deactivated") },
       { key: "entity", label: "Entity", options: SETTINGS.map((s) => SETTING_LABEL[s]) },
       { key: "source", label: "Made via", options: Object.values(SOURCE_LABEL) },
       { key: "status", label: "Status", options: Object.values(STATUS_LABEL) },
@@ -314,58 +321,45 @@ export function ActivityFeedScreen() {
       fitColumns(
         FEED_COLUMNS,
         log.changes,
-        (c, key) => {
-          const cs = customersOf(c);
-          switch (key) {
-            case "change":
-              return [changeSummary(c, ents), c.id];
-            case "scope":
-              return [plural(shiptosOf(c).length, "ship-to"), `${plural(c.lines.length, "price")} · ${cs.length === 1 ? cs[0] : plural(cs.length, "customer")}`];
-            case "when":
-              return [fmtWhen(c.effectiveAt), c.effectiveAt !== c.madeAt ? `Made ${fmtWhen(c.madeAt)}` : ""];
-            default:
-              return [columnText(c, key)];
-          }
-        },
+        (c, key) => [columnText(c, key)],
         ["action", "status"]
+      ).map((col) =>
+        /* THE CHANGE COLUMN STOPS AT 280 (Yash, 2026-11-17: "too much") — a
+           longer change cuts off with "…"; the full text is on hover and in
+           the opened change. */
+        col.key === "change" ? { ...col, width: Math.min(col.width ?? 280, 280) } : col
       ),
     [log.changes, ents, columnText, textSize]
   );
 
   const renderCell = (c: ChangeRecord, key: FeedColumnKey) => {
     switch (key) {
-      case "change":
-        /* THE NAMES, WITH "+N" ON HOVER (Yash, 2026-11-16). */
-        return (
-          <div className="flex min-w-0 flex-col">
-            <ChangeText c={c} ents={ents} className="flex min-w-0 items-center gap-1 text-sm text-foreground" />
-            <span className="truncate text-xs text-muted-foreground">{c.id}</span>
-          </div>
-        );
       case "action":
         return <Pill>{actionOf(c)}</Pill>;
-      case "entity":
-        return entitiesOf(c).join(", ");
-      case "source":
-        return SOURCE_LABEL[c.source];
-      case "scope": {
+      case "customers": {
         const cs = customersOf(c);
-        return (
-          <TwoLineCell
-            title={plural(shiptosOf(c).length, "ship-to")}
-            description={`${plural(c.lines.length, "price")} · ${cs.length === 1 ? cs[0] : plural(cs.length, "customer")}`}
-          />
-        );
+        if (cs.length !== 1 || !c.lines.length) return cs.length > 1 ? <AffectedCount c={c} kind="customers" label={plural(cs.length, "customer")} /> : <Clip text={columnText(c, key)} />;
+        return <Clip text={cs[0]} />;
       }
-      case "orders":
-        return repricedOf(c) ? repricedOf(c).toLocaleString() : "—";
-      case "by":
-        return c.by;
-      case "when":
-        return c.effectiveAt !== c.madeAt ? (
-          <TwoLineCell title={fmtWhen(c.effectiveAt)} description={`Made ${fmtWhen(c.madeAt)}`} />
-        ) : (
-          fmtWhen(c.effectiveAt)
+      case "shiptos":
+        return c.lines.length ? <AffectedCount c={c} kind="shiptos" label={shiptosOf(c).length.toLocaleString()} /> : "—";
+      case "change":
+        /* THE NAMES, WITH "+N" ON HOVER (Yash, 2026-11-16). */
+        /* SEVERAL EDITS GO TO A SECOND LINE (Yash, 2026-11-17) — two on the
+           first, the rest under them, each line cut off at the column. */
+        if (c.edits.length > 1 && !c.undoOf && !c.resets && !c.configures) {
+          const each = c.edits.map((e) => `${SETTING_LABEL[e.setting]} ${editAction(e).toLowerCase()}: ${editSummary(e, c.lines, ents)}`);
+          return (
+            <span className="flex min-w-0 flex-col text-sm text-foreground" title={columnText(c, key)}>
+              <span className="truncate">{each.slice(0, 2).join(" · ")}</span>
+              <span className="truncate">{each.slice(2).join(" · ")}</span>
+            </span>
+          );
+        }
+        return (
+          <span className="block min-w-0" title={columnText(c, key)}>
+            <ChangeText c={c} ents={ents} className="flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-sm text-foreground [&>span]:shrink-0 [&>span:last-child]:min-w-0 [&>span:last-child]:shrink [&>span:last-child]:truncate" />
+          </span>
         );
       case "status":
         return (
@@ -374,99 +368,13 @@ export function ActivityFeedScreen() {
           </StatusChip>
         );
       default:
-        return null;
+        return columnText(c, key);
     }
   };
 
-  /* WHAT NEEDS ATTENTION — the old page's strip, as the alert banner: failed
-     rows, scheduled changes that touch the same rows, and today's schedule.
-     Each title applies its filter; its items open the change. */
-  const alerts = React.useMemo<BannerAlert[]>(() => {
-    const failed = log.changes.filter((c) => c.status === "partlyFailed");
-    const scheduled = log.changes.filter((c) => c.status === "scheduled").sort((a, b) => a.effectiveAt - b.effectiveAt);
-    const overlaps: [ChangeRecord, ChangeRecord, number][] = [];
-    scheduled.forEach((a, i) =>
-      scheduled.slice(i + 1).forEach((b) => {
-        if (!settingsOf(a).some((s) => settingsOf(b).includes(s))) return;
-        const mine = new Set(scopeOf(a));
-        const shared = scopeOf(b).filter((id) => mine.has(id)).length;
-        if (shared) overlaps.push([a, b, shared]);
-      })
-    );
-    const today = scheduled.filter((c) => isSameDay(c.effectiveAt, NOW));
-    const apply = (alertId: string, status: string) => () => {
-      setFacetSel(new Set([`status:${status}`]));
-      setAppliedAlert(alertId);
-      setPage(1);
-    };
-    const view = (id: string) => (
-      <Button variant="outline" size="sm" onClick={() => setOpenId(id)}>
-        View
-      </Button>
-    );
-    const list: (BannerAlert | false)[] = [
-      failed.length > 0 && {
-        id: "failed",
-        status: "warning",
-        tag: "Needs action",
-        title: `${plural(
-          failed.reduce((n, c) => n + c.lines.filter((l) => l.outcome === "failed").length, 0),
-          "price"
-        )} failed to update`,
-        count: failed.length,
-        onApply: apply("failed", STATUS_LABEL.partlyFailed),
-        items: failed.map((c) => ({
-          id: c.id,
-          title: `${c.title} · ${c.id}`,
-          detail: `${c.lines.filter((l) => l.outcome === "failed").length} of ${c.lines.length} rows failed · ran ${fmtWhen(c.effectiveAt)}`,
-          onApply: () => setOpenId(c.id),
-          action: (
-            <span className="flex items-center gap-2">
-              {view(c.id)}
-              <Button variant="outline" size="sm" onClick={() => retryChange(c.id)}>
-                Retry failed prices
-              </Button>
-            </span>
-          ),
-        })),
-      },
-      overlaps.length > 0 && {
-        id: "overlap",
-        status: "caution",
-        tag: "Overlap",
-        title: `${plural(overlaps.length * 2, "scheduled change")} change the same rows`,
-        count: overlaps.length * 2,
-        onApply: apply("overlap", STATUS_LABEL.scheduled),
-        items: overlaps.flatMap(([a, b, shared]) =>
-          [a, b].map((c, i) => ({
-            id: `${c.id}-${i}`,
-            title: `${c.title} · ${c.id}`,
-            detail: `Runs ${fmtWhen(c.effectiveAt)} · ${shared} shared rows${i === 1 ? " · runs later, so it wins" : ""}`,
-            onApply: () => setOpenId(c.id),
-            action: view(c.id),
-          }))
-        ),
-      },
-      today.length > 0 && {
-        id: "today",
-        status: "info",
-        tag: "Upcoming",
-        title: `${plural(today.length, "scheduled change")} ${today.length === 1 ? "runs" : "run"} today`,
-        count: today.length,
-        onApply: apply("today", STATUS_LABEL.scheduled),
-        items: today.map((c) => ({
-          id: c.id,
-          title: `${c.title} · ${c.id}`,
-          detail: `Runs ${fmtWhen(c.effectiveAt)} · ${plural(c.lines.length, "price")}`,
-          onApply: () => setOpenId(c.id),
-          action: view(c.id),
-        })),
-      },
-    ];
-    return list.filter((a): a is BannerAlert => !!a && !dismissed.includes(a.id));
-  }, [log.changes, dismissed]);
-  const alertVisible = alerts.length > 0 && Date.now() >= snoozedUntil;
-  useTopBanner(alertVisible);
+  /* NO ATTENTION BANNER (Yash, 2026-11-17) — every change applies on the
+     spot and succeeds for now, so there is nothing scheduled or failed to
+     flag. */
 
   const dropFacets = (gone: string[]) => {
     const next = new Set(facetSel);
@@ -540,7 +448,6 @@ export function ActivityFeedScreen() {
       countFor={(sel) => narrowFacets(sel).length}
       onApply={(sel) => {
         setFacetSel(sel);
-        setAppliedAlert(null);
         setPage(1);
       }}
       fullWidth={fullWidth}
@@ -551,20 +458,6 @@ export function ActivityFeedScreen() {
   const fold = useHeadFold();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {alertVisible && (
-        <AlertBanner
-          className={topBannerClass(fold.collapsed)}
-          alerts={alerts}
-          appliedId={appliedAlert}
-          onClearApplied={() => {
-            setFacetSel(new Set());
-            setAppliedAlert(null);
-            setPage(1);
-          }}
-          onSnooze={(_id, ms) => setSnoozedUntil(Date.now() + ms)}
-          onDismiss={(id) => setDismissed((d) => [...d, id])}
-        />
-      )}
       <HeadFold collapsed={fold.collapsed}>
         <FuelOrdersViewBar
           {...savedViews}
@@ -630,7 +523,6 @@ export function ActivityFeedScreen() {
           selected={facetSel}
           onChange={(next) => {
             setFacetSel(next);
-            setAppliedAlert(null);
             setPage(1);
           }}
         >
@@ -689,7 +581,6 @@ export function ActivityFeedScreen() {
                       setColQuery("");
                       setColFilters({});
                       setFacetSel(new Set());
-                      setAppliedAlert(null);
                     } else if (dateWindow.all) setRange(dateWindow.all);
                     setPage(1);
                   }}
@@ -714,7 +605,6 @@ export function ActivityFeedScreen() {
               rowId={(c) => c.id}
               renderCell={renderCell}
               actionsKey="actions"
-              rowMenu={(c) => <ChangeRowMenu c={c} latest={log.latestId === c.id} onAsk={(ask) => setRowAsk({ id: c.id, ask })} />}
               columnOrder={columnOrder}
               onReorderColumns={setColumnOrder}
               columnWidths={columnWidths}
@@ -796,3 +686,26 @@ export function ActivityFeedScreen() {
   );
 }
 
+
+/** Fixed-width names cut off with "…" (UX-45). */
+function Clip({ text }: { text: string }) {
+  return (
+    <span className="block min-w-0 truncate" title={text}>
+      {text}
+    </span>
+  );
+}
+
+/** A count of who a change reached; it opens them on a side sheet. */
+function AffectedCount({ c, kind, label }: { c: ChangeRecord; kind: "customers" | "shiptos"; label: string }) {
+  return (
+    <ShiptoCount
+      inCell
+      kind={kind}
+      lines={c.lines}
+      label={label}
+      title={kind === "customers" ? "Customers affected" : "Ship-tos affected"}
+      subtitle={`${c.id} · ${c.title}`}
+    />
+  );
+}

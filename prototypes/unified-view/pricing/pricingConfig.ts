@@ -21,6 +21,13 @@ import { CUSTOMERS, categoryOf, cityOf, stateOf } from "./seed";
   third party) comes later.
 */
 
+/** The hubs a customer can price from — markets' hubs and the terminals. */
+export const HUBS: string[] = [
+  "Houston hub", "Lake Charles hub", "Baton Rouge hub", "Shreveport hub", "Midland hub", "Austin hub", "Greenville hub", "Mobile hub", "Beaumont hub",
+  "Pasadena terminal", "Port Arthur terminal", "Port Fourchon terminal", "Morgan City terminal", "Odessa terminal", "Pecos yard", "Hobbs yard",
+  "Galveston terminal", "Texas City terminal", "Natchez terminal", "Vidalia yard", "Lufkin yard", "Nacogdoches yard", "Houma terminal", "Sulphur yard",
+];
+
 /** Where a row's pricing comes from — the Applied pricing column. */
 export const APPLIED_LABEL = { shipto: "Ship-to", customer: "Customer", hub: "Hub" } as const;
 export const UNCONFIGURED = "Unconfigured";
@@ -107,7 +114,11 @@ export function factsOf(r: ConfigRow, ents: EntityMap): RowFacts {
 export function listCell(row: ConfigRow, setting: Setting, ents: EntityMap, one: string, many: string) {
   const r = readSetting(row, setting, ents);
   const n = r.ids.length;
-  return { names: n ? r.text : "None", count: `${n} ${n === 1 ? one : many}`, value: r.value, ids: r.ids };
+  /* THE TOTAL LEADS (Yash, 2026-11-17): what they add up to, $/gal; the
+     count under it opens which ones apply. */
+  const items = r.ids.map((id) => ({ name: ents.get(id)?.name ?? id, value: ents.get(id)?.value ?? 0 }));
+  const values = n ? perGal(r.value) : "None";
+  return { names: n ? r.text : "None", values, items, count: `${n} ${n === 1 ? one : many}`, value: r.value, ids: r.ids };
 }
 
 /** "+4¢" — the adders' total, as the production table shows it. */

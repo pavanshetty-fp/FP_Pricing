@@ -33,6 +33,7 @@ const SORT = 24;
 /** A pill's own padding around its label. */
 const PILL = 24;
 const MAX_ROWS = 600;
+const FIXED: Record<string, number> = { Customer: 250, "Ship-to": 170, "Ship-tos": 170 };
 
 export function fitColumns<K extends string, R>(
   columns: ListColumn<K>[],
@@ -48,6 +49,10 @@ export function fitColumns<K extends string, R>(
   const sample = rows.slice(0, MAX_ROWS);
   return columns.map((c) => {
     if (!c.label) return c;
+    /* THE TWO FIXED WIDTHS (ui §column widths — "Customer is 250 everywhere;
+       Ship-to / Ship-Tos 170"). Longer names truncate. */
+    const fixed = FIXED[c.label];
+    if (fixed) return { ...c, width: fixed };
     let w = textWidth(c.label, body, 500) + PAD + SORT;
     for (const r of sample) {
       const lines = linesOf(r, c.key);

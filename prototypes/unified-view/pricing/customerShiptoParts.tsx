@@ -1,22 +1,23 @@
 import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Pill } from "@/components/ui/pill";
-import { StatusChip } from "@/components/ui/status-chip";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Panel } from "../DashboardParts";
-import { RecordSheet } from "../RecordSheet";
 import { SummaryCard } from "../SheetCards";
-import { Figure } from "../masterdata/sheetParts";
-import { kindTone } from "../statusKind";
-import { STATUS_LABEL, customerOf, fmtTime, isSameDay, plural, shiptoOf, uniq, type ChangeRecord, type EntityMap, type ImpactLine } from "./changeLog";
-import { NOW } from "./changeLog";
-import { STATUS_KIND } from "./activityFeed";
+import { STATUS_LABEL, customerOf, plural, shiptoOf, uniq, type ChangeRecord, type EntityMap, type ImpactLine } from "./changeLog";
 import { ChangeText } from "./ChangeText";
-import { METHOD_LABEL, THEME_LABEL, type DrillBar, type InsightTheme, type RichInsight } from "./customerShipto";
+import { RecordSheet } from "../RecordSheet";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { METHOD_LABEL, type DrillBar, type RichInsight } from "./customerShipto";
 
 /*
   CUSTOMER & SHIP-TO, ROUND 5 (Yash, 2026-11-17 — team feedback):
@@ -35,146 +36,80 @@ import { METHOD_LABEL, THEME_LABEL, type DrillBar, type InsightTheme, type RichI
 
 // ---------------------------------------------------------------- insights --
 
-export type InsightsVersion = "compact" | "descriptive" | "grouped";
-const VERSION_LABEL: Record<InsightsVersion, string> = { compact: "Compact", descriptive: "Descriptive", grouped: "Grouped" };
-const THEMES: InsightTheme[] = ["attention", "activity", "pattern"];
-const THEME_DOT: Record<InsightTheme, string> = {
-  attention: "bg-fp-banner-accent-caution",
-  activity: "bg-fp-banner-accent-info",
-  pattern: "bg-muted-foreground",
-};
+export type InsightsVersion = "compact" | "descriptive";
+const VERSION_LABEL: Record<InsightsVersion, string> = { compact: "Compact", descriptive: "Descriptive" };
 const COMPACT = 3;
 const DESCRIPTIVE = 4;
 
-function InsightLine({ i }: { i: RichInsight }) {
+/** "View all 10" / "Show fewer" — under the card's content, as in Where and Who. */
+function MoreToggle({ open, total, onToggle }: { open: boolean; total: number; onToggle: () => void }) {
   return (
-    <li className="flex items-start gap-3 py-2.5">
-      <span aria-hidden className={cn("mt-1.5 size-2 shrink-0 rounded-full", THEME_DOT[i.theme])} />
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-sm font-medium text-foreground">{i.label}</span>
-        <span className="text-sm text-muted-foreground">{i.sentence}</span>
-      </span>
-      <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">{i.value}</span>
-    </li>
+    <Button variant="ghost" size="sm" className="h-7 self-start px-2 text-xs font-medium text-foreground hover:bg-foreground/5" onClick={onToggle}>
+      <span className="underline decoration-current/50 decoration-dotted underline-offset-4">{open ? "Show fewer" : `View all ${total}`}</span>
+    </Button>
   );
 }
 
 export function InsightsPanel({ insights }: { insights: RichInsight[] }) {
   const [version, setVersion] = React.useState<InsightsVersion>("compact");
   const [all, setAll] = React.useState(false);
-  const [sheet, setSheet] = React.useState(false);
-  const extra = version === "compact" ? insights.length - COMPACT : insights.length - DESCRIPTIVE;
+  const limit = version === "compact" ? COMPACT : DESCRIPTIVE;
+  const shown = all ? insights : insights.slice(0, limit);
 
   return (
     <SummaryCard title="Insights">
-      <div className="-mt-1 flex items-center justify-between gap-3">
-        {/* THE DEMO SWITCH — three versions, for the PMs to choose one. */}
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          value={version}
-          onValueChange={(v) => {
-            if (!v) return;
-            setVersion(v as InsightsVersion);
-            setAll(false);
-          }}
-          aria-label="Insights version"
-        >
-          {(Object.keys(VERSION_LABEL) as InsightsVersion[]).map((v) => (
-            <ToggleGroupItem key={v} value={v} className="px-3 text-xs">
-              {VERSION_LABEL[v]}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-        {version !== "grouped" && extra > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs font-medium text-foreground hover:bg-foreground/5"
-            onClick={() => (version === "compact" ? setSheet(true) : setAll((o) => !o))}
-          >
-            <span className="underline decoration-current/50 decoration-dotted underline-offset-4">
-              {version === "descriptive" && all ? "Show fewer" : `View all ${insights.length}`}
-            </span>
-          </Button>
-        )}
-      </div>
+      {/* THE DEMO SWITCH — for the PMs to choose one; it goes once they do. */}
+      <ToggleGroup
+        type="single"
+        variant="outline"
+        size="sm"
+        value={version}
+        onValueChange={(v) => {
+          if (!v) return;
+          setVersion(v as InsightsVersion);
+          setAll(false);
+        }}
+        aria-label="Insights version"
+        className="-mt-1 self-start"
+      >
+        {(Object.keys(VERSION_LABEL) as InsightsVersion[]).map((v) => (
+          <ToggleGroupItem key={v} value={v} className="px-3 text-xs">
+            {VERSION_LABEL[v]}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
 
+      {/* COMPACT — three to a row, every cell ruled (the grid's gap shows the
+          border colour), names wrap rather than cut. */}
       {version === "compact" && (
-        <div className="-mx-3 -mb-3 grid grid-cols-1 divide-border border-t border-border sm:grid-cols-3 sm:divide-x">
-          {insights.slice(0, COMPACT).map((i) => (
-            <Figure key={i.key} label={i.label} value={i.value} note={i.note} />
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-3">
+          {shown.map((i) => (
+            <div key={i.key} className="flex min-w-0 flex-col gap-1 bg-fp-surface-1b p-4">
+              <span className="text-xs font-medium text-muted-foreground">{i.label}</span>
+              <span className="text-xl font-semibold break-words text-foreground">{i.value}</span>
+              <span className="text-xs text-muted-foreground">{i.note}</span>
+            </div>
+          ))}
+          {/* An unfilled last row keeps its cells, so the rules stay whole. */}
+          {Array.from({ length: (3 - (shown.length % 3)) % 3 }, (_, k) => (
+            <div key={`pad${k}`} aria-hidden className="hidden bg-fp-surface-1b sm:block" />
           ))}
         </div>
       )}
 
+      {/* DESCRIPTIVE — the fact with its number as the line, why under it. */}
       {version === "descriptive" && (
-        <ul className="-mb-1 flex flex-col divide-y divide-border border-t border-border">
-          {(all ? insights : insights.slice(0, DESCRIPTIVE)).map((i) => (
-            <InsightLine key={i.key} i={i} />
+        <ul className="flex flex-col divide-y divide-border border-t border-border">
+          {shown.map((i) => (
+            <li key={i.key} className="flex flex-col gap-0.5 py-2.5">
+              <span className="text-sm font-medium text-foreground">{i.headline}</span>
+              {i.sub && <span className="text-sm text-muted-foreground">{i.sub}</span>}
+            </li>
           ))}
         </ul>
       )}
 
-      {version === "grouped" && (
-        <div className="-mx-3 -mb-3 grid grid-cols-1 divide-border border-t border-border md:grid-cols-3 md:divide-x">
-          {THEMES.map((t) => (
-            <section key={t} className="flex min-w-0 flex-col gap-3 p-4">
-              <h4 className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <span aria-hidden className={cn("size-2 rounded-full", THEME_DOT[t])} />
-                {THEME_LABEL[t]}
-              </h4>
-              <dl className="flex flex-col gap-3">
-                {insights
-                  .filter((i) => i.theme === t)
-                  .map((i) => (
-                    <div key={i.key} className="flex min-w-0 items-baseline justify-between gap-3">
-                      <span className="flex min-w-0 flex-col">
-                        <dt className="text-sm text-foreground">{i.label}</dt>
-                        <dd className="truncate text-xs text-muted-foreground">{i.note}</dd>
-                      </span>
-                      <dd className="shrink-0 truncate text-sm font-semibold tabular-nums text-foreground">{i.value}</dd>
-                    </div>
-                  ))}
-              </dl>
-            </section>
-          ))}
-        </div>
-      )}
-
-      {/* COMPACT'S "VIEW ALL" — every insight in a side sheet, read-only. */}
-      {sheet && (
-        <RecordSheet
-          open
-          onOpenChange={(v) => !v && setSheet(false)}
-          mode="edit"
-          editTitle="Insights"
-          createTitle=""
-          createAction=""
-          showCancel={false}
-          stepNav={false}
-          noFooter
-          presentation="sheet"
-          headerSubtitle={<span className="text-sm text-muted-foreground">{plural(insights.length, "insight")}</span>}
-          onSubmit={() => setSheet(false)}
-        >
-          <div className="flex flex-col gap-8">
-            {THEMES.map((t) => (
-              <section key={t} className="flex flex-col">
-                <h4 className="text-sm font-medium text-muted-foreground">{THEME_LABEL[t]}</h4>
-                <ul className="flex flex-col divide-y divide-border">
-                  {insights
-                    .filter((i) => i.theme === t)
-                    .map((i) => (
-                      <InsightLine key={i.key} i={i} />
-                    ))}
-                </ul>
-              </section>
-            ))}
-          </div>
-        </RecordSheet>
-      )}
+      {insights.length > limit && <MoreToggle open={all} total={insights.length} onToggle={() => setAll((o) => !o)} />}
     </SummaryCard>
   );
 }
@@ -222,7 +157,7 @@ export function DrillCard({
   return (
     <Panel className="flex-1" title={title} aside={sorted.length > top && !all ? `Top ${top} of ${plural(sorted.length, one, many)}` : plural(sorted.length, one, many)}>
       {/* WHERE THE CARD STANDS — each step walks back to it. */}
-      <nav aria-label={`${title} level`} className="-mt-1 mb-2 flex min-h-7 flex-wrap items-center gap-1 text-sm">
+      {path.length > 1 && <nav aria-label={`${title} level`} className="-mt-1 mb-2 flex min-h-7 flex-wrap items-center gap-1 text-sm">
         {path.length > 1 && (
           <Button variant="ghost" size="icon-sm" aria-label="Back" className="-ml-1.5 size-7" onClick={() => onBack(path.length - 2)}>
             <ChevronLeft />
@@ -240,7 +175,7 @@ export function DrillCard({
             )}
           </React.Fragment>
         ))}
-      </nav>
+      </nav>}
       {sorted.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Nothing in this range.</p>
       ) : (
@@ -249,10 +184,7 @@ export function DrillCard({
             const body = (
               <>
                 <span className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="flex min-w-0 flex-col">
-                    <span className={cn("truncate text-foreground", canOpen && "group-hover/bar:underline")}>{b.label}</span>
-                    <span className="truncate text-xs text-muted-foreground">{b.detail}</span>
-                  </span>
+                  <span className={cn("min-w-0 truncate text-foreground", canOpen && "group-hover/bar:underline")}>{b.label}</span>
                   <span className="flex shrink-0 items-center gap-1 tabular-nums text-foreground">
                     {b.value.toLocaleString()}
                     <span className="inline-block w-10 text-right text-xs text-muted-foreground">{Math.round((b.value / total) * 100)}%</span>
@@ -296,46 +228,206 @@ export function DrillCard({
 
 // ---------------------------------------------------------------- timeline --
 
-const DAY_FMT = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-const dayLabel = (t: number) => (isSameDay(t, NOW) ? "Today" : isSameDay(t, NOW - 86_400_000) ? "Yesterday" : DAY_FMT.format(t));
+const STAMP = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const PAGE = 20;
 
-/** "N ship-tos" — pressing lists them by customer, with a search. */
-function ShiptoCount({ lines }: { lines: ImpactLine[] }) {
-  const ids = uniq(lines.map((l) => l.shiptoId));
-  const byCustomer = uniq(ids.map((id) => shiptoOf(id).customerId));
+/** One ship-to it reached. */
+export interface AffectedShipto {
+  customerId: string;
+  shiptoId: string;
+}
+
+/**
+ * A COUNT OPENS A SIDE SHEET, NOT A DROPDOWN (Yash, 2026-11-17) — a plain
+ * list of who it reached: ship-tos with their address and customer, or
+ * customers with their ID. Nothing more (Yash, 2026-11-17: products and
+ * their names were too much).
+ */
+export function ShiptoCount({
+  lines,
+  shiptoIds,
+  kind = "shiptos",
+  label,
+  inCell,
+  level = 1,
+  title,
+  subtitle,
+}: {
+  /** A change's lines: the ship-tos it reached. */
+  lines?: ImpactLine[];
+  /** Or ship-tos by id. */
+  shiptoIds?: string[];
+  /** List the ship-tos, or their customers. */
+  kind?: AffectedKind;
+  /** Kept for callers that narrowed to rows; the list shows ship-tos only. */
+  rowIds?: string[];
+  label?: string;
+  inCell?: boolean;
+  /** 2 when opened from inside a sheet. */
+  level?: 1 | 2;
+  title?: string;
+  subtitle?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const ids = shiptoIds ?? uniq((lines ?? []).map((l) => l.shiptoId));
   if (ids.length === 0) return <span>No ship-tos</span>;
+  const items = (): AffectedShipto[] => ids.map((id) => ({ customerId: shiptoOf(id).customerId, shiptoId: id }));
+  /* The sheet is a portal, but its events still bubble through here — so a
+     press inside it never reaches the table row behind. */
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="cursor-pointer rounded-sm font-medium text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 outline-none hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring/50"
-        >
-          {plural(ids.length, "ship-to")}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 p-0">
-        <Command>
-          <CommandInput placeholder="Search ship-tos…" />
-          <CommandList className="max-h-72">
-            <CommandEmpty>No matches.</CommandEmpty>
-            {byCustomer.map((cid) => (
-              <CommandGroup key={cid} heading={`${customerOf(cid).name} · ${ids.filter((id) => shiptoOf(id).customerId === cid).length}`}>
-                {ids
-                  .filter((id) => shiptoOf(id).customerId === cid)
-                  .map((id) => (
-                    <CommandItem key={id} value={`${shiptoOf(id).name} ${customerOf(cid).name}`} className="flex flex-col items-start gap-0">
-                      <span>{shiptoOf(id).name}</span>
-                      <span className="text-xs text-muted-foreground">{shiptoOf(id).address}</span>
-                    </CommandItem>
-                  ))}
-              </CommandGroup>
+    <span onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "cursor-pointer rounded-sm text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 outline-none hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring/50",
+          inCell ? "text-sm" : "font-medium"
+        )}
+      >
+        {label ?? plural(ids.length, "ship-to")}
+      </button>
+      {open && (
+        <AffectedSheet
+          items={items()}
+          kind={kind}
+          level={level}
+          title={title ?? (kind === "customers" ? "Customers affected" : "Ship-tos affected")}
+          subtitle={subtitle}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </span>
+  );
+}
+
+export type AffectedKind = "shiptos" | "customers";
+
+const TwoLines = ({ top, below }: { top: string; below: string }) => (
+  <span className="flex min-w-0 flex-col">
+    <span className="truncate" title={top}>
+      {top}
+    </span>
+    <span className="truncate text-xs text-muted-foreground" title={below}>
+      {below}
+    </span>
+  </span>
+);
+
+/** Who a change reached, as a plain list on a side sheet. */
+export function AffectedSheet({
+  items,
+  kind = "shiptos",
+  title,
+  subtitle,
+  level = 1,
+  onClose,
+}: {
+  items: AffectedShipto[];
+  kind?: AffectedKind;
+  title: string;
+  subtitle?: string;
+  level?: 1 | 2;
+  onClose: () => void;
+}) {
+  /* A CUSTOMER'S SHIP-TO COUNT OPENS ITS SHIP-TOS IN THE SAME SHEET (Yash,
+     2026-11-17); the path above walks back. */
+  const [drill, setDrill] = React.useState<string | null>(null);
+  const customers = uniq(items.map((x) => x.customerId));
+  const shown = drill ? items.filter((x) => x.customerId === drill) : items;
+  /* ONE CUSTOMER NEEDS NO CUSTOMER COLUMN (Yash, 2026-11-17) — just the
+     ship-tos, each with its address under it. */
+  const oneCustomer = uniq(shown.map((x) => x.customerId)).length === 1;
+  const listing = kind === "customers" && !drill ? "customers" : "shiptos";
+  /* A PLAIN LIST, NOT A TABLE (Yash, 2026-11-17) — no filters, no sideways
+     scroll: a search, then each name with its line under it. */
+  const [q, setQ] = React.useState("");
+  React.useEffect(() => setQ(""), [drill]);
+  const has = (...t: string[]) => !q.trim() || t.some((x) => x.toLowerCase().includes(q.trim().toLowerCase()));
+  const rows =
+    listing === "customers"
+      ? customers
+          .map((id) => ({ id, top: customerOf(id).name, below: `ID: ${customerOf(id).account}`, n: items.filter((x) => x.customerId === id).length }))
+          .filter((r) => has(r.top, r.below))
+      : shown
+          .map((x) => ({
+            id: x.shiptoId,
+            top: shiptoOf(x.shiptoId).name,
+            below: oneCustomer ? shiptoOf(x.shiptoId).address : `${shiptoOf(x.shiptoId).address} · ${customerOf(x.customerId).name}`,
+            n: 0,
+          }))
+          .filter((r) => has(r.top, r.below));
+  return (
+    <RecordSheet
+      size="form"
+      presentation="sheet"
+      level={level}
+      open
+      onOpenChange={(v) => !v && onClose()}
+      mode="edit"
+      editTitle={drill ? `${customerOf(drill).name} ship-tos` : title}
+      createTitle=""
+      createAction=""
+      showCancel={false}
+      stepNav={false}
+      noFooter
+      headerSubtitle={
+        drill ? (
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <button type="button" onClick={() => setDrill(null)}>
+                    {title}
+                  </button>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{customerOf(drill).name}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        ) : subtitle ? (
+          <span className="text-sm text-muted-foreground">{subtitle}</span>
+        ) : undefined
+      }
+      onSubmit={onClose}
+    >
+      <div className="flex min-h-0 flex-col gap-3">
+        {/* The search runs the sheet's full width (Yash, 2026-11-17). */}
+        <div className="relative w-full">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={listing === "customers" ? "Search customers" : "Search ship-tos"}
+            aria-label={listing === "customers" ? "Search customers" : "Search ship-tos"}
+            className="h-8 pl-8"
+          />
+        </div>
+        {rows.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">No matches.</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+            {rows.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-4 px-4 py-2.5">
+                <TwoLines top={r.top} below={r.below} />
+                {listing === "customers" && (
+                  <button
+                    type="button"
+                    onClick={() => setDrill(r.id)}
+                    className="shrink-0 cursor-pointer rounded-sm text-sm text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 outline-none hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring/50"
+                  >
+                    {plural(r.n, "ship-to")}
+                  </button>
+                )}
+              </li>
             ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </ul>
+        )}
+      </div>
+    </RecordSheet>
   );
 }
 
@@ -355,54 +447,38 @@ export function ChangeTimeline({
   const [limit, setLimit] = React.useState(PAGE);
   React.useEffect(() => setLimit(PAGE), [items]);
   const shown = items.slice(0, limit);
-  const days: { day: string; list: typeof items }[] = [];
-  for (const x of shown) {
-    const d = dayLabel(x.c.effectiveAt);
-    const last = days[days.length - 1];
-    if (last && last.day === d) last.list.push(x);
-    else days.push({ day: d, list: [x] });
-  }
   return (
     <Panel title="Timeline" aside={tools}>
       {chips}
       {items.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">No changes match.</p>
       ) : (
-        <div className="flex flex-col gap-6">
-          {days.map((d) => (
-            <section key={d.day} className="flex flex-col">
-              <h4 className="sticky top-0 z-10 bg-card pb-2 text-xs font-medium text-muted-foreground">{d.day}</h4>
-              <ol className="flex flex-col">
-                {d.list.map((x, i) => (
-                  <li key={x.c.id} className="relative flex gap-4 pb-5 last:pb-0">
-                    {i < d.list.length - 1 && <span aria-hidden className="absolute top-5 bottom-0 left-[69px] w-px bg-border" />}
-                    <span className="w-14 shrink-0 pt-0.5 text-right text-xs tabular-nums text-muted-foreground">{fmtTime(x.c.effectiveAt)}</span>
-                    <span aria-hidden className="relative z-10 mt-1.5 size-2.5 shrink-0 rounded-full border-2 border-fp-viz-1 bg-card" />
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <span className="flex min-w-0 flex-wrap items-center gap-1 text-sm text-foreground">
-                        <ChangeText c={x.c} ents={ents} />
-                        {x.c.status !== "applied" && (
-                          <StatusChip tone={kindTone(STATUS_KIND[x.c.status])} variant="text" className="ml-1">
-                            {STATUS_LABEL[x.c.status]}
-                          </StatusChip>
-                        )}
-                      </span>
-                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        <Pill>{METHOD_LABEL[x.c.source]}</Pill>
-                        <span>{x.c.by}</span>
-                        <span aria-hidden>·</span>
-                        <ShiptoCount lines={x.lines} />
-                        <span aria-hidden>·</span>
-                        <span>{x.c.id}</span>
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          ))}
+        <div className="flex flex-col gap-4">
+          {/* TEXT FIRST (Yash, 2026-11-17): the stamp, a dot on the title's
+              line, the change as the line, then one muted line — how it was
+              made · the ship-tos it reached · who. No chips. */}
+          <ol className="flex flex-col">
+            {shown.map((x, i) => (
+              <li key={x.c.id} className="relative grid grid-cols-[132px_20px_minmax(0,1fr)] gap-x-3 pb-6 last:pb-0">
+                <span className="pt-px text-sm whitespace-nowrap tabular-nums text-muted-foreground">{STAMP.format(x.c.effectiveAt)}</span>
+                <span className="relative flex justify-center">
+                  {i < shown.length - 1 && <span aria-hidden className="absolute top-3 -bottom-6 w-px bg-border" />}
+                  <span aria-hidden className="relative mt-1.5 size-2.5 rounded-full bg-fp-viz-1" />
+                </span>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="flex min-w-0 flex-wrap items-center gap-1 text-sm font-medium text-foreground">
+                    <ChangeText plain c={x.c} ents={ents} />
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {METHOD_LABEL[x.c.source]} · {plural(uniq(x.lines.map((l) => l.customerId)).length, "customer")} · <ShiptoCount lines={x.lines} /> · {x.c.by}
+                    {x.c.status !== "applied" && ` · ${STATUS_LABEL[x.c.status]}`}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ol>
           {items.length > limit && (
-            <Button variant="outline" size="sm" className="self-center" onClick={() => setLimit((n) => n + PAGE)}>
+            <Button variant="outline" size="sm" className="self-start" onClick={() => setLimit((n) => n + PAGE)}>
               Show {Math.min(PAGE, items.length - limit)} more
             </Button>
           )}

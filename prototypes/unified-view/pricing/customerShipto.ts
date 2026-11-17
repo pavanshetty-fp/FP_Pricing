@@ -189,6 +189,9 @@ export const THEME_LABEL: Record<InsightTheme, string> = { attention: "Needs a l
 export interface RichInsight extends Insight {
   theme: InsightTheme;
   sentence: string;
+  /** The fact with its number, as a title: "41 failed prices". */
+  headline: string;
+  sub: string;
 }
 
 const fmtDay = (t: number) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(t);
@@ -228,6 +231,8 @@ export function insightsAll(scope: Scope, ents: EntityMap, scheduledAhead: Chang
   return [
     {
       key: "failed",
+      headline: failed.length ? `${plural(failed.length, "failed price")}` : "No failed prices",
+      sub: failed.length ? `At ${plural(failedShiptos.length, "ship-to")}; they still carry the old value` : "Every change went through",
       theme: "attention",
       label: "Failed prices",
       value: failed.length.toLocaleString(),
@@ -238,6 +243,8 @@ export function insightsAll(scope: Scope, ents: EntityMap, scheduledAhead: Chang
     },
     {
       key: "fees",
+      headline: `${plural(removedBy.length, "fee")} removed`,
+      sub: remover ? `${remover.n} by ${remover.name}; check these were intended` : "No fee came off a price",
       theme: "attention",
       label: "Fees removed",
       value: removedBy.length.toLocaleString(),
@@ -248,6 +255,8 @@ export function insightsAll(scope: Scope, ents: EntityMap, scheduledAhead: Chang
     },
     {
       key: "outside",
+      headline: `${plural(outside.length, "change")} outside the UI`,
+      sub: "Came through import or system sync",
       theme: "attention",
       label: "Outside the UI",
       value: outside.length.toLocaleString(),
@@ -258,6 +267,8 @@ export function insightsAll(scope: Scope, ents: EntityMap, scheduledAhead: Chang
     },
     {
       key: "most",
+      headline: most ? `${most.name} changed most` : "Nothing changed",
+      sub: most ? `${most.n} times, more than anything else here` : "",
       theme: "pattern",
       label: "Changed most",
       value: most ? `${most.n} times` : "—",
@@ -266,6 +277,8 @@ export function insightsAll(scope: Scope, ents: EntityMap, scheduledAhead: Chang
     },
     {
       key: "shipto",
+      headline: ship ? `${shiptoOf(ship.name).name} changed most often` : "No ship-to changed",
+      sub: ship ? `${customerOf(shiptoOf(ship.name).customerId).name} · ${plural(ship.n, "change")}` : "",
       theme: "pattern",
       label: "Busiest ship-to",
       value: ship ? shiptoOf(ship.name).name : "—",
@@ -274,6 +287,8 @@ export function insightsAll(scope: Scope, ents: EntityMap, scheduledAhead: Chang
     },
     {
       key: "move",
+      headline: moves.length ? `${usd(avg)}/gal average move` : "No price moved",
+      sub: moves.length ? `Across ${plural(moves.length, "price")} that changed in value` : "",
       theme: "pattern",
       label: "Average move",
       value: moves.length ? `${usd(avg)}/gal` : "—",
@@ -284,6 +299,8 @@ export function insightsAll(scope: Scope, ents: EntityMap, scheduledAhead: Chang
     },
     {
       key: "bulk",
+      headline: `${pct}% made in bulk`,
+      sub: `${plural(bulk, "change")} of ${all.length.toLocaleString()}`,
       theme: "pattern",
       label: "Made in bulk",
       value: `${pct}%`,
@@ -292,6 +309,8 @@ export function insightsAll(scope: Scope, ents: EntityMap, scheduledAhead: Chang
     },
     {
       key: "busiest",
+      headline: days ? `${days.name} was the busiest day` : "No changes",
+      sub: days ? plural(days.n, "change") : "",
       theme: "activity",
       label: "Busiest day",
       value: days ? days.name : "—",
@@ -300,6 +319,8 @@ export function insightsAll(scope: Scope, ents: EntityMap, scheduledAhead: Chang
     },
     {
       key: "person",
+      headline: person ? `${person.name} made the most changes` : "Nobody made a change",
+      sub: person ? plural(person.n, "change") : "",
       theme: "activity",
       label: "Most changes by",
       value: person ? person.name : "—",
@@ -308,13 +329,18 @@ export function insightsAll(scope: Scope, ents: EntityMap, scheduledAhead: Chang
     },
     {
       key: "ahead",
+      headline: `${plural(ahead.length, "change")} scheduled ahead`,
+      sub: ahead.length ? `Next applies ${fmtDay(ahead[0].effectiveAt)}` : "Nothing is scheduled",
       theme: "activity",
       label: "Scheduled ahead",
       value: ahead.length.toLocaleString(),
       note: ahead.length ? `Next ${fmtDay(ahead[0].effectiveAt)}` : "None",
       sentence: ahead.length ? `${plural(ahead.length, "change")} are scheduled; the next applies ${fmtDay(ahead[0].effectiveAt)}.` : "Nothing is scheduled.",
     },
-  ] as RichInsight[];
+  ]
+    /* NO FAILED OR SCHEDULED INSIGHTS (Yash, 2026-11-17) — every change
+       applies on the spot and succeeds for now. */
+    .filter((i) => i.key !== "failed" && i.key !== "ahead") as RichInsight[];
 }
 
 /** A bar in a drill card: a name, its changes, and what a press opens. */

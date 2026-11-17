@@ -66,6 +66,8 @@ export interface ConfigListProps<T, K extends string> {
   nameOf: (r: T) => string;
   onOpen: (r: T) => void;
   onHistory: (r: T) => void;
+  /** More acts for a row, under the shared ones. */
+  menuExtra?: (r: T) => React.ReactNode;
   exportSummary: (rows: T[]) => ExportSummary;
 }
 
@@ -128,7 +130,6 @@ export function ConfigList<T, K extends string>(p: ConfigListProps<T, K>) {
 
   const text = (r: T, key: K) => p.lines(r, key).join(" ");
   const textSize = typeof document === "undefined" ? "" : getComputedStyle(document.documentElement).fontSize;
-  const columns = React.useMemo(() => fitColumns(p.columns, p.rows.slice(0, 400), p.lines, p.pillColumns ?? []), [p.rows, textSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const facets = React.useMemo<ListFacet[]>(
     () =>
@@ -186,6 +187,9 @@ export function ConfigList<T, K extends string>(p: ConfigListProps<T, K>) {
     page,
     pageSize,
   });
+  /* WIDEST RENDERED CELL (UX-45) — the rows on this page, not the whole
+     list: one long name three pages away no longer widens every page. */
+  const columns = React.useMemo(() => fitColumns(p.columns, g.visibleRows, p.lines, p.pillColumns ?? []), [g.visibleRows, textSize]); // eslint-disable-line react-hooks/exhaustive-deps
   const onSort = (key: K) => {
     setSort((prev) => (prev?.key !== key ? { key, dir: "asc" } : prev.dir === "asc" ? { key, dir: "desc" } : null));
     setPage(1);
@@ -387,7 +391,7 @@ export function ConfigList<T, K extends string>(p: ConfigListProps<T, K>) {
                       <MoreHorizontal />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuContent align="end" className="w-60">
                     <DropdownMenuItem onSelect={() => p.onOpen(r)}>
                       {p.configured(r) ? <Pencil /> : <SlidersHorizontal />}
                       {p.configured(r) ? "Edit pricing" : "Configure pricing"}
@@ -396,6 +400,7 @@ export function ConfigList<T, K extends string>(p: ConfigListProps<T, K>) {
                       <History />
                       History
                     </DropdownMenuItem>
+                    {p.menuExtra?.(r)}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

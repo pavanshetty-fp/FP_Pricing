@@ -1,6 +1,7 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Ban, CalendarClock, Clock, Download, History, MoreHorizontal, RotateCw, Undo2 } from "lucide-react";
+import { Ban, CalendarClock, ChevronRight, Clock, Download, MoreHorizontal, RotateCw, Undo2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pill } from "@/components/ui/pill";
@@ -26,10 +27,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RecordSheet } from "../RecordSheet";
-import { RailCard, RailRow } from "../SheetCards";
 import { fitColumns } from "./fitColumns";
 import { kindTone } from "../statusKind";
 import { RecordViews, type ViewRow, type ViewTab } from "../masterdata/RecordViews";
+import { AffectedSheet, type AffectedKind } from "./customerShiptoParts";
+import { Info } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FIGURE_STRIP, Figure, WORK_AREA, useDockedWorkArea } from "../masterdata/sheetParts";
 import {
   SETTING_LABEL,
@@ -48,7 +51,11 @@ import {
   productOf,
   shiptoOf,
   uniq,
+  IS_LIST,
   type ChangeRecord,
+  type Edit,
+  type EntityMap,
+  type ImpactLine,
 } from "./changeLog";
 import { cancelChange, rescheduleChange, retryChange, undoChange, useChangeLog } from "./changeLogStore";
 import { STATUS_KIND, actionOf } from "./activityFeed";
@@ -67,8 +74,7 @@ import { STATUS_KIND, actionOf } from "./activityFeed";
 */
 
 const LINE_OUTCOME = { changed: "Changed", failed: "Failed", pending: "Pending" } as const;
-const OUTCOME_KIND = { Changed: "success", Failed: "critical", Pending: "info" } as const;
-const ORDER_KIND = { Repriced: "success", "Kept price": "neutral" } as const;
+const ORDER_KIND = { "New price": "success", "Kept old price": "neutral" } as const;
 
 const cents = (n: number) => (n === 0 ? "—" : `${n > 0 ? "+" : "−"}$${Math.abs(n).toFixed(4)}`);
 
@@ -95,6 +101,7 @@ export function ChangeSheet({
         latest={log.latestId === c.id}
         summary={changeSummary(c, log.entityMap)}
         editLines={c.edits.map((e) => editSummary(e, c.lines, log.entityMap))}
+        ents={log.entityMap}
         onClose={onClose}
         onOpen={onOpen}
         onAsk={setAsk}
@@ -221,11 +228,10 @@ export function ChangeRowMenu({ c, latest, onAsk }: { c: ChangeRecord; latest: b
 
 function ChangeSheetBody({
   c,
-  latest,
   summary,
   editLines,
+  ents,
   onClose,
-  onOpen,
   onAsk,
   level,
 }: {
@@ -234,6 +240,7 @@ function ChangeSheetBody({
   latest: boolean;
   summary: string;
   editLines: string[];
+  ents: EntityMap;
   onClose: () => void;
   onOpen: (id: string) => void;
   onAsk: (a: "undo" | "cancel" | "reschedule") => void;
@@ -247,12 +254,6 @@ function ChangeSheetBody({
   const failed = c.lines.filter((l) => l.outcome === "failed").length;
   const repriced = c.orders.filter((o) => o.status === "repriced");
   const kept = c.orders.filter((o) => o.status === "kept");
-  const ahead = c.status === "scheduled" || c.status === "canceled";
-  /* HOW FAR THE PRICES MOVED, on average — only where a value moved (a rate
-     type or market change names, it does not price). */
-  const moved = c.lines.filter((l) => l.delta !== 0);
-  const avg = moved.length ? moved.reduce((t, l) => t + l.delta, 0) / moved.length : 0;
-  const avgMove = moved.length ? `avg ${avg > 0 ? "+" : "−"}$${Math.abs(avg).toFixed(4)}/gal` : "";
   const action = actionOf(c);
 
   const tabs = React.useMemo<ViewTab[]>(() => {
@@ -261,34 +262,39 @@ function ChangeSheetBody({
         key: "lines",
         /* EACH ROW IS ONE PRICE — a ship-to × product — so the tab says so
            (Yash, 2026-11-16: "rows" meant nothing to a reader). */
-        label: ahead ? "Prices that change" : "Prices changed",
-        noun: "prices",
-        one: "price",
+        /* A PRICE IS ONE PRODUCT AT ONE SHIP-TO — said in the name (Yash,
+           2026-11-17: "Ship-to × product" needed explaining out loud). */
+        label: "Product prices",
+        noun: "product prices",
+        one: "product price",
+        /* PRODUCT, SHIP-TO, CUSTOMER — the price is the product's, at a
+           ship-to, of a customer (Yash, 2026-11-17). Old and New, as the
+           orders say "new price" and "kept old price"; the old one muted. */
         columns: [
-          { key: "customer", label: "Customer", width: 200, sortable: true },
-          { key: "shipto", label: "Ship-to", width: 200, sortable: true },
+          /* THE CHANGE ON THE FIRST SCREEN (Yash, 2026-11-17) — Customer
+             moves to the end, so no one scrolls sideways to read it. */
           { key: "product", label: "Product", width: 170, sortable: true },
-          { key: "status", label: "Outcome", width: 200, sortable: true },
+          { key: "shipto", label: "Ship-to", width: 170, sortable: true },
           { key: "setting", label: "Entity", width: 110, sortable: true },
           { key: "action", label: "Action", width: 130, sortable: true },
-          { key: "before", label: "Before", width: 220, sortable: true },
-          { key: "after", label: "After", width: 220, sortable: true },
-          { key: "delta", label: "Price change ($/gal)", width: 170, sortable: true },
+          /* THE CHANGE, AS THE FEED SAYS IT (Yash, 2026-11-17) — not the
+             whole list before and after; what came off muted. */
+          { key: "change", label: "Change", width: 280, sortable: true },
+          { key: "customer", label: "Customer", width: 250, sortable: true },
         ],
-        /* FAILED ROWS FIRST — they are what the reader came for. */
-        rows: [...c.lines]
-          .sort((a, b) => Number(b.outcome === "failed") - Number(a.outcome === "failed"))
-          .map(
+        /* NO OUTCOME COLUMN (Yash, 2026-11-17) — every change applies and
+           succeeds for now, so it only ever said "Changed". */
+        rows: c.lines.map(
           (l, i): ViewRow => ({
             id: `${l.rowId}-${l.setting}-${i}`,
             text: {
               customer: customerOf(l.customerId).name,
               shipto: shiptoOf(l.shiptoId).name,
+              address: shiptoOf(l.shiptoId).address,
               product: productOf(l.productId).name,
               setting: SETTING_LABEL[l.setting],
               action: lineAction(l),
-              before: l.before || "—",
-              after: l.after || "—",
+              change: lineParts(l, ents).map((p) => p.t).join(" "),
               delta: cents(l.delta),
               error: l.error ?? "",
             },
@@ -303,73 +309,38 @@ function ChangeSheetBody({
         /* CUSTOMER · SHIP-TO · PRODUCT FIRST in every Pricing filter (Yash,
            2026-11-16), searchable — the questions asked first. */
         facets: [
-          { key: "customer", label: "Customer", searchable: true },
-          { key: "shipto", label: "Ship-to", searchable: true },
           { key: "product", label: "Product", searchable: true },
-          /* ITS OWN KEY, not "status" — facets are shared across the tabs, and
-             Orders has a Status of its own. */
-          { key: "outcome", label: "Outcome" },
+          { key: "shipto", label: "Ship-to", searchable: true },
+          { key: "customer", label: "Customer", searchable: true },
           { key: "setting", label: "Entity" },
           { key: "action", label: "Action" },
         ],
         renderCell: (r, key) =>
-          key === "status" ? (
-            /* THE REASON UNDER A FAILURE, as the old impact table had it. */
-            <span className="flex min-w-0 flex-col items-start gap-0.5">
-              <StatusChip tone={kindTone(OUTCOME_KIND[r.status as keyof typeof OUTCOME_KIND] ?? "neutral")} variant="text">
-                {r.status}
-              </StatusChip>
-              {r.text.error && <span className="truncate text-xs text-muted-foreground">{r.text.error}</span>}
-            </span>
+          key === "shipto" ? (
+            <ShiptoCell name={r.text.shipto} address={r.text.address} />
+          ) : key === "customer" ? (
+            <Truncated text={r.text[key]} />
+          ) : key === "change" ? (
+            <LineChange l={c.lines[Number(r.id.split("-").pop())]} ents={ents} />
           ) : key === "action" ? (
             <Pill>{r.text.action}</Pill>
           ) : undefined,
       },
     ];
-    if (c.edits.length > 1)
-      t.push({
-        key: "edits",
-        label: "Edits",
-        noun: "edits",
-        one: "edit",
-        columns: [
-          { key: "setting", label: "Entity", width: 140, sortable: true },
-          { key: "action", label: "Action", width: 140, sortable: true },
-          { key: "value", label: "Change", width: 360, sortable: true },
-          { key: "rows", label: "Prices", width: 100, sortable: true },
-        ],
-        rows: c.edits.map(
-          (e, i): ViewRow => ({
-            id: `edit-${i}`,
-            text: {
-              setting: SETTING_LABEL[e.setting],
-              action: editAction(e),
-              value: editLines[i],
-              rows: c.lines.filter((l) => l.setting === e.setting).length.toLocaleString(),
-            },
-            sort: { rows: c.lines.filter((l) => l.setting === e.setting).length },
-            status: editAction(e),
-            values: { setting: SETTING_LABEL[e.setting] },
-          })
-        ),
-        facets: [{ key: "setting", label: "Entity" }],
-        noOpen: true,
-        renderCell: (r, key) => (key === "action" ? <Pill>{r.text.action}</Pill> : undefined),
-      });
     t.push({
       key: "orders",
-      label: "Orders",
+      label: "Orders affected",
       noun: "orders",
       one: "order",
       columns: [
         { key: "id", label: "Order", width: 120, sortable: true },
-        { key: "customer", label: "Customer", width: 200, sortable: true },
-        { key: "shipto", label: "Ship-to", width: 200, sortable: true },
         { key: "product", label: "Product", width: 170, sortable: true },
+        { key: "shipto", label: "Ship-to", width: 170, sortable: true },
+        { key: "customer", label: "Customer", width: 250, sortable: true },
         { key: "delivery", label: "Delivery", width: 130, sortable: true },
         { key: "gallons", label: "Gallons", width: 110, sortable: true },
-        { key: "before", label: "Price before ($/gal)", width: 170, sortable: true },
-        { key: "after", label: "Price after ($/gal)", width: 160, sortable: true },
+        { key: "before", label: "Old price ($/gal)", width: 170, sortable: true },
+        { key: "after", label: "New price ($/gal)", width: 160, sortable: true },
         { key: "status", label: "Status", width: 120, sortable: true },
         { key: "reason", label: "Why kept", width: 130, sortable: true },
       ],
@@ -380,6 +351,7 @@ function ChangeSheetBody({
             id: o.id,
             customer: customerOf(o.customerId).name,
             shipto: shiptoOf(o.shiptoId).name,
+            address: shiptoOf(o.shiptoId).address,
             product: productOf(o.productId).name,
             delivery: fmtDate(o.delivery),
             gallons: o.gallons.toLocaleString(),
@@ -388,20 +360,26 @@ function ChangeSheetBody({
             reason: o.reason ?? "—",
           },
           sort: { delivery: o.delivery, gallons: o.gallons, before: o.before, after: o.after },
-          status: o.status === "repriced" ? "Repriced" : "Kept price",
+          status: o.status === "repriced" ? "New price" : "Kept old price",
           values: { customer: customerOf(o.customerId).name, shipto: shiptoOf(o.shiptoId).name, product: productOf(o.productId).name, reason: o.reason ?? "—" },
         })
       ),
       facets: [
-        { key: "customer", label: "Customer", searchable: true },
-        { key: "shipto", label: "Ship-to", searchable: true },
         { key: "product", label: "Product", searchable: true },
+        { key: "shipto", label: "Ship-to", searchable: true },
+        { key: "customer", label: "Customer", searchable: true },
         { key: "status", label: "Status" },
         { key: "reason", label: "Why kept" },
       ],
       noOpen: true,
       renderCell: (r, key) =>
-        key === "status" ? (
+        key === "shipto" ? (
+          <ShiptoCell name={r.text.shipto} address={r.text.address} />
+        ) : key === "customer" ? (
+          <Truncated text={r.text[key]} />
+        ) : key === "before" ? (
+          <Old text={r.text.before} />
+        ) : key === "status" ? (
           <StatusChip tone={kindTone(ORDER_KIND[r.status as keyof typeof ORDER_KIND] ?? "neutral")} variant="text">
             {r.status}
           </StatusChip>
@@ -414,16 +392,25 @@ function ChangeSheetBody({
       columns: fitColumns(
         tab.columns,
         tab.rows,
-        (r, key) => (key === "status" ? [r.status, r.text.error ?? ""] : [r.text[key] ?? ""]),
+        (r, key) => (key === "status" ? [r.status, r.text.error ?? ""] : key === "shipto" ? [r.text.shipto, r.text.address] : [r.text[key] ?? ""]),
         ["status", "action"]
-      ),
+      ).map((col) => (col.key === "change" ? { ...col, width: Math.min(col.width ?? 300, 300) } : col)),
     }));
-  }, [c, editLines]);
+  }, [c, editLines, ents]);
   /* A FIGURE OPENS THE ROWS IT COUNTS — the orders figures narrow Orders. */
   const [apply, setApply] = React.useState<{ tab: string; picked: string[]; n: number } | null>(null);
   const openOrders = (status: string | null) => setApply({ tab: "orders", picked: status ? [`status:${status}`] : [], n: Date.now() });
+  /* WHO IT REACHED, ON A SIDE SHEET — each ship-to with its customer and
+     products (Yash, 2026-11-17), not a dropdown list. */
+  const [affected, setAffected] = React.useState<AffectedKind | null>(null);
   const openRows = (picked: string[]) => setApply({ tab: "lines", picked, n: Date.now() });
 
+  /* THE TITLE SAYS WHAT HAPPENED, VERB AND ALL (Yash, 2026-11-17): "Tax
+     added: LUST Fee · Fees deleted: Delivery Fee", not the names alone. */
+  const headline =
+    c.undoOf || c.resets || c.configures
+      ? summary
+      : c.edits.map((e, i) => `${SETTING_LABEL[e.setting]} ${editAction(e).toLowerCase()}: ${editLines[i]}`).join(" · ");
   const exportChange = () => toast.success(`Exporting ${plural(c.lines.length, "price")} of ${c.id} as .csv`);
 
   return (
@@ -433,7 +420,9 @@ function ChangeSheetBody({
       open
       onOpenChange={(o) => !o && onClose()}
       mode="edit"
-      editTitle={summary}
+      /* THE CHANGE ID IS THE TITLE (Yash, 2026-11-17) — what changed is
+         listed right below it. */
+      editTitle={c.id}
       createTitle=""
       createAction=""
       showCancel={false}
@@ -454,7 +443,7 @@ function ChangeSheetBody({
       }
       headerSubtitle={
         <span className="text-sm text-muted-foreground">
-          {[c.id, SOURCE_LABEL[c.source], c.by, fmtDateTime(c.madeAt)].join(" · ")}
+          {[SOURCE_LABEL[c.source], c.by, fmtDateTime(c.madeAt)].join(" · ")}
         </span>
       }
       headerAside={
@@ -473,19 +462,8 @@ function ChangeSheetBody({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
-            {latest && (
-              <DropdownMenuItem onSelect={() => onAsk("undo")}>
-                <Undo2 />
-                Undo change
-              </DropdownMenuItem>
-            )}
-            {c.status === "scheduled" && (
-              <DropdownMenuItem onSelect={() => onAsk("cancel")}>
-                <Ban />
-                Cancel schedule
-              </DropdownMenuItem>
-            )}
-            {(latest || c.status === "scheduled") && <DropdownMenuSeparator />}
+            {/* A LOGBOOK ENTRY IS READ, NOT ACTED ON (Yash, 2026-11-17) — no
+                Undo; Export is all that is left. */}
             <DropdownMenuItem onSelect={exportChange}>
               <Download />
               Export
@@ -495,58 +473,114 @@ function ChangeSheetBody({
       }
       onSubmit={() => {}}
     >
-      {/* THE FIGURES, EACH SAYING WHAT IT COUNTS (Yash, 2026-11-16): who and
-          where — customers, ship-tos, products, each listed by name on a
-          press — then what moved — the prices (ship-to × product) and the
-          orders — each opening its tab below. */}
+      {/* WHAT CHANGED, THEN ITS IMPACT (Yash, 2026-11-17) — every change
+          lists its edits the same way, one or many: Entity, Action, what
+          changed (old muted, new plain), and how many product prices it
+          moved. Pressing one shows those prices. */}
+      <section className="flex shrink-0 flex-col gap-2">
+        <h3 className="text-sm font-medium text-foreground">What changed</h3>
+        <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
+          {c.edits.length && !c.undoOf && !c.resets ? (
+            c.edits.map((e, i) => {
+              const n = c.lines.filter((l) => l.setting === e.setting).length;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => openRows([`setting:${SETTING_LABEL[e.setting]}`])}
+                  className="grid grid-cols-[140px_110px_minmax(0,1fr)_auto] items-center gap-4 px-4 py-2.5 text-left text-sm outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/50"
+                >
+                  <span className="text-foreground">{SETTING_LABEL[e.setting]}</span>
+                  <span>
+                    <Pill>{c.configures ? "Added" : editAction(e)}</Pill>
+                  </span>
+                  <EditChange e={e} lines={c.lines} ents={ents} />
+                  <span className="text-muted-foreground">{plural(n, "product price")}</span>
+                </button>
+              );
+            })
+          ) : (
+            <div className="grid grid-cols-[140px_110px_minmax(0,1fr)] items-center gap-4 px-4 py-2.5 text-sm">
+              <span className="text-foreground">Pricing</span>
+              <span>
+                <Pill>{action}</Pill>
+              </span>
+              <span className="truncate text-foreground">{summary}</span>
+            </div>
+          )}
+        </div>
+      </section>
+      <section className="flex shrink-0 flex-col gap-2">
+      <h3 className="text-sm font-medium text-foreground">Impact</h3>
       <div className={FIGURE_STRIP.replace("lg:grid-cols-4", "lg:grid-cols-5")}>
         <Figure
           label="Customers"
           value={customers.length.toLocaleString()}
           note={customers.length === 0 ? "—" : customers.length === 1 ? customerOf(customers[0]).name : `${customerOf(customers[0]).name} +${customers.length - 1}`}
-          list={{
-            title: plural(customers.length, "customer"),
-            rows: customers.map((id) => ({ label: customerOf(id).name, value: plural(uniq(c.lines.filter((l) => l.customerId === id).map((l) => l.shiptoId)).length, "ship-to") })),
-          }}
+          onOpen={c.lines.length ? () => setAffected("customers") : undefined}
           openLabel="View list"
         />
         <Figure
           label="Ship-tos"
           value={shiptos.length.toLocaleString()}
           note={shiptos.length === 0 ? "—" : shiptos.length === 1 ? shiptoOf(shiptos[0]).name : `${shiptoOf(shiptos[0]).name} +${shiptos.length - 1}`}
-          list={{
-            title: plural(shiptos.length, "ship-to"),
-            rows: shiptos.map((id) => ({ label: shiptoOf(id).name, sub: customerOf(shiptoOf(id).customerId).name })),
-          }}
+          onOpen={c.lines.length ? () => setAffected("shiptos") : undefined}
           openLabel="View list"
         />
         <Figure
           label="Products"
           value={products.length.toLocaleString()}
           note={products.length === 0 ? "—" : products.length === 1 ? productOf(products[0]).name : `${productOf(products[0]).name} +${products.length - 1}`}
-          list={{
-            title: plural(products.length, "product"),
-            rows: products.map((id) => ({ label: productOf(id).name, value: plural(uniq(c.lines.filter((l) => l.productId === id).map((l) => l.shiptoId)).length, "ship-to") })),
-          }}
-          openLabel="View list"
+          onOpen={c.lines.length ? () => openRows([]) : undefined}
+          openLabel="View prices"
         />
-        <Figure
-          label={ahead ? "Prices that change" : "Prices changed"}
+        {/* WHAT MOVED, IN WORDS THAT NEED NO EXPLAINING (Yash, 2026-11-17):
+            each product's price at each ship-to, and the open orders on them
+            — which took the new price and which kept the old one. */}
+        {/* WHAT THEY MEAN, BEHIND AN ⓘ (UX-96: explanations sit behind an
+            ⓘ that opens on click; Yash, 2026-11-17). */}
+        <InfoFigure
+          label="Product prices"
+          info={
+            <>
+              <p>One product's price at one ship-to.</p>
+              <p>
+                This change moved {plural(c.lines.length, "product price")}: {plural(products.length, "product")} across{" "}
+                {plural(shiptos.length, "ship-to")}.
+              </p>
+            </>
+          }
           value={c.lines.length.toLocaleString()}
-          note={[failed ? `${failed.toLocaleString()} failed` : "", avgMove].filter(Boolean).join(" · ") || "Ship-to × product"}
-          onOpen={() => openRows(failed ? ["outcome:Failed"] : [])}
-          openLabel={failed ? "View failed" : "View prices"}
+          note={`Changed at ${plural(shiptos.length, "ship-to")}`}
+          onOpen={() => openRows([])}
+          openLabel="View prices"
         />
-        <Figure
-          label={ahead ? "Open orders" : "Orders"}
+        <InfoFigure
+          label="Orders affected"
+          info={
+            <>
+              <p>Open orders for the products and ship-tos whose price changed.</p>
+              <p>
+                <span className="font-medium text-foreground">New price:</span> the order now uses the changed price.
+              </p>
+              <p>
+                <span className="font-medium text-foreground">Kept old price:</span> the order keeps its price because it was locked,
+                quoted or priced by hand.
+              </p>
+            </>
+          }
           value={c.orders.length.toLocaleString()}
-          note={`${repriced.length.toLocaleString()} ${ahead ? "reprice" : "repriced"} · ${kept.length.toLocaleString()} ${ahead ? "keep" : "kept"} price`}
+          note={`${repriced.length.toLocaleString()} got new price · ${kept.length.toLocaleString()} kept old price`}
           onOpen={c.orders.length ? () => openOrders(null) : undefined}
           openLabel="View orders"
         />
       </div>
 
-      <div ref={work} className={WORK_AREA}>
+      </section>
+
+      {/* NO RECORD SUMMARY (Yash, 2026-11-17) — the header already says who,
+          how and when; the table takes the width. */}
+      <div ref={work} className={WORK_AREA.replace("lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]", "")}>
         <RecordViews
           resetKey={c.id}
           tabs={tabs}
@@ -557,41 +591,200 @@ function ChangeSheetBody({
           initialPicked={failed ? ["outcome:Failed"] : undefined}
           apply={apply}
         />
-        <div className="flex min-h-0 flex-col gap-6 overflow-auto">
-          <RailCard title="Record" icon={<History />}>
-            <dl className="flex flex-col py-1">
-              <RailRow label="Change" value={c.id} />
-              <RailRow label="Action" value={action} />
-              <RailRow label="Entity" value={uniq(c.edits.map((e) => SETTING_LABEL[e.setting])).join(", ")} />
-              <RailRow label="Prices changed" value={failed ? `${c.lines.length.toLocaleString()} · ${failed.toLocaleString()} failed` : c.lines.length.toLocaleString()} />
-              <RailRow label="Made via" value={SOURCE_LABEL[c.source]} />
-              <RailRow label="Made by" value={c.by} />
-              <RailRow label="Made on" value={fmtDateTime(c.madeAt)} />
-              {c.effectiveAt !== c.madeAt && (
-                <RailRow
-                  label={c.status === "scheduled" ? "Runs" : c.status === "canceled" ? "Was to run" : "Ran"}
-                  value={fmtWhen(c.effectiveAt)}
-                />
-              )}
-              {c.editedAt && <RailRow label="Schedule edited" value={fmtWhen(c.editedAt)} />}
-              {c.retriedAt && <RailRow label="Failed rows retried" value={fmtWhen(c.retriedAt)} />}
-              {c.undoOf && <RailRow label="Undoes" value={<ChangeLink id={c.undoOf} onOpen={onOpen} />} />}
-              {c.undoneBy && <RailRow label="Undone by" value={<ChangeLink id={c.undoneBy} onOpen={onOpen} />} />}
-              {c.noChange > 0 && <RailRow label="Prices already set" value={c.noChange.toLocaleString()} />}
-            </dl>
-          </RailCard>
-
-        </div>
       </div>
+      {affected && (
+        <AffectedSheet
+          level={2}
+          kind={affected}
+          title={affected === "customers" ? "Customers affected" : "Ship-tos affected"}
+          subtitle={`${c.id} · ${headline}`}
+          items={shiptos.map((id) => ({ customerId: shiptoOf(id).customerId, shiptoId: id }))}
+          onClose={() => setAffected(null)}
+        />
+      )}
     </RecordSheet>
   );
 }
 
-function ChangeLink({ id, onOpen }: { id: string; onOpen: (id: string) => void }) {
+/** A ship-to, its address under it — always, never a column of its own
+ *  (Yash, 2026-11-17). */
+function ShiptoCell({ name, address }: { name: string; address: string }) {
   return (
-    <button type="button" className="text-sm text-foreground underline-offset-4 hover:underline" onClick={() => onOpen(id)}>
-      {id}
-    </button>
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate" title={name}>
+        {name}
+      </span>
+      <span className="truncate text-xs text-muted-foreground" title={address}>
+        {address}
+      </span>
+    </span>
+  );
+}
+
+type LinePart = { t: string; old?: boolean };
+/** What one product price's change was: an edited value old → new, what came
+ *  off (muted) and what went on, with each one's $/gal. */
+function lineParts(l: ImpactLine, ents: EntityMap): LinePart[] {
+  const nm = (id: string) => ents.get(id)?.name ?? id;
+  const val = (id: string) => {
+    const v = ents.get(id)?.value;
+    return typeof v === "number" && !ents.get(id)?.dynamic ? `${nm(id)} ${money(v)}` : nm(id);
+  };
+  if (l.beforeIds.length === 1 && l.afterIds.length === 1 && l.beforeIds[0] === l.afterIds[0] && l.before.includes(" · ")) {
+    const [n, was] = l.before.split(" · ");
+    return [{ t: `${n}:` }, { t: was, old: true }, { t: "→", old: true }, { t: l.after.split(" · ")[1] ?? l.after }];
+  }
+  if (!IS_LIST[l.setting]) return [{ t: l.before || "—", old: true }, { t: "→", old: true }, { t: l.after || "—" }];
+  const added = l.afterIds.filter((id) => !l.beforeIds.includes(id));
+  const removed = l.beforeIds.filter((id) => !l.afterIds.includes(id));
+  const both = added.length > 0 && removed.length > 0;
+  const out: LinePart[] = [];
+  if (removed.length) out.push(...(both ? [{ t: "Deleted", old: true }] : []), { t: removed.map(val).join(", "), old: true });
+  if (both) out.push({ t: "·", old: true }, { t: "Added", old: true });
+  if (added.length) out.push({ t: added.map(val).join(", ") });
+  return out.length ? out : [{ t: l.after || "—" }];
+}
+
+function LineChange({ l, ents }: { l: ImpactLine | undefined; ents: EntityMap }) {
+  if (!l) return null;
+  const parts = lineParts(l, ents);
+  return (
+    <span className="flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap" title={parts.map((p) => p.t).join(" ")}>
+      {parts.map((p, i) => (
+        <span key={i} className={cn("min-w-0 truncate", p.old ? "text-muted-foreground" : "text-foreground", i < parts.length - 1 && "shrink-0")}>
+          {p.t}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** The old value, muted, so the new one reads as the current. */
+function Old({ text }: { text: string }) {
+  return (
+    <span className="block min-w-0 truncate text-muted-foreground" title={text}>
+      {text}
+    </span>
+  );
+}
+
+/** One edit's change: what came off muted, what went on plain; an added
+ *  setting shows its value too (Yash, 2026-11-17). */
+function EditChange({ e, lines, ents }: { e: Edit; lines: ImpactLine[]; ents: EntityMap }) {
+  const name = (id: string) => {
+    const ent = ents.get(id);
+    return ent ? (ent.dynamic ? `${ent.name}/gal` : ent.name) : id;
+  };
+  const withValue = (id: string) => {
+    const v = ents.get(id)?.value;
+    return typeof v === "number" && !ents.get(id)?.dynamic ? `${name(id)} ${money(v)}` : name(id);
+  };
+  const mine = lines.filter((l) => l.setting === e.setting);
+  const off = uniq(mine.flatMap((l) => l.beforeIds.filter((id) => !l.afterIds.includes(id))));
+  const Arrow = () => <span className="text-muted-foreground">→</span>;
+  const row = (children: React.ReactNode) => <span className="flex min-w-0 items-center gap-1.5 truncate">{children}</span>;
+  if (e.operation === "add" || e.operation === "create") return row(<span className="truncate text-foreground">{e.entityIds.map(withValue).join(", ")}</span>);
+  if (e.operation === "remove") return row(<span className="truncate text-muted-foreground">{e.entityIds.map(withValue).join(", ")}</span>);
+  if (e.operation === "edit") {
+    const was = mine.find((l) => l.beforeIds.includes(e.entityIds[0]))?.before.split(" · ")[1];
+    return row(
+      <>
+        <span className="shrink-0 text-foreground">{name(e.entityIds[0])}:</span>
+        {was && (
+          <>
+            <span className="shrink-0 text-muted-foreground">{was}</span>
+            <Arrow />
+          </>
+        )}
+        <span className="shrink-0 text-foreground">{money(e.amount ?? 0)}</span>
+      </>
+    );
+  }
+  if (!off.length) return row(<span className="truncate text-foreground">{e.entityIds.map(withValue).join(", ")}</span>);
+  if (IS_LIST[e.setting])
+    return row(
+      <>
+        <span className="text-muted-foreground">Deleted</span>
+        <span className="truncate text-muted-foreground">{off.map(withValue).join(", ")}</span>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-muted-foreground">Added</span>
+        <span className="truncate text-foreground">{e.entityIds.map(withValue).join(", ")}</span>
+      </>
+    );
+  return row(
+    <>
+      <span className="truncate text-muted-foreground">{off.map(name).join(", ")}</span>
+      <Arrow />
+      <span className="truncate text-foreground">{e.entityIds.map(name).join(", ")}</span>
+    </>
+  );
+}
+
+/** A figure with an ⓘ beside its label that opens what it means on click
+ *  (UX-96). Built here, not in the shared Figure: the figure is a button,
+ *  so the ⓘ sits over it rather than inside it. */
+function InfoFigure({
+  label,
+  info,
+  value,
+  note,
+  onOpen,
+  openLabel,
+}: {
+  label: string;
+  info: React.ReactNode;
+  value: string;
+  note: string;
+  onOpen?: () => void;
+  openLabel: string;
+}) {
+  return (
+    <div className="group/fig @container relative flex min-w-0 flex-col gap-1 p-4">
+      {onOpen && (
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`${label}: ${openLabel}`}
+          className="absolute inset-0 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+        />
+      )}
+      <span className="pointer-events-none relative flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{label}</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={`What ${label.toLowerCase()} means`}
+                className="pointer-events-auto rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                <Info className="size-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="flex w-80 flex-col gap-2 text-sm text-muted-foreground">
+              {info}
+            </PopoverContent>
+          </Popover>
+        </span>
+        {onOpen && (
+          <span className="absolute right-0 top-0 hidden items-center gap-0.5 text-xs font-medium text-foreground @min-[15rem]:group-hover/fig:flex @min-[15rem]:group-has-[:focus-visible]/fig:flex">
+            <span className="underline decoration-current/50 decoration-dotted underline-offset-4">{openLabel}</span>
+            <ChevronRight className="size-3.5" />
+          </span>
+        )}
+      </span>
+      <span className="pointer-events-none relative truncate text-2xl font-semibold tabular-nums text-foreground">{value}</span>
+      <span className="pointer-events-none relative truncate text-xs text-muted-foreground">{note}</span>
+    </div>
+  );
+}
+
+/** Customer and Ship-to are fixed widths (UX-45); a longer name truncates. */
+function Truncated({ text }: { text: string }) {
+  return (
+    <span className="block min-w-0 truncate" title={text}>
+      {text}
+    </span>
   );
 }
 

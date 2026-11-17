@@ -1,39 +1,36 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { History } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Pill } from "@/components/ui/pill";
-import { StatusChip } from "@/components/ui/status-chip";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
-import { DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
+import { PocCard } from "../PocDetails";
+import { CELL, DraftStatusChip, RecordSheet, useDraftSaveState } from "../RecordSheet";
 import { ActivityCard, RailRow, SheetRail, SummaryCard, type TimelineEntry } from "../SheetCards";
+import { TableCellMultiSelect } from "@/components/form-layout/table-cells";
 import { TokenMultiSelect } from "../TokenMultiSelect";
-import { kindTone } from "../statusKind";
-import { RecordViews, type ViewRow, type ViewTab } from "../masterdata/RecordViews";
 import {
   SETTING_LABEL,
-  SOURCE_LABEL,
-  STATUS_LABEL,
   changeSummary,
   customerOf,
-  fmtWhen,
   plural,
   productOf,
   readSetting,
   shiptoOf,
   uniq,
   type ChangeRecord,
-  type ChangeStatus,
   type ConfigRow,
   type Edit,
   type Setting,
 } from "./changeLog";
-import { savePricing, useChangeLog } from "./changeLogStore";
-import { STATUS_KIND, actionOf } from "./activityFeed";
-import { ChangeSheet } from "./ChangeSheet";
-import { fitTab } from "./customerShiptoViews";
+import { addEntity, savePricing, useChangeLog } from "./changeLogStore";
+import { CATEGORIES } from "./seed";
+import { HUBS } from "./pricingConfig";
 import { APPLIED_LABEL, UNCONFIGURED, customerPricing, historyOf, perGal, type PricingTarget } from "./pricingConfig";
 
 /*
@@ -51,11 +48,22 @@ import { APPLIED_LABEL, UNCONFIGURED, customerPricing, historyOf, perGal, type P
   The history icon opens the full log for the ship-to or customer.
 */
 
+/* The production form's order (dev site, 2026-11-17): Details, then margin,
+   tax and fee, then adders. */
 const LISTS: { setting: Setting; title: string; add: string; search: string }[] = [
-  { setting: "adder", title: "Adders", add: "Add adders", search: "Search adders…" },
   { setting: "margin", title: "Margin", add: "Add margins", search: "Search margins…" },
   { setting: "tax", title: "Tax", add: "Add taxes", search: "Search taxes…" },
   { setting: "fee", title: "Fee", add: "Add fees", search: "Search fees…" },
+  { setting: "adder", title: "Adders", add: "Add adders", search: "Search adders…" },
+];
+
+/* A customer's margin, tax and fee come from one of three places; only
+   Customer pricing sets them here. */
+type Source = "customer" | "shipto" | "hub";
+const SOURCES: [Source, string][] = [
+  ["customer", "Customer pricing"],
+  ["shipto", "Ship-to pricing"],
+  ["hub", "Hub pricing"],
 ];
 const SETTINGS: Setting[] = ["rateType", "market", "adder", "margin", "tax", "fee"];
 
@@ -79,9 +87,7 @@ function withDraft(r: ConfigRow, d: Draft): ConfigRow {
   };
 }
 
-const STATUS_BY_LABEL = Object.fromEntries((Object.keys(STATUS_LABEL) as ChangeStatus[]).map((s) => [STATUS_LABEL[s], s])) as Record<string, ChangeStatus>;
-
-/** A change, as the record's Activity card says it. */
+/** A change, as the record's History card says it. */
 const entryOf = (c: ChangeRecord, ents: Parameters<typeof changeSummary>[1]): TimelineEntry => ({
   at: new Date(c.effectiveAt).toISOString(),
   by: c.by,
@@ -102,7 +108,15 @@ export function PricingSheet({
   return <PricingSheetBody key={keyOf(target)} target={target} onClose={onClose} onHistory={onHistory} />;
 }
 
-function PricingSheetBody({ target, onClose, onHistory }: { target: PricingTarget; onClose: () => void; onHistory: (t: PricingTarget) => void }) {
+function PricingSheetBody({
+  target,
+  onClose,
+  onHistory,
+}: {
+  target: PricingTarget;
+  onClose: () => void;
+  onHistory: (t: PricingTarget) => void;
+}) {
   const log = useChangeLog();
   const ents = log.entityMap;
   const isRow = target.kind === "row";
@@ -206,6 +220,22 @@ function PricingSheetBody({ target, onClose, onHistory }: { target: PricingTarge
   const idOf = (s: Setting, name: string) => names(s).find((e) => e.name === name)?.id ?? "";
   const history = historyOf(log.changes, target);
 
+  /* Customer-only settings and the POC — held on the sheet for now; the
+     change log does not record them. */
+  const [byCategory, setByCategory] = React.useState(false);
+  const [categories, setCategories] = React.useState<string[]>([]);
+  const [source, setSource] = React.useState<Source>("customer");
+  const [maxPricing, setMaxPricing] = React.useState(false);
+  const [poc, setPoc] = React.useState("");
+  const [deliveryWindow, setWindow] = React.useState({ from: "", to: "" });
+  const [creating, setCreating] = React.useState<Setting | null>(null);
+  /* MARGINS BY HUB — a customer priced from hubs sets margins per hub. */
+  const [hubPicks, setHubPicks] = React.useState<Record<string, { margin: string[]; fee: string[] }>>({});
+  const [hubQuery, setHubQuery] = React.useState("");
+  const pocShipto = isRow
+    ? shiptoOf(live!.shiptoId).name
+    : shiptoOf(log.rows.find((r) => r.customerId === (target as { customerId: string }).customerId)!.shiptoId).name;
+
   const title = isRow ? shiptoOf(live!.shiptoId).name : `${customerOf((target as { customerId: string }).customerId).name}`;
   const subtitle = isRow
     ? `${customerOf(live!.customerId).name} · ${productOf(live!.productId).name}`
@@ -214,18 +244,39 @@ function PricingSheetBody({ target, onClose, onHistory }: { target: PricingTarge
       : "No ship-to inherits this pricing";
   const applied = isRow ? APPLIED_LABEL[live!.applied] : "Customer";
 
+  const listSection = (l: (typeof LISTS)[number]) => (
+    <SheetSection
+      key={l.setting}
+      title={l.title}
+      action={
+        <Button variant="ghost" size="sm" onClick={() => setCreating(l.setting)}>
+          <Plus />
+          New
+        </Button>
+      }
+    >
+      <TokenMultiSelect
+        options={names(l.setting).map((e) => e.name)}
+        value={draft[l.setting].map(nameOf)}
+        onChange={(next) => setDraft((d) => ({ ...d, [l.setting]: next.map((n) => idOf(l.setting, n)).filter(Boolean) }))}
+        addLabel={l.add}
+        searchPlaceholder={l.search}
+      />
+    </SheetSection>
+  );
+
   return (
     <RecordSheet
       open
       onOpenChange={(v) => !v && onClose()}
       mode="edit"
       size="data"
+      fit={{ tables: [[CELL.name, 280, 280]], rail: true }}
       editTitle={title}
       createTitle=""
       createAction=""
       editAction="Configure pricing"
       showCancel={false}
-      stepNav={false}
       noFooter={configured}
       pending={configured ? undefined : missing}
       headerAside={
@@ -235,16 +286,6 @@ function PricingSheetBody({ target, onClose, onHistory }: { target: PricingTarge
         </span>
       }
       headerSubtitle={<span className="text-sm text-muted-foreground">{subtitle}</span>}
-      headerActions={
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label="History" onClick={() => onHistory(target)}>
-              <History />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>History</TooltipContent>
-        </Tooltip>
-      }
       onSubmit={configure}
     >
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]">
@@ -265,134 +306,218 @@ function PricingSheetBody({ target, onClose, onHistory }: { target: PricingTarge
                 </SheetField>
               ))}
             </div>
+            {!isRow && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Product categories</span>
+                  <Switch checked={byCategory} onCheckedChange={setByCategory} aria-label="Product categories" />
+                </div>
+                {byCategory && (
+                  <TokenMultiSelect
+                    options={CATEGORIES.map((c) => c.name)}
+                    value={categories}
+                    onChange={setCategories}
+                    addLabel="Add categories"
+                    searchPlaceholder="Search categories…"
+                  />
+                )}
+              </>
+            )}
           </SheetSection>
-          {LISTS.map((l) => (
-            <SheetSection key={l.setting} title={l.title} flush>
-              <TokenMultiSelect
-                flush
-                options={names(l.setting).map((e) => e.name)}
-                value={draft[l.setting].map(nameOf)}
-                onChange={(next) => setDraft((d) => ({ ...d, [l.setting]: next.map((n) => idOf(l.setting, n)).filter(Boolean) }))}
-                addLabel={l.add}
-                searchPlaceholder={l.search}
-              />
+          {!isRow && (
+            <SheetSection title="Margin and fee source">
+              <RadioGroup value={source} onValueChange={(v) => setSource(v as Source)} className="flex gap-6">
+                {SOURCES.map(([v, text]) => (
+                  <div key={v} className="flex items-center gap-2">
+                    <RadioGroupItem value={v} id={`source-${v}`} />
+                    <Label htmlFor={`source-${v}`} className="font-normal">
+                      {text}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+              {/* A STATE, NOT A GUIDE (ux §helper text — "a value came from
+                  somewhere the reader did not put it"): where this customer's
+                  margins and fees come from while it is not Customer pricing.
+                  In the read-out box the 3PL order sheet uses under its ship-to. */}
+              {source === "shipto" && (
+                <p className="rounded-md border border-fp-outline-1 bg-fp-surface-1a px-4 py-2.5 text-sm text-muted-foreground">
+                  Margins and fees come from each ship-to's own pricing.
+                </p>
+              )}
             </SheetSection>
-          ))}
+          )}
+          {LISTS.filter((l) => l.setting !== "adder" && (isRow || source === "customer")).map(listSection)}
+          {!isRow && source === "hub" && (
+            <SheetSection title="Margins and fees by hub" flush>
+              <div className="border-b border-border p-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input className="h-8 pl-8" placeholder="Search hubs…" value={hubQuery} onChange={(e) => setHubQuery(e.target.value)} aria-label="Search hubs" />
+                </div>
+              </div>
+              <div className="max-h-96 overflow-auto">
+                <table className="w-full table-fixed text-sm">
+                  <thead className="sticky top-0 z-10 bg-muted text-left text-xs text-muted-foreground">
+                    <tr>
+                      <th className="text-left w-1/3 px-3 py-2 font-medium">Hub</th>
+                      <th className="text-left border-l border-border px-3 py-2 font-medium">Margins</th>
+                      <th className="text-left border-l border-border px-3 py-2 font-medium">Fees</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {HUBS.filter((h) => h.toLowerCase().includes(hubQuery.trim().toLowerCase())).map((h) => (
+                      <tr key={h} className="border-t border-border align-middle">
+                        <td className="px-3 py-3">{h}</td>
+                        {(["margin", "fee"] as const).map((k) => (
+                          <td key={k} className="relative border-l border-border p-0">
+                            <TableCellMultiSelect
+                              allOption={k === "margin" ? "All margins" : "All fees"}
+                              values={hubPicks[h]?.[k] ?? []}
+                              /* WHAT IS APPLIED COMES FIRST when the list reopens. */
+                              options={[
+                                ...(hubPicks[h]?.[k] ?? []).filter((n) => !n.startsWith("All ")),
+                                ...names(k).map((e) => e.name).filter((n) => !(hubPicks[h]?.[k] ?? []).includes(n)),
+                              ]}
+                              placeholder={k === "margin" ? "Select margins" : "Select fees"}
+                              unitLabel={k}
+                              onChange={(next) => setHubPicks((m) => ({ ...m, [h]: { margin: m[h]?.margin ?? [], fee: m[h]?.fee ?? [], [k]: next } }))}
+                              aria-label={`${k === "margin" ? "Margins" : "Fees"} for ${h}`}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </SheetSection>
+          )}
+          {/* ADDERS AFTER THE MARGINS AND FEES — wherever those come from. */}
+          {LISTS.filter((l) => l.setting === "adder").map(listSection)}
+          {!isRow && (
+            <SheetSection title="Max pricing">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Use the higher of today's or imported price</span>
+                <Switch checked={maxPricing} onCheckedChange={setMaxPricing} aria-label="Max pricing" />
+              </div>
+              {maxPricing && (
+                <div className="grid grid-cols-2 gap-4">
+                  <SheetField label="Window starts" required>
+                    <Input type="time" value={deliveryWindow.from} onChange={(e) => setWindow((w) => ({ ...w, from: e.target.value }))} />
+                  </SheetField>
+                  <SheetField label="Window ends" required>
+                    <Input type="time" value={deliveryWindow.to} onChange={(e) => setWindow((w) => ({ ...w, to: e.target.value }))} />
+                  </SheetField>
+                </div>
+              )}
+            </SheetSection>
+          )}
         </div>
 
         <SheetRail>
           <SummaryCard title="Price summary">
             <dl className="flex flex-col">
               {base !== null && <RailRow variant="line" label="Base price ($/gal)" value={perGal(base)} />}
-              <RailRow variant="line" label="Margin ($/gal)" value={perGal(part("margin"))} />
-              <RailRow variant="line" label="Tax ($/gal)" value={perGal(part("tax"))} />
-              <RailRow variant="line" label="Fee ($/gal)" value={perGal(part("fee"))} />
+              {/* A CUSTOMER PRICED FROM ITS SHIP-TOS OR HUBS sets no margin,
+                  tax or fee here — the summary shows only what it does set. */}
+              {(isRow || source === "customer") && (
+                <>
+                  <RailRow variant="line" label="Margin ($/gal)" value={perGal(part("margin"))} />
+                  <RailRow variant="line" label="Tax ($/gal)" value={perGal(part("tax"))} />
+                  <RailRow variant="line" label="Fee ($/gal)" value={perGal(part("fee"))} />
+                </>
+              )}
               <RailRow variant="line" label="Adders ($/gal)" value={perGal(part("adder"))} />
               {now.discount > 0 && <RailRow variant="line" label="Discount ($/gal)" value={`−${perGal(now.discount)}`} />}
               {base !== null && <RailRow variant="total" label="Effective price ($/gal)" value={perGal(effective)} />}
             </dl>
           </SummaryCard>
-          <ActivityCard entries={[...history].reverse().map((c) => entryOf(c, ents))} />
+          <PocCard shipTo={pocShipto} value={poc} onChange={setPoc} />
+          <ActivityCard
+            title="History"
+            entries={[...history].reverse().map((c) => entryOf(c, ents))}
+            action={
+              history.length > 0 && (
+                <Button variant="ghost" size="xs" onClick={() => onHistory(target)}>
+                  View all
+                </Button>
+              )
+            }
+          />
         </SheetRail>
+      </div>
+      <NewEntitySheet
+        setting={creating}
+        onClose={() => setCreating(null)}
+        onCreated={(s, id) => setDraft((d) => ({ ...d, [s]: [...d[s], id] }))}
+      />
+    </RecordSheet>
+  );
+}
+
+const NEW_NOUN: Partial<Record<Setting, string>> = { margin: "margin", fee: "fee", tax: "tax", adder: "adder" };
+
+/**
+ * + NEW (Yash, 2026-11-17) — make a margin, fee, tax or adder without leaving
+ * the pricing: a second sheet over this one, its name and amount; on create it
+ * joins Pricing setup and is picked here.
+ */
+function NewEntitySheet({
+  setting,
+  onClose,
+  onCreated,
+}: {
+  setting: Setting | null;
+  onClose: () => void;
+  onCreated: (s: Setting, id: string) => void;
+}) {
+  const [f, setF] = React.useState({ name: "", amount: "", desc: "" });
+  React.useEffect(() => {
+    if (setting) setF({ name: "", amount: "", desc: "" });
+  }, [setting]);
+  if (!setting) return null;
+  const noun = NEW_NOUN[setting] ?? "";
+  const amount = Number(f.amount);
+  const missing = [
+    !f.name.trim() && { key: "name", label: "Enter a name", target: "new-entity" },
+    (!f.amount.trim() || Number.isNaN(amount)) && { key: "amount", label: "Enter an amount", target: "new-entity" },
+  ].filter(Boolean) as { key: string; label: string; target: string }[];
+  return (
+    <RecordSheet
+      level={2}
+      size="form"
+      stepNav={false}
+      open
+      onOpenChange={(v) => !v && onClose()}
+      mode="create"
+      createTitle={`New ${noun}`}
+      editTitle=""
+      createAction={`Create ${noun}`}
+      editAction=""
+      showCancel={false}
+      pending={missing}
+      onSubmit={() => {
+        if (missing.length) return;
+        const id = addEntity(setting, f.name.trim(), amount, f.desc.trim() || undefined);
+        onCreated(setting, id);
+        toast.success(`${f.name.trim()} created`);
+        onClose();
+      }}
+    >
+      <div id="new-entity" className="flex flex-col gap-4">
+        <SheetField label="Name" required>
+          <Input value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))} placeholder={`Enter ${noun} name`} />
+        </SheetField>
+        <SheetField label="Amount ($/gal)" required>
+          <Input inputMode="decimal" value={f.amount} onChange={(e) => setF((x) => ({ ...x, amount: e.target.value }))} placeholder="0.0000" />
+        </SheetField>
+        <SheetField label="Description">
+          <Input value={f.desc} onChange={(e) => setF((x) => ({ ...x, desc: e.target.value }))} placeholder="Enter description" />
+        </SheetField>
       </div>
     </RecordSheet>
   );
 }
 
-/**
- * THE LOG HISTORY (Yash, 2026-11-17) — v2's ship-to and customer history:
- * every change that reached the ship-to (or the customer's pricing), as the
- * Change log's own table with its search, filters and columns. A row opens
- * the change over it. Read-only, so no footer (rule 28).
- */
-export function PricingHistorySheet({ target, onClose }: { target: PricingTarget | null; onClose: () => void }) {
-  const log = useChangeLog();
-  const [changeId, setChangeId] = React.useState<string | null>(null);
-  if (!target) return null;
-  const ents = log.entityMap;
-  const isRow = target.kind === "row";
-  const changes = historyOf(log.changes, target);
-  const shiptoId = isRow ? target.shiptoId : null;
-  const title = isRow ? `${shiptoOf(shiptoId!).name} history` : `${customerOf(target.customerId).name} history`;
 
-  const productsIn = (c: ChangeRecord) =>
-    uniq((shiptoId ? c.lines.filter((l) => l.shiptoId === shiptoId) : c.lines).map((l) => productOf(l.productId).name));
-  const tab: ViewTab = fitTab({
-    key: "changes",
-    label: "Changes",
-    noun: "changes",
-    one: "change",
-    columns: [
-      { key: "when", label: "Date & time", width: 180, sortable: true },
-      { key: "change", label: "Change", width: 320, sortable: true },
-      ...(isRow ? [{ key: "products", label: "Products", width: 200, sortable: true }] : [{ key: "shiptos", label: "Ship-tos", width: 120, sortable: true }]),
-      { key: "setting", label: "Entity", width: 120, sortable: true },
-      { key: "action", label: "Action", width: 120, sortable: true },
-      { key: "by", label: "Made by", width: 140, sortable: true },
-      { key: "source", label: "Made via", width: 200, sortable: true },
-      { key: "status", label: "Status", width: 120, sortable: true },
-    ],
-    rows: changes.map((c): ViewRow => {
-      const products = productsIn(c);
-      const entities = uniq(c.edits.map((e) => SETTING_LABEL[e.setting])).join(", ");
-      return {
-        id: c.id,
-        text: {
-          when: fmtWhen(c.effectiveAt),
-          change: `${changeSummary(c, ents)} · ${c.id}`,
-          products: products.length > 2 ? `${products.slice(0, 2).join(", ")} +${products.length - 2}` : products.join(", ") || "—",
-          shiptos: uniq(c.lines.map((l) => l.shiptoId)).length.toLocaleString(),
-          setting: entities,
-          action: actionOf(c),
-          by: c.by,
-          source: SOURCE_LABEL[c.source],
-        },
-        sort: { when: c.effectiveAt },
-        status: STATUS_LABEL[c.status],
-        values: { setting: entities, action: actionOf(c), by: c.by, product: products.join(", ") },
-      };
-    }),
-    facets: [
-      { key: "setting", label: "Entity" },
-      { key: "action", label: "Action" },
-      { key: "by", label: "Made by" },
-      { key: "status", label: "Status" },
-    ],
-    renderCell: (r, key) =>
-      key === "status" ? (
-        <StatusChip tone={kindTone(STATUS_KIND[STATUS_BY_LABEL[r.status]] ?? "neutral")} variant="text">
-          {r.status}
-        </StatusChip>
-      ) : key === "action" ? (
-        <Pill>{r.text.action}</Pill>
-      ) : undefined,
-    onOpen: (r) => setChangeId(r.id),
-    nameOf: (r) => r.id,
-  });
-
-  return (
-    <>
-      <RecordSheet
-        size="full"
-        open
-        onOpenChange={(v) => !v && onClose()}
-        mode="edit"
-        editTitle={title}
-        createTitle=""
-        createAction=""
-        showCancel={false}
-        stepNav={false}
-        noFooter
-        headerSubtitle={
-          <span className="text-sm text-muted-foreground">
-            {isRow ? `${customerOf(shiptoOf(shiptoId!).customerId).name} · ${shiptoOf(shiptoId!).address}` : "Customer pricing"}
-          </span>
-        }
-        onSubmit={onClose}
-      >
-        <RecordViews resetKey={isRow ? shiptoId! : target.customerId} tabs={[tab]} searchPlaceholder="Search this history" historyKey="pricing-config-history" />
-      </RecordSheet>
-      <ChangeSheet id={changeId} onClose={() => setChangeId(null)} onOpen={setChangeId} level={2} />
-    </>
-  );
-}

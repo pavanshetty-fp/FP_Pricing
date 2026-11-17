@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RecordSheet } from "../RecordSheet";
+import type { SheetPresentation } from "../sheetPresentation";
 import { fitColumns } from "./fitColumns";
 import { kindTone } from "../statusKind";
 import { RecordViews, type ViewRow, type ViewTab } from "../masterdata/RecordViews";
@@ -58,7 +59,7 @@ import {
   type ImpactLine,
 } from "./changeLog";
 import { cancelChange, rescheduleChange, retryChange, undoChange, useChangeLog } from "./changeLogStore";
-import { STATUS_KIND, actionOf } from "./activityFeed";
+import { STATUS_KIND, actionOf, scopedChange, type FeedScope } from "./activityFeed";
 
 /*
   A CHANGE, OPENED (Yash, 2026-11-16) — the Change history sheet of the old
@@ -74,7 +75,6 @@ import { STATUS_KIND, actionOf } from "./activityFeed";
 */
 
 const LINE_OUTCOME = { changed: "Changed", failed: "Failed", pending: "Pending" } as const;
-const ORDER_KIND = { "New price": "success", "Kept old price": "neutral" } as const;
 
 const cents = (n: number) => (n === 0 ? "—" : `${n > 0 ? "+" : "−"}$${Math.abs(n).toFixed(4)}`);
 
@@ -83,15 +83,28 @@ export function ChangeSheet({
   onClose,
   onOpen,
   level = 1,
+  scope = null,
+  presentation,
 }: {
+  /** "full" to open as a full page whatever the app-wide setting. */
+  presentation?: SheetPresentation;
   id: string | null;
   onClose: () => void;
   onOpen: (id: string) => void;
   /** 2 when opened over another sheet — an order's trace (record sheet rule 11). */
   level?: 1 | 2;
+  /** Opened from a feed filtered to one customer or ship-to: the change as
+   *  it reached them only (Yash, 2026-11-18). */
+  scope?: FeedScope;
 }) {
   const log = useChangeLog();
-  const c = log.changes.find((x) => x.id === id) ?? null;
+  const whole = log.changes.find((x) => x.id === id) ?? null;
+  const c = React.useMemo(() => {
+    if (!whole || !scope) return whole;
+    const cut = scopedChange(whole, scope);
+    const edits = cut.edits.filter((e) => cut.lines.some((l) => l.setting === e.setting));
+    return { ...cut, edits: edits.length ? edits : cut.edits };
+  }, [whole, scope]);
   const [ask, setAsk] = React.useState<ChangeAsk | null>(null);
   if (!c) return null;
   return (
@@ -106,8 +119,9 @@ export function ChangeSheet({
         onOpen={onOpen}
         onAsk={setAsk}
         level={level}
+        presentation={presentation}
       />
-      <ChangeDialogs change={c} ask={ask} onClose={() => setAsk(null)} onUndone={onOpen} />
+      <ChangeDialogs change={whole} ask={ask} onClose={() => setAsk(null)} onUndone={onOpen} />
     </>
   );
 }
@@ -139,7 +153,7 @@ export function ChangeDialogs({
       <AlertDialog open={ask === "undo"} onOpenChange={(o) => !o && setAsk(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Undo {c.id}?</AlertDialogTitle>
+            <AlertDialogTitle>Undo this change?</AlertDialogTitle>
             <AlertDialogDescription>
               {plural(c.lines.filter((l) => l.outcome === "changed").length, "price")} go back to their earlier values. The undo is
               logged as a new change.
@@ -161,7 +175,7 @@ export function ChangeDialogs({
       <AlertDialog open={ask === "cancel"} onOpenChange={(o) => !o && setAsk(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel {c.id}?</AlertDialogTitle>
+            <AlertDialogTitle>Cancel this schedule?</AlertDialogTitle>
             <AlertDialogDescription>It won't run {fmtWhen(c.effectiveAt)}. It stays in the log as canceled.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -187,7 +201,7 @@ export function ChangeRowMenu({ c, latest, onAsk }: { c: ChangeRecord; latest: b
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${c.id}`}>
+        <Button variant="ghost" size="icon-sm" aria-label="Change actions">
           <MoreHorizontal />
         </Button>
       </DropdownMenuTrigger>
@@ -217,7 +231,7 @@ export function ChangeRowMenu({ c, latest, onAsk }: { c: ChangeRecord; latest: b
           </DropdownMenuItem>
         )}
         {(latest || c.status === "scheduled" || c.status === "partlyFailed") && <DropdownMenuSeparator />}
-        <DropdownMenuItem onSelect={() => toast.success(`Exporting ${plural(c.lines.length, "price")} of ${c.id} as .csv`)}>
+        <DropdownMenuItem onSelect={() => toast.success(`Exporting ${plural(c.lines.length, "price")} as .csv`)}>
           <Download />
           Export
         </DropdownMenuItem>
@@ -234,8 +248,10 @@ function ChangeSheetBody({
   onClose,
   onAsk,
   level,
+  presentation,
 }: {
   level: 1 | 2;
+  presentation?: SheetPresentation;
   c: ChangeRecord;
   latest: boolean;
   summary: string;
@@ -253,7 +269,6 @@ function ChangeSheetBody({
   const products = uniq(c.lines.map((l) => l.productId));
   const failed = c.lines.filter((l) => l.outcome === "failed").length;
   const repriced = c.orders.filter((o) => o.status === "repriced");
-  const kept = c.orders.filter((o) => o.status === "kept");
   const action = actionOf(c);
 
   const tabs = React.useMemo<ViewTab[]>(() => {
@@ -264,23 +279,25 @@ function ChangeSheetBody({
            (Yash, 2026-11-16: "rows" meant nothing to a reader). */
         /* A PRICE IS ONE PRODUCT AT ONE SHIP-TO — said in the name (Yash,
            2026-11-17: "Ship-to × product" needed explaining out loud). */
-        label: "Product prices",
-        noun: "product prices",
-        one: "product price",
+        /* SHIP-TO × PRODUCT PRICES (Yash, 2026-11-18) — what one row is. */
+        label: "Ship-to × product prices",
+        noun: "ship-to × product prices",
+        one: "ship-to × product price",
         /* PRODUCT, SHIP-TO, CUSTOMER — the price is the product's, at a
            ship-to, of a customer (Yash, 2026-11-17). Old and New, as the
            orders say "new price" and "kept old price"; the old one muted. */
         columns: [
           /* THE CHANGE ON THE FIRST SCREEN (Yash, 2026-11-17) — Customer
              moves to the end, so no one scrolls sideways to read it. */
-          { key: "product", label: "Product", width: 170, sortable: true },
+          /* SHIP-TO, ITS CUSTOMER, THEN PRODUCT (Yash, 2026-11-18). */
           { key: "shipto", label: "Ship-to", width: 170, sortable: true },
+          { key: "customer", label: "Customer", width: 250, sortable: true },
+          { key: "product", label: "Product", width: 170, sortable: true },
           { key: "setting", label: "Entity", width: 110, sortable: true },
           { key: "action", label: "Action", width: 130, sortable: true },
           /* THE CHANGE, AS THE FEED SAYS IT (Yash, 2026-11-17) — not the
              whole list before and after; what came off muted. */
           { key: "change", label: "Change", width: 280, sortable: true },
-          { key: "customer", label: "Customer", width: 250, sortable: true },
         ],
         /* NO OUTCOME COLUMN (Yash, 2026-11-17) — every change applies and
            succeeds for now, so it only ever said "Changed". */
@@ -333,18 +350,18 @@ function ChangeSheetBody({
       noun: "orders",
       one: "order",
       columns: [
+        /* ONLY ORDERS THAT TOOK THE NEW PRICE (Yash, 2026-11-18) — so no
+           Status or Why kept. Ship-to, then product. */
         { key: "id", label: "Order", width: 120, sortable: true },
-        { key: "product", label: "Product", width: 170, sortable: true },
         { key: "shipto", label: "Ship-to", width: 170, sortable: true },
         { key: "customer", label: "Customer", width: 250, sortable: true },
+        { key: "product", label: "Product", width: 170, sortable: true },
         { key: "delivery", label: "Delivery", width: 130, sortable: true },
         { key: "gallons", label: "Gallons", width: 110, sortable: true },
         { key: "before", label: "Old price ($/gal)", width: 170, sortable: true },
         { key: "after", label: "New price ($/gal)", width: 160, sortable: true },
-        { key: "status", label: "Status", width: 120, sortable: true },
-        { key: "reason", label: "Why kept", width: 130, sortable: true },
       ],
-      rows: c.orders.map(
+      rows: repriced.map(
         (o): ViewRow => ({
           id: o.id,
           text: {
@@ -365,11 +382,9 @@ function ChangeSheetBody({
         })
       ),
       facets: [
-        { key: "product", label: "Product", searchable: true },
         { key: "shipto", label: "Ship-to", searchable: true },
+        { key: "product", label: "Product", searchable: true },
         { key: "customer", label: "Customer", searchable: true },
-        { key: "status", label: "Status" },
-        { key: "reason", label: "Why kept" },
       ],
       noOpen: true,
       renderCell: (r, key) =>
@@ -379,10 +394,6 @@ function ChangeSheetBody({
           <Truncated text={r.text[key]} />
         ) : key === "before" ? (
           <Old text={r.text.before} />
-        ) : key === "status" ? (
-          <StatusChip tone={kindTone(ORDER_KIND[r.status as keyof typeof ORDER_KIND] ?? "neutral")} variant="text">
-            {r.status}
-          </StatusChip>
         ) : undefined,
     });
     /* WIDTHS FROM WHAT EACH COLUMN PRINTS (UX-45) — a long product or
@@ -411,18 +422,19 @@ function ChangeSheetBody({
     c.undoOf || c.resets || c.configures
       ? summary
       : c.edits.map((e, i) => `${SETTING_LABEL[e.setting]} ${editAction(e).toLowerCase()}: ${editLines[i]}`).join(" · ");
-  const exportChange = () => toast.success(`Exporting ${plural(c.lines.length, "price")} of ${c.id} as .csv`);
+  const exportChange = () => toast.success(`Exporting ${plural(c.lines.length, "price")} as .csv`);
 
   return (
     <RecordSheet
       size="full"
       level={level}
+      presentation={presentation}
       open
       onOpenChange={(o) => !o && onClose()}
       mode="edit"
-      /* THE CHANGE ID IS THE TITLE (Yash, 2026-11-17) — what changed is
-         listed right below it. */
-      editTitle={c.id}
+      /* NO CHANGE ID ON SCREEN (Yash, 2026-11-18) — the title is when it
+         was made; who and how sit under it; what changed is listed below. */
+      editTitle={fmtDateTime(c.madeAt)}
       createTitle=""
       createAction=""
       showCancel={false}
@@ -443,7 +455,7 @@ function ChangeSheetBody({
       }
       headerSubtitle={
         <span className="text-sm text-muted-foreground">
-          {[SOURCE_LABEL[c.source], c.by, fmtDateTime(c.madeAt)].join(" · ")}
+          {[SOURCE_LABEL[c.source], c.by].join(" · ")}
         </span>
       }
       headerAside={
@@ -495,7 +507,7 @@ function ChangeSheetBody({
                     <Pill>{c.configures ? "Added" : editAction(e)}</Pill>
                   </span>
                   <EditChange e={e} lines={c.lines} ents={ents} />
-                  <span className="text-muted-foreground">{plural(n, "product price")}</span>
+                  <span className="text-muted-foreground">{plural(n, "price")}</span>
                 </button>
               );
             })
@@ -512,7 +524,10 @@ function ChangeSheetBody({
       </section>
       <section className="flex shrink-0 flex-col gap-2">
       <h3 className="text-sm font-medium text-foreground">Impact</h3>
-      <div className={FIGURE_STRIP.replace("lg:grid-cols-4", "lg:grid-cols-5")}>
+      {/* FOUR FIGURES (Yash, 2026-11-18): who — customers and their
+          ship-tos — then what moved — the ship-to × product prices and the
+          orders that took the new price. No products figure. */}
+      <div className={FIGURE_STRIP}>
         <Figure
           label="Customers"
           value={customers.length.toLocaleString()}
@@ -527,25 +542,14 @@ function ChangeSheetBody({
           onOpen={c.lines.length ? () => setAffected("shiptos") : undefined}
           openLabel="View list"
         />
-        <Figure
-          label="Products"
-          value={products.length.toLocaleString()}
-          note={products.length === 0 ? "—" : products.length === 1 ? productOf(products[0]).name : `${productOf(products[0]).name} +${products.length - 1}`}
-          onOpen={c.lines.length ? () => openRows([]) : undefined}
-          openLabel="View prices"
-        />
-        {/* WHAT MOVED, IN WORDS THAT NEED NO EXPLAINING (Yash, 2026-11-17):
-            each product's price at each ship-to, and the open orders on them
-            — which took the new price and which kept the old one. */}
-        {/* WHAT THEY MEAN, BEHIND AN ⓘ (UX-96: explanations sit behind an
-            ⓘ that opens on click; Yash, 2026-11-17). */}
+        {/* WHAT THEY MEAN, BEHIND AN ⓘ (UX-96). */}
         <InfoFigure
-          label="Product prices"
+          label="Ship-to × product prices"
           info={
             <>
               <p>One product's price at one ship-to.</p>
               <p>
-                This change moved {plural(c.lines.length, "product price")}: {plural(products.length, "product")} across{" "}
+                This change moved {plural(c.lines.length, "price")}: {plural(products.length, "product")} across{" "}
                 {plural(shiptos.length, "ship-to")}.
               </p>
             </>
@@ -557,21 +561,10 @@ function ChangeSheetBody({
         />
         <InfoFigure
           label="Orders affected"
-          info={
-            <>
-              <p>Open orders for the products and ship-tos whose price changed.</p>
-              <p>
-                <span className="font-medium text-foreground">New price:</span> the order now uses the changed price.
-              </p>
-              <p>
-                <span className="font-medium text-foreground">Kept old price:</span> the order keeps its price because it was locked,
-                quoted or priced by hand.
-              </p>
-            </>
-          }
-          value={c.orders.length.toLocaleString()}
-          note={`${repriced.length.toLocaleString()} got new price · ${kept.length.toLocaleString()} kept old price`}
-          onOpen={c.orders.length ? () => openOrders(null) : undefined}
+          info={<p>Open orders for these ship-tos and products that now use the new price.</p>}
+          value={repriced.length.toLocaleString()}
+          note={`At ${plural(uniq(repriced.map((o) => o.shiptoId)).length, "ship-to")}`}
+          onOpen={repriced.length ? () => openOrders(null) : undefined}
           openLabel="View orders"
         />
       </div>
@@ -597,7 +590,7 @@ function ChangeSheetBody({
           level={2}
           kind={affected}
           title={affected === "customers" ? "Customers affected" : "Ship-tos affected"}
-          subtitle={`${c.id} · ${headline}`}
+          subtitle={headline}
           items={shiptos.map((id) => ({ customerId: shiptoOf(id).customerId, shiptoId: id }))}
           onClose={() => setAffected(null)}
         />
@@ -723,7 +716,7 @@ function EditChange({ e, lines, ents }: { e: Edit; lines: ImpactLine[]; ents: En
 /** A figure with an ⓘ beside its label that opens what it means on click
  *  (UX-96). Built here, not in the shared Figure: the figure is a button,
  *  so the ⓘ sits over it rather than inside it. */
-function InfoFigure({
+export function InfoFigure({
   label,
   info,
   value,
@@ -736,7 +729,7 @@ function InfoFigure({
   value: string;
   note: string;
   onOpen?: () => void;
-  openLabel: string;
+  openLabel?: string;
 }) {
   return (
     <div className="group/fig @container relative flex min-w-0 flex-col gap-1 p-4">
@@ -825,7 +818,7 @@ function RescheduleDialog({ change, onClose }: { change: ChangeRecord | null; on
     <Dialog open={!!change} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit schedule · {change?.id}</DialogTitle>
+          <DialogTitle>Edit schedule</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-[minmax(0,1fr)_140px] gap-6">
           <Field>

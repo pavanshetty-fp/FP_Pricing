@@ -841,7 +841,7 @@ export function buildSeed(): Seed {
     const eff = p.effectiveAt ?? p.at;
     const rec: ChangeRecord = {
       id,
-      title: undoOf ? `Undo of ${undoOf}` : recordTitle(edits, ents),
+      title: undoOf ? `Undo: ${recordTitle(edits, ents)}` : recordTitle(edits, ents),
       edits,
       source: p.source,
       by: p.by,
@@ -1064,7 +1064,8 @@ export function editParts(e: Edit, lines: ImpactLine[], ents: EntityMap): Summar
 export const editSummary = (e: Edit, lines: ImpactLine[], ents: EntityMap) => partsText(editParts(e, lines, ents));
 
 export function changeParts(c: ChangeRecord, ents: EntityMap): SummaryPart[] {
-  if (c.undoOf) return [`Undo of ${c.undoOf}`];
+  /* NO CHANGE IDS ON SCREEN (Yash, 2026-11-18) — an undo says what it undid. */
+  if (c.undoOf) return ["Undo: ", ...changeParts({ ...c, undoOf: undefined }, ents)];
   if (c.resets) return ["Reset to customer pricing"];
   if (c.rollbackOf) return [`Rollback of ${c.rollbackOf}`];
   return c.edits.flatMap((e, i) => [

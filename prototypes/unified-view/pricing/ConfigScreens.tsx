@@ -374,7 +374,8 @@ export function CustomerPricingScreen() {
       const r = c.record;
       switch (key) {
         case "customer":
-          return [customerOf(c.customerId).name, `ID: ${customerOf(c.customerId).account}`];
+          /* NO CUSTOMER ID (Yash, 2026-11-18). */
+          return [customerOf(c.customerId).name];
         case "shiptos":
           return [c.shiptos ? plural(c.shiptos, "ship-to") : "None inherit"];
         case "status":
@@ -423,6 +424,7 @@ export function CustomerPricingScreen() {
     if (set && c.record) return <ListValueCell row={c.record} setting={set} title={l[0]} count={l[1]} />;
     switch (key) {
       case "customer":
+        return <span className="block min-w-0 truncate">{l[0]}</span>;
       case "fee":
       case "margin":
       case "tax":

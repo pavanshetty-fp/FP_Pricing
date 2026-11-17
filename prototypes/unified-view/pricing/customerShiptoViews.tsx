@@ -61,7 +61,7 @@ export function timelineTab(scope: Scope, ents: EntityMap, onOpen: (id: string) 
         id: c.id,
         text: {
           when: fmtWhen(c.effectiveAt),
-          change: `${changeSummary(c, ents)} · ${c.id}`,
+          change: changeSummary(c, ents),
           setting: entities,
           action: actionOf(c),
           kind: kindOf(c),

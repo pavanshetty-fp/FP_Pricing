@@ -156,7 +156,7 @@ export function CustomerShiptoDashboard() {
       return scope.changes.filter(
         (x) =>
           (!needle ||
-            `${x.c.id} ${changeSummary(x.c, ents)} ${x.c.by} ${names(x, (l) => shiptoOf(l.shiptoId).name).join(" ")} ${names(x, (l) => customerOf(l.customerId).name).join(" ")}`
+            `${changeSummary(x.c, ents)} ${x.c.by} ${names(x, (l) => shiptoOf(l.shiptoId).name).join(" ")} ${names(x, (l) => customerOf(l.customerId).name).join(" ")}`
               .toLowerCase()
               .includes(needle)) &&
           [...by].every(([k, vs]) => facetValues[k](x).some((v) => vs.includes(v)))

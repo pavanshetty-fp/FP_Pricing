@@ -32,13 +32,15 @@ import {
   STATUS_LABEL,
   changeSummary,
   fmtWhen,
+  customerOf,
   plural,
+  shiptoOf,
   uniq,
   type ChangeRecord,
   type ChangeStatus,
 } from "./changeLog";
 import { useChangeLog } from "./changeLogStore";
-import { ShiptoCount } from "./customerShiptoParts";
+import { OtherCustomers, ShiptoCount } from "./customerShiptoParts";
 import { peekTrail } from "./pricingNav";
 import {
   FEED_COLUMNS,
@@ -46,12 +48,25 @@ import {
   STATUS_KIND,
   actionOf,
   customersOf,
+  repricedOf,
+  scopeOf,
+  scopedChange,
   entitiesOf,
   productsOf,
   shiptosOf,
   type FeedColumnKey,
 } from "./activityFeed";
-import { ChangeDialogs, ChangeSheet, type ChangeAsk } from "./ChangeSheet";
+import { ChangeDialogs, ChangeSheet, InfoFigure, type ChangeAsk } from "./ChangeSheet";
+import { FIGURE_STRIP } from "../masterdata/sheetParts";
+
+/** Where a change came from, as the Contributors figure counts it. */
+const CHANNEL: Record<ChangeRecord["source"], string> = {
+  shiptoInline: "UI",
+  shiptoBulk: "UI",
+  customer: "UI",
+  setup: "UI",
+  import: "Bulk upload",
+};
 import { fitColumns } from "./fitColumns";
 import { ChangeText } from "./ChangeText";
 
@@ -111,7 +126,6 @@ const keyOf = (s: ViewState) =>
     ),
   });
 
-const lastWeek = (): DateRange => ({ from: startOfDay(new Date(NOW - 6 * DAY)), to: startOfDay(new Date(NOW)) });
 const inWindow = (t: number, r: DateRange) => t >= r.from.getTime() && t < r.to.getTime() + DAY;
 
 export function ActivityFeedScreen() {
@@ -125,8 +139,10 @@ export function ActivityFeedScreen() {
   const trail = React.useRef(peekTrail()).current;
   /* ALL DATES BY DEFAULT (Yash, 2026-11-17) — a logbook opens on everything;
      a range or a single day is picked from the date control. */
-  const allDates = (): DateRange => dateWindowOf(log.changes.map((c) => dateKeyOf(new Date(c.effectiveAt)))).all ?? lastWeek();
-  const [range, setRange] = React.useState<DateRange>(allDates);
+  /* LAST 30 DAYS BY DEFAULT (Yash, 2026-11-18) — the summary above the
+     list reads a month; "All dates" is one pick away. */
+  const last30 = (): DateRange => ({ from: startOfDay(new Date(NOW - 29 * DAY)), to: startOfDay(new Date(NOW)) });
+  const [range, setRange] = React.useState<DateRange>(last30);
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<ListSort<FeedColumnKey> | null>(null);
   const [page, setPage] = React.useState(1);
@@ -140,6 +156,10 @@ export function ActivityFeedScreen() {
   const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
   const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(() => new Set(trail ? [trail.facet] : []));
+  /* ONE CUSTOMER OR SHIP-TO PICKED — counts speak for it only. */
+  const scope = React.useMemo(() => scopeOf(facetSel), [facetSel]);
+  const [peek, setPeek] = React.useState<{ id: string; customer: string } | null>(null);
+
   const [exporting, setExporting] = React.useState(false);
   const activeColFilters = React.useMemo(() => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""), [colFilters]);
 
@@ -210,12 +230,21 @@ export function ActivityFeedScreen() {
           return SOURCE_LABEL[c.source];
         case "customers": {
           const cs = customersOf(c);
+          if (scope) {
+            const mine = customersOf(scopedChange(c, scope))[0] ?? scope.customer ?? cs[0] ?? "—";
+            const others = cs.filter((n) => n !== mine).length;
+            return others ? `${mine} +${plural(others, "customer")}` : mine;
+          }
           return cs.length === 1 ? cs[0] : cs.length ? plural(cs.length, "customer") : "—";
         }
-        case "shiptos":
-          return shiptosOf(c).length ? shiptosOf(c).length.toLocaleString() : "—";
-        case "orders":
-          return c.orders.length ? c.orders.length.toLocaleString() : "—";
+        case "shiptos": {
+          const n = shiptosOf(scopedChange(c, scope)).length;
+          return n ? n.toLocaleString() : "—";
+        }
+        case "orders": {
+          const n = repricedOf(scopedChange(c, scope));
+          return n ? n.toLocaleString() : "—";
+        }
         case "change":
           return changeSummary(c, ents);
         case "status":
@@ -224,13 +253,13 @@ export function ActivityFeedScreen() {
           return "";
       }
     },
-    [ents]
+    [ents, scope]
   );
   const sortValue = (c: ChangeRecord, key: FeedColumnKey): string | number => {
     if (key === "when") return c.effectiveAt;
     if (key === "id") return Number(c.id.replace(/\D/g, ""));
-    if (key === "orders") return c.orders.length;
-    if (key === "shiptos") return shiptosOf(c).length;
+    if (key === "orders") return repricedOf(scopedChange(c, scope));
+    if (key === "shiptos") return shiptosOf(scopedChange(c, scope)).length;
     return columnText(c, key).toLowerCase();
   };
 
@@ -338,11 +367,34 @@ export function ActivityFeedScreen() {
         return <Pill>{actionOf(c)}</Pill>;
       case "customers": {
         const cs = customersOf(c);
+        /* ON ONE CUSTOMER'S FEED: that customer, then "(2 other customers)"
+           — pressed, the others, each with its Activity (Yash, 2026-11-18). */
+        if (scope) {
+          const mine = customersOf(scopedChange(c, scope))[0] ?? scope.customer ?? cs[0] ?? "—";
+          const others = cs.filter((n) => n !== mine);
+          return (
+            /* "+2 CUSTOMERS" ON THE LINE BELOW (Yash, 2026-11-18). */
+            <span className="flex min-w-0 flex-col items-start text-sm">
+              <Clip text={mine} />
+              {others.length > 0 && (
+                <OtherCustomers
+                  rows={others.map((name) => ({
+                    name,
+                    shiptos: uniq(c.lines.filter((l) => customerOf(l.customerId).name === name).map((l) => l.shiptoId)).length,
+                  }))}
+                  onActivity={(name) => setPeek({ id: c.id, customer: name })}
+                />
+              )}
+            </span>
+          );
+        }
         if (cs.length !== 1 || !c.lines.length) return cs.length > 1 ? <AffectedCount c={c} kind="customers" label={plural(cs.length, "customer")} /> : <Clip text={columnText(c, key)} />;
         return <Clip text={cs[0]} />;
       }
-      case "shiptos":
-        return c.lines.length ? <AffectedCount c={c} kind="shiptos" label={shiptosOf(c).length.toLocaleString()} /> : "—";
+      case "shiptos": {
+        const sc = scopedChange(c, scope);
+        return sc.lines.length ? <AffectedCount c={sc} kind="shiptos" label={shiptosOf(sc).length.toLocaleString()} /> : "—";
+      }
       case "change":
         /* THE NAMES, WITH "+N" ON HOVER (Yash, 2026-11-16). */
         /* SEVERAL EDITS GO TO A SECOND LINE (Yash, 2026-11-17) — two on the
@@ -358,7 +410,7 @@ export function ActivityFeedScreen() {
         }
         return (
           <span className="block min-w-0" title={columnText(c, key)}>
-            <ChangeText c={c} ents={ents} className="flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-sm text-foreground [&>span]:shrink-0 [&>span:last-child]:min-w-0 [&>span:last-child]:shrink [&>span:last-child]:truncate" />
+            <ChangeText plain c={c} ents={ents} className="flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-sm text-foreground [&>span]:shrink-0 [&>span:last-child]:min-w-0 [&>span:last-child]:shrink [&>span:last-child]:truncate" />
           </span>
         );
       case "status":
@@ -455,6 +507,24 @@ export function ActivityFeedScreen() {
   );
 
   const narrowed = q !== "" || cq !== "" || facetSel.size > 0 || activeColFilters.length > 0;
+
+  /* THE PERIOD AT A GLANCE (Yash, 2026-11-18) — four figures over what the
+     list shows (dates and filters), each defined behind its ⓘ. */
+  const summary = React.useMemo(() => {
+    const cut = filtered.map((c) => scopedChange(c, scope));
+    /* ASSIGNED OR INHERITED (Yash, 2026-11-18) — inherited is made on
+       customer pricing and flows down; everything else, setup included,
+       is assigned. */
+    const inheritedEvents = filtered.filter((c) => c.source === "customer").length;
+    const impacts = cut.reduce((n, c) => n + shiptosOf(c).length, 0);
+    const inherited = cut.filter((c) => c.source === "customer").reduce((n, c) => n + shiptosOf(c).length, 0);
+    const touched = uniq(cut.flatMap((c) => c.lines.map((l) => l.shiptoId))).length;
+    const inScope = (customerId: string, shiptoId: string) =>
+      !scope || (scope.shipto ? shiptoOf(shiptoId).name === scope.shipto : customerOf(customerId).name === scope.customer);
+    const configured = uniq(log.rows.filter((r) => r.configured && inScope(r.customerId, r.shiptoId)).map((r) => r.shiptoId)).length;
+    const channels = uniq(filtered.map((c) => CHANNEL[c.source]));
+    return { events: filtered.length, inheritedEvents, impacts, inherited, touched, configured, channels };
+  }, [filtered, scope, log.rows]);
   const fold = useHeadFold();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -464,6 +534,37 @@ export function ActivityFeedScreen() {
           {...displayViewsFor({ board: false, map: false }, view, setView)}
           onExport={() => setExporting(true)}
         />
+        <div className={cn(FIGURE_STRIP, "mt-4")}>
+          <InfoFigure
+            label="Change events"
+            info={<p>The number of changes made during this period. A bulk update counts as one change event.</p>}
+            value={summary.events.toLocaleString()}
+            note={`${(summary.events - summary.inheritedEvents).toLocaleString()} assigned · ${summary.inheritedEvents.toLocaleString()} inherited`}
+          />
+          <InfoFigure
+            label="Ship-to impacts"
+            info={
+              <p>
+                The total number of ship-to-level changes applied during this period. One change can affect multiple ship-tos, including
+                through inheritance.
+              </p>
+            }
+            value={summary.impacts.toLocaleString()}
+            note={`${summary.inherited.toLocaleString()} inherited`}
+          />
+          <InfoFigure
+            label="Ship-tos touched"
+            info={<p>The number of unique ship-tos affected during this period, regardless of how many changes each received.</p>}
+            value={summary.touched.toLocaleString()}
+            note={`of ${summary.configured.toLocaleString()} configured`}
+          />
+          <InfoFigure
+            label="Contributors"
+            info={<p>The sources that made changes during this period, such as the UI, API, bulk upload, or system.</p>}
+            value={summary.channels.length.toLocaleString()}
+            note={summary.channels.join(" · ") || "—"}
+          />
+        </div>
       </HeadFold>
 
       <div className={fold.gap}>
@@ -609,7 +710,7 @@ export function ActivityFeedScreen() {
               onReorderColumns={setColumnOrder}
               columnWidths={columnWidths}
               onResizeColumns={setColumnWidths}
-              openLabel={(c) => `Open change ${c.id}`}
+              openLabel={(c) => `Open change made ${fmtWhen(c.effectiveAt)}`}
               onOpenRow={(c) => setOpenId(c.id)}
               showColumnFilters={colFiltersOpen}
               onToggleColumnFilters={() =>
@@ -648,7 +749,14 @@ export function ActivityFeedScreen() {
         }}
       />
 
-      <ChangeSheet id={openId} onClose={() => setOpenId(null)} onOpen={setOpenId} />
+      <ChangeSheet id={openId} scope={scope} onClose={() => setOpenId(null)} onOpen={setOpenId} />
+      {/* AN OTHER CUSTOMER'S VIEW ACTIVITY — the change as it reached that
+          customer, as a full page; closing it is back on this feed (Yash,
+          2026-11-18). */}
+      {peek && (
+        <ChangeSheet id={peek.id} scope={{ customer: peek.customer }} presentation="full" onClose={() => setPeek(null)} onOpen={() => {}} />
+      )}
+
       <ChangeDialogs
         change={log.changes.find((x) => x.id === rowAsk?.id) ?? null}
         ask={rowAsk?.ask ?? null}
@@ -705,7 +813,7 @@ function AffectedCount({ c, kind, label }: { c: ChangeRecord; kind: "customers" 
       lines={c.lines}
       label={label}
       title={kind === "customers" ? "Customers affected" : "Ship-tos affected"}
-      subtitle={`${c.id} · ${c.title}`}
+      subtitle={c.title}
     />
   );
 }

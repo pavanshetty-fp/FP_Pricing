@@ -9,7 +9,7 @@ import { RailCard, RailRow } from "../SheetCards";
 import { kindTone } from "../statusKind";
 import { FIGURE_STRIP, Figure } from "../masterdata/sheetParts";
 import { attend } from "../PendingStrip";
-import { customerOf, fmtDateTime, plural, productOf, shiptoOf } from "./changeLog";
+import { fmtDateTime, plural, productOf, shiptoOf } from "./changeLog";
 import { ChangeSheet } from "./ChangeSheet";
 import { ORDER_STATUS_KIND, PHASE_LABEL, money2, money3, orderLabel, type Phase, type PricedOrder } from "./orderTrace";
 
@@ -192,7 +192,7 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
                               <span className="block pl-6 text-xs text-muted-foreground tabular-nums">{fmtStamp(h.at)}</span>
                             </TableCell>
                             <TableCell className="px-3 text-sm whitespace-normal">
-                              {h.what} <span className="text-muted-foreground">· {h.changeId}</span>
+                              {h.what}
                             </TableCell>
                             <TableCell className="px-3 text-sm text-muted-foreground" colSpan={2}>
                               {h.by}
@@ -228,7 +228,7 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
                 and product lead; the header keeps only the invoice. */}
             <RailCard title="Associated records" icon={<Users />}>
               <dl className="flex flex-col gap-3 px-4 py-3">
-                <Linked label="Customer" value={n.customer} detail={customerOf(o.customerId).account} />
+                <Linked label="Customer" value={n.customer} />
                 <Linked label="Ship-to" value={n.shipto} detail={shiptoOf(o.shiptoId).address.split(", ").slice(-2).join(", ")} />
                 <Linked label="Product" value={n.product} detail={productOf(o.productId).code} />
               </dl>

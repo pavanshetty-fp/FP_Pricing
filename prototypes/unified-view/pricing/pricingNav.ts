@@ -59,3 +59,18 @@ export const takeReopen = () => {
 };
 /** The feed reads the trail's filter once, when it opens. */
 export const peekTrail = () => state.trail;
+
+/** On the feed, switch the path to another customer — its Activity, pressed
+ *  from a change's other customers (Yash, 2026-11-18). */
+export function retargetCustomer(customerId: string, name: string) {
+  if (!state.trail) return;
+  set({
+    trail: {
+      from: "pricing-config-customer",
+      fromLabel: "Customer",
+      record: { kind: "customer", customerId },
+      recordLabel: name,
+      facet: `customer:${name}`,
+    },
+  });
+}

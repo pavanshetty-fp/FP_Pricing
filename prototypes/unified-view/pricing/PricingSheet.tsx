@@ -91,7 +91,7 @@ function withDraft(r: ConfigRow, d: Draft): ConfigRow {
 const entryOf = (c: ChangeRecord, ents: Parameters<typeof changeSummary>[1]): TimelineEntry => ({
   at: new Date(c.effectiveAt).toISOString(),
   by: c.by,
-  changes: [`${changeSummary(c, ents)} · ${c.id}`],
+  changes: [changeSummary(c, ents)],
 });
 
 export function PricingSheet({

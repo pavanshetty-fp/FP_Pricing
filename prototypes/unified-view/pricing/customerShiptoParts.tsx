@@ -307,9 +307,11 @@ const TwoLines = ({ top, below }: { top: string; below: string }) => (
     <span className="truncate" title={top}>
       {top}
     </span>
-    <span className="truncate text-xs text-muted-foreground" title={below}>
-      {below}
-    </span>
+    {below && (
+      <span className="truncate text-xs text-muted-foreground" title={below}>
+        {below}
+      </span>
+    )}
   </span>
 );
 
@@ -346,7 +348,7 @@ export function AffectedSheet({
   const rows =
     listing === "customers"
       ? customers
-          .map((id) => ({ id, top: customerOf(id).name, below: `ID: ${customerOf(id).account}`, n: items.filter((x) => x.customerId === id).length }))
+          .map((id) => ({ id, top: customerOf(id).name, below: "", n: items.filter((x) => x.customerId === id).length }))
           .filter((r) => has(r.top, r.below))
       : shown
           .map((x) => ({
@@ -485,5 +487,76 @@ export function ChangeTimeline({
         </div>
       )}
     </Panel>
+  );
+}
+
+/**
+ * "(2 other customers)" — ON A CUSTOMER'S FEED, the customers a bulk change
+ * also reached (Yash, 2026-11-18). Pressed, a side sheet lists them with the
+ * ship-tos it reached at each; View activity opens the change as it reached
+ * that customer.
+ */
+export function OtherCustomers({
+  rows,
+  onActivity,
+}: {
+  rows: { name: string; shiptos: number }[];
+  /** Opens the change as it reached one customer (a full page). */
+  onActivity: (name: string) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const grid = "grid grid-cols-[minmax(0,1fr)_120px_auto] items-center gap-4 px-4";
+  return (
+    <span onClick={(e) => e.stopPropagation()} className="shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="cursor-pointer rounded-sm text-sm text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 outline-none hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        +{plural(rows.length, "customer")}
+      </button>
+      {open && (
+        <RecordSheet
+          size="form"
+          presentation="sheet"
+          open
+          onOpenChange={(v) => !v && setOpen(false)}
+          mode="edit"
+          editTitle="Other customers"
+          createTitle=""
+          createAction=""
+          showCancel={false}
+          stepNav={false}
+          noFooter
+          onSubmit={() => setOpen(false)}
+        >
+          <div className="overflow-hidden rounded-lg border border-border">
+            <div className={cn(grid, "h-10 bg-muted/50 text-xs font-medium text-muted-foreground")}>
+              <span>Customer</span>
+              <span>Ship-tos</span>
+              <span className="w-[108px]" />
+            </div>
+            <ul className="flex flex-col divide-y divide-border border-t border-border">
+              {rows.map((r) => (
+                <li key={r.name} className={cn(grid, "py-2.5")}>
+                  <span className="min-w-0 truncate text-sm text-foreground">{r.name}</span>
+                  <span className="text-sm text-foreground">{plural(r.shiptos, "ship-to")}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setOpen(false);
+                      onActivity(r.name);
+                    }}
+                  >
+                    View activity
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </RecordSheet>
+      )}
+    </span>
   );
 }

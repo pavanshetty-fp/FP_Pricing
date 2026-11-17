@@ -60,7 +60,7 @@ export type FeedColumnKey =
    no row actions — people come here to read what happened. */
 export const FEED_COLUMNS: ListColumn<FeedColumnKey>[] = [
   { key: "when", label: "Date & time", width: 180, sortable: true },
-  { key: "id", label: "Change ID", width: 110, sortable: true },
+  /* NO CHANGE ID COLUMN (Yash, 2026-11-18) — the opened change carries it. */
   { key: "entity", label: "Entity", width: 140, sortable: true },
   { key: "action", label: "Action", width: 120, sortable: true },
   /* ENTITY → ACTION → CHANGE, the order it is said in (Yash, 2026-11-17). */
@@ -92,3 +92,32 @@ export const FEED_GROUP_DIMS: GroupDim<ChangeRecord>[] = [
   { key: "customer", label: "Customer", multi: true, valuesOf: customersOf },
   { key: "shipto", label: "Ship-to", multi: true, valuesOf: shiptosOf },
 ];
+
+/**
+ * THE FEED FILTERED TO ONE CUSTOMER OR SHIP-TO SPEAKS FOR IT (Yash,
+ * 2026-11-18) — a bulk change that reached three customers counts, on that
+ * customer's feed, only that customer's ship-tos, prices and orders.
+ */
+export type FeedScope = { customer?: string; shipto?: string } | null;
+
+/** One customer or one ship-to picked in the filters, else none. */
+export function scopeOf(sel: ReadonlySet<string>): FeedScope {
+  const of = (k: string) => [...sel].filter((x) => x.startsWith(`${k}:`)).map((x) => x.slice(k.length + 1));
+  const shiptos = of("shipto");
+  const customers = of("customer");
+  if (shiptos.length === 1) return { shipto: shiptos[0] };
+  if (customers.length === 1) return { customer: customers[0] };
+  return null;
+}
+
+/** The change, cut to the scope: its prices and orders there only. */
+export function scopedChange(c: ChangeRecord, s: FeedScope): ChangeRecord {
+  if (!s) return c;
+  const keep = (customerId: string, shiptoId: string) =>
+    s.shipto ? shiptoOf(shiptoId).name === s.shipto : customerOf(customerId).name === s.customer;
+  return {
+    ...c,
+    lines: c.lines.filter((l) => keep(l.customerId, l.shiptoId)),
+    orders: c.orders.filter((o) => keep(o.customerId, o.shiptoId)),
+  };
+}

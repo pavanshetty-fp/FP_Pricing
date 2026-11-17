@@ -710,7 +710,7 @@ function activityOf(id: string, changes: ChangeRecord[], audit: SetupAudit[] | u
       .filter((c) => c.status !== "canceled" && c.edits.some((e) => e.entityIds.includes(id) && (e.operation === "create" || e.operation === "edit")))
       .map((c) => {
         const created = c.edits.some((e) => e.operation === "create");
-        return { key: c.id, at: c.effectiveAt, by: c.by, change: `${created ? "Created" : changeSummary(c, ents)} · ${c.id}`, action: created ? "Added" : "Updated", changeId: c.id };
+        return { key: c.id, at: c.effectiveAt, by: c.by, change: created ? "Created" : changeSummary(c, ents), action: created ? "Added" : "Updated", changeId: c.id };
       }),
     ...(audit ?? []).map((a) => ({ key: a.session, at: a.at, by: a.by, change: a.changes.join(" · "), action: AUDIT_ACTION[a.action] ?? a.action })),
   ].sort((a, b) => b.at - a.at);

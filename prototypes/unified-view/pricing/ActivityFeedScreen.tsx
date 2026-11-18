@@ -47,6 +47,7 @@ import {
   FEED_GROUP_DIMS,
   STATUS_KIND,
   actionOf,
+  assignmentOf,
   customersOf,
   repricedOf,
   scopeOf,
@@ -91,6 +92,7 @@ const FACET_VALUES: Record<string, (c: ChangeRecord) => string[]> = {
   action: (c) => [actionOf(c)],
   entity: entitiesOf,
   source: (c) => [SOURCE_LABEL[c.source]],
+  assignment: (c) => [assignmentOf(c)],
   status: (c) => [STATUS_LABEL[c.status]],
   by: (c) => [c.by],
   customer: customersOf,
@@ -228,6 +230,8 @@ export function ActivityFeedScreen() {
           return c.by;
         case "source":
           return SOURCE_LABEL[c.source];
+        case "assignment":
+          return assignmentOf(c);
         case "customers": {
           const cs = customersOf(c);
           if (scope) {
@@ -274,6 +278,7 @@ export function ActivityFeedScreen() {
       { key: "action", label: "Action", options: ACTIONS.filter((a) => a !== "Deactivated") },
       { key: "entity", label: "Entity", options: SETTINGS.map((s) => SETTING_LABEL[s]) },
       { key: "source", label: "Made via", options: Object.values(SOURCE_LABEL) },
+      { key: "assignment", label: "Assignment", options: ["Assigned", "Inherited"] },
       { key: "status", label: "Status", options: Object.values(STATUS_LABEL) },
       { key: "by", label: "Made by", options: opts("by") },
     ];
@@ -515,9 +520,9 @@ export function ActivityFeedScreen() {
     /* ASSIGNED OR INHERITED (Yash, 2026-11-18) — inherited is made on
        customer pricing and flows down; everything else, setup included,
        is assigned. */
-    const inheritedEvents = filtered.filter((c) => c.source === "customer").length;
+    const inheritedEvents = filtered.filter((c) => assignmentOf(c) === "Inherited").length;
     const impacts = cut.reduce((n, c) => n + shiptosOf(c).length, 0);
-    const inherited = cut.filter((c) => c.source === "customer").reduce((n, c) => n + shiptosOf(c).length, 0);
+    const inherited = cut.filter((c) => assignmentOf(c) === "Inherited").reduce((n, c) => n + shiptosOf(c).length, 0);
     const touched = uniq(cut.flatMap((c) => c.lines.map((l) => l.shiptoId))).length;
     const inScope = (customerId: string, shiptoId: string) =>
       !scope || (scope.shipto ? shiptoOf(shiptoId).name === scope.shipto : customerOf(customerId).name === scope.customer);

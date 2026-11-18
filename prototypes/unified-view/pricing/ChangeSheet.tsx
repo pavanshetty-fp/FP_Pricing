@@ -52,6 +52,7 @@ import {
   productOf,
   shiptoOf,
   uniq,
+  FIELD_LABEL,
   IS_LIST,
   type ChangeRecord,
   type Edit,
@@ -269,6 +270,8 @@ function ChangeSheetBody({
   const products = uniq(c.lines.map((l) => l.productId));
   const failed = c.lines.filter((l) => l.outcome === "failed").length;
   const repriced = c.orders.filter((o) => o.status === "repriced");
+  /* A SETUP RECORD'S OWN FIELDS — renamed, hubs moved… — move no price. */
+  const noPrice = c.edits.length > 0 && c.edits.every((e) => !!e.field);
   const action = actionOf(c);
 
   const tabs = React.useMemo<ViewTab[]>(() => {
@@ -548,20 +551,33 @@ function ChangeSheetBody({
           info={
             <>
               <p>One product's price at one ship-to.</p>
-              <p>
-                This change moved {plural(c.lines.length, "price")}: {plural(products.length, "product")} across{" "}
-                {plural(shiptos.length, "ship-to")}.
-              </p>
+              {noPrice ? (
+                <p>
+                  {plural(c.lines.length, "price")} use it: {plural(products.length, "product")} across {plural(shiptos.length, "ship-to")}. None
+                  changed price.
+                </p>
+              ) : (
+                <p>
+                  This change moved {plural(c.lines.length, "price")}: {plural(products.length, "product")} across{" "}
+                  {plural(shiptos.length, "ship-to")}.
+                </p>
+              )}
             </>
           }
           value={c.lines.length.toLocaleString()}
-          note={`Changed at ${plural(shiptos.length, "ship-to")}`}
+          note={noPrice ? "Price unchanged" : `Changed at ${plural(shiptos.length, "ship-to")}`}
           onOpen={() => openRows([])}
           openLabel="View prices"
         />
         <InfoFigure
           label="Orders affected"
-          info={<p>Open orders for these ship-tos and products that now use the new price.</p>}
+          info={
+            noPrice ? (
+              <p>Open orders for these ship-tos and products. They show the new name; their price does not change.</p>
+            ) : (
+              <p>Open orders for these ship-tos and products that now use the new price.</p>
+            )
+          }
           value={repriced.length.toLocaleString()}
           note={`At ${plural(uniq(repriced.map((o) => o.shiptoId)).length, "ship-to")}`}
           onOpen={repriced.length ? () => openOrders(null) : undefined}
@@ -618,6 +634,12 @@ type LinePart = { t: string; old?: boolean };
 /** What one product price's change was: an edited value old → new, what came
  *  off (muted) and what went on, with each one's $/gal. */
 function lineParts(l: ImpactLine, ents: EntityMap): LinePart[] {
+  /* A setup record's own field: old → new; its price is unchanged. */
+  if (l.field === "desc") return [{ t: "Description updated" }];
+  if (l.field) {
+    const lead = l.field === "name" || l.field === "active" ? [] : [{ t: `${FIELD_LABEL[l.field]}:` }];
+    return [...lead, { t: l.before || "none", old: true }, { t: "→", old: true }, { t: l.after || "none" }];
+  }
   const nm = (id: string) => ents.get(id)?.name ?? id;
   const val = (id: string) => {
     const v = ents.get(id)?.value;
@@ -676,6 +698,15 @@ function EditChange({ e, lines, ents }: { e: Edit; lines: ImpactLine[]; ents: En
   const off = uniq(mine.flatMap((l) => l.beforeIds.filter((id) => !l.afterIds.includes(id))));
   const Arrow = () => <span className="text-muted-foreground">→</span>;
   const row = (children: React.ReactNode) => <span className="flex min-w-0 items-center gap-1.5 truncate">{children}</span>;
+  if (e.field)
+    return row(
+      <>
+        <span className="shrink-0 text-foreground">{e.field === "name" ? "Name:" : `${name(e.entityIds[0])} · ${FIELD_LABEL[e.field]}:`}</span>
+        <span className="truncate text-muted-foreground">{e.from || "none"}</span>
+        <Arrow />
+        <span className="truncate text-foreground">{e.to || "none"}</span>
+      </>
+    );
   if (e.operation === "add" || e.operation === "create") return row(<span className="truncate text-foreground">{e.entityIds.map(withValue).join(", ")}</span>);
   if (e.operation === "remove") return row(<span className="truncate text-muted-foreground">{e.entityIds.map(withValue).join(", ")}</span>);
   if (e.operation === "edit") {

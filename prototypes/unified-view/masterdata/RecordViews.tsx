@@ -38,6 +38,9 @@ export interface ViewRow {
   status: string;
   /** Facet values other than status, by facet key (e.g. `type`). */
   values?: Record<string, string>;
+  /** A facet the row has SEVERAL values for — it shows under each (Pricing
+   *  bulk rules, 2026-11-19: a record two combinations match). Wins over `values`. */
+  multi?: Record<string, string[]>;
 }
 
 export interface ViewFacet {
@@ -106,6 +109,7 @@ const freshTable = (tab: ViewTab): TableState => ({
 });
 
 const valueOf = (r: ViewRow, facet: string) => (facet === "status" ? r.status : r.values?.[facet] ?? "");
+const valuesOf = (r: ViewRow, facet: string) => r.multi?.[facet] ?? [valueOf(r, facet)];
 
 export function RecordViews({
   resetKey,
@@ -172,13 +176,13 @@ export function RecordViews({
       if (q && !Object.values(r.text).some((v) => v.toLowerCase().includes(q))) return false;
       for (const f of d.facets) {
         const mine = [...sel].filter((id) => id.startsWith(`${f.key}:`)).map((id) => id.slice(f.key.length + 1));
-        if (mine.length && !mine.includes(valueOf(r, f.key))) return false;
+        if (mine.length && !valuesOf(r, f.key).some((v) => mine.includes(v))) return false;
       }
       return true;
     });
 
   const facets: ListFacet[] = def.facets.map((f) => {
-    const present = new Set(def.rows.map((r) => valueOf(r, f.key)).filter(Boolean));
+    const present = new Set(def.rows.flatMap((r) => valuesOf(r, f.key)).filter(Boolean));
     return {
       key: f.key,
       label: f.label,

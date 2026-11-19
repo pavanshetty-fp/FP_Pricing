@@ -59,7 +59,6 @@ import {
   Timer,
   Building2,
   Workflow,
-  LayoutTemplate,
 } from "lucide-react";
 import { useTopBannerShown } from "./HeadFold";
 import { MasterAssetsScreen } from "./masterdata/AssetsScreen";
@@ -278,7 +277,8 @@ const SUB_NAV: Record<string, NavGroup[]> = {
         { key: "pricing-config-customer", label: "Customer", icon: <Users /> },
         { key: "pricing-config-shipto", label: "Ship-to", icon: <MapPin /> },
         { key: "pricing-config-bulk-rules", label: "Bulk rules", icon: <Workflow /> },
-        { key: "pricing-config-bulk-templates", label: "Bulk templates", icon: <LayoutTemplate /> },
+        /* BULK TEMPLATES HIDDEN (Yash, 2026-11-19) — a rule is reused by
+           duplicating it. The screen stays in the code. */
       ],
     },
   ],

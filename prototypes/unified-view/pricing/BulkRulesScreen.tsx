@@ -22,7 +22,6 @@ import { BulkRuleSheet, StatusPill, type BulkSheetTarget } from "./BulkRuleSheet
 import {
   changesText,
   countOf,
-  createTemplate,
   defOf,
   lastRun,
   ruleStatus,
@@ -165,15 +164,7 @@ export function BulkRulesScreen() {
                 <RotateCw />
                 {lastRun(r)?.status === "scheduled" ? "Run now" : "Run again"}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => {
-                  const t = createTemplate(defOf(r));
-                  toast.success(`${t.name} saved as a template`);
-                }}
-              >
-                <LayoutTemplate />
-                Save as template
-              </DropdownMenuItem>
+              {/* NO SAVE AS TEMPLATE (Yash, 2026-11-19) — templates are hidden; Duplicate reuses a rule. */}
               <DropdownMenuItem onSelect={() => setOpen({ kind: "rule", id: null, from: { ...defOf(r), name: `${r.name} (copy)` } })}>
                 <Copy />
                 Duplicate

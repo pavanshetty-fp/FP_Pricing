@@ -205,7 +205,8 @@ export type CondField =
   | "category"
   | "rateType"
   | "applied"
-  | "configurations";
+  | "configurations"
+  | "source";
 export const COND_FIELDS: { key: CondField; label: string; one?: boolean }[] = [
   /* REGION TAKES SEVERAL IN VERSION 2 (Yash, 2026-11-18). */
   /* THE ORDER PEOPLE ASK IN (Yash, 2026-11-19): region, customer, ship-to,
@@ -216,6 +217,9 @@ export const COND_FIELDS: { key: CondField; label: string; one?: boolean }[] = [
   { key: "rateType", label: "Rate type" },
   { key: "market", label: "Market" },
   { key: "product", label: "Product" },
+  /* THE PRICING SOURCE IS A CONDITION (Yash, 2026-11-19) — not a field of
+     its own; left out, a rule reaches first party and 3PL alike. */
+  { key: "source", label: "Pricing source" },
   { key: "businessLine", label: "Business line" },
   { key: "los", label: "LOS" },
   /* MORE OF WHAT A PRICE CARRIES (Yash, 2026-11-18: "more conditions"). */
@@ -246,6 +250,7 @@ export const ALL_LABEL: Record<CondField, string> = {
   rateType: "All rate types",
   applied: "Any applied pricing",
   configurations: "Both",
+  source: "All pricing sources",
 };
 
 export const APPLIED: Record<ConfigRow["applied"], string> = { shipto: "Ship-to", customer: "Customer", hub: "Hub" };
@@ -259,6 +264,7 @@ export function fieldValue(f: CondField, r: ConfigRow, ents: EntityMap): string 
   if (f === "category") return categoryOf(productOf(r.productId).categoryId).name;
   if (f === "rateType") return ents.get(r.rateType)?.name ?? "";
   if (f === "applied") return APPLIED[r.applied];
+  if (f === "source") return factsOfRow(r, ents).source === "3pl" ? "3PL" : "First party";
   const facts = factsOfRow(r, ents);
   return f === "businessLine" ? facts.businessLine : f === "los" ? facts.los : f === "market" ? facts.market : facts.region;
 }
@@ -280,6 +286,10 @@ export interface RuleDef {
    *  (AND); any one group is enough (OR). When present it stands in for
    *  `conditions`. */
   groups?: Condition[][];
+  /** Per combination: every condition holds ("all") or any one does ("any"). */
+  matches?: ("all" | "any")[];
+  /** Between combinations: all of them ("and") or any one ("or"). */
+  join?: "and" | "or";
   where: WhereRow[];
   targets: TargetRow[];
   changes: ChangeRow[];
@@ -364,6 +374,8 @@ export const defOf = (r: RuleDef): RuleDef => ({
   source: r.source,
   ...(r.conditions ? { conditions: r.conditions } : {}),
   ...(r.groups ? { groups: r.groups } : {}),
+  ...(r.matches ? { matches: r.matches } : {}),
+  ...(r.join ? { join: r.join } : {}),
   where: r.where,
   targets: r.targets,
   changes: r.changes,
@@ -383,16 +395,19 @@ export const exceptSet = (t: TargetRow) => !!t.customerId || t.shiptoIds.length 
 
 /** The IF as groups: AND inside a group, OR between groups. */
 export const groupsOf = (d: RuleDef): Condition[][] => d.groups ?? [d.conditions ?? toConditions(d)];
-/** The groups that ask something — a group with nothing picked adds nothing. */
-const askingGroups = (d: RuleDef) => {
-  const all = groupsOf(d);
-  /* NOTHING ASKED, NOTHING MATCHED (Yash, 2026-11-19) — an empty set until a condition is picked. */
-  return all.filter((g) => !groupEmpty(g));
-};
 /** A group asks about configurations — else it takes set-up prices only. */
 const asksWhich = (g: Condition[]) => g.some((c) => c.field === "configurations" && c.values.length > 0);
-/** A price meets a group: every condition in it holds. */
-export const groupHits = (g: Condition[], r: ConfigRow, ents: EntityMap) => (asksWhich(g) || r.configured) && g.every((c) => conditionHits(c, r, ents));
+/** A record meets a combination: every condition holds ("all"), or any
+ *  one picked does ("any"). */
+export const groupHits = (g: Condition[], r: ConfigRow, ents: EntityMap, match: "all" | "any" = "all") => {
+  if (!(asksWhich(g) || r.configured)) return false;
+  if (match === "all") return g.every((c) => conditionHits(c, r, ents));
+  const asked = g.filter((c) => c.field && c.values.length);
+  return asked.length === 0 || asked.some((c) => conditionHits(c, r, ents));
+};
+/** How a rule's combinations match and join. */
+export const matchOf = (d: RuleDef, i: number) => d.matches?.[i] ?? "all";
+export const joinOf = (d: RuleDef) => d.join ?? "or";
 /** A group that asks nothing yet — no field picked. */
 export const groupEmpty = (g: Condition[]) => !g.some((c) => c.field && c.values.length);
 /** Two groups ask the same — same fields, same values, any order. */
@@ -424,11 +439,18 @@ export function matchRows(def: RuleDef, rows: ConfigRow[], ents: EntityMap): Con
     /* IF THIS: the source, then ANY group whose conditions ALL hold; set-up
        prices only unless the group asks about configurations. Except after,
        across every group. */
+    /* IF: the combinations that ask something, joined AND (all) or OR (any),
+       each matching ALL or ANY of its conditions; Exclude after. The pricing
+       source is a condition now, not a filter of its own. */
     const exclude2 = def.exclude.filter(exceptSet);
-    const groups = askingGroups(def);
-    return rows.filter(
-      (r) => factsOfRow(r, ents).source === def.source && groups.some((g) => groupHits(g, r, ents)) && !exclude2.some((t) => inTarget(t, r))
-    );
+    const all = groupsOf(def);
+    const asked = all.map((g, i) => ({ g, i })).filter((x) => !groupEmpty(x.g));
+    if (!asked.length) return [];
+    const hit = (r: ConfigRow) => {
+      const hits = asked.map((x) => groupHits(x.g, r, ents, matchOf(def, x.i)));
+      return joinOf(def) === "and" ? hits.every(Boolean) : hits.some(Boolean);
+    };
+    return rows.filter((r) => hit(r) && !exclude2.some((t) => inTarget(t, r)));
   }
   const exclude = def.exclude.filter((t) => !!t.customerId || t.shiptoIds.length > 0 || t.productIds.length > 0);
   return rows.filter(
@@ -508,7 +530,11 @@ export interface Preview {
 export function previewRow(def: RuleDef, r: ConfigRow, ents: EntityMap, adjusted?: Set<string>): Preview {
   const changes = def.changes.filter(changeReady);
   const price = r.configured ? priceOf(r, ents) : null;
-  const base = { row: r, priceBefore: price, priceAfter: price, next: r, lines: [] as Preview["lines"] };
+  /* EVERY RECORD SAYS WHAT IT HOLDS FOR EACH SETTING THE RULE TOUCHES —
+     old → new, the same when nothing changes (Yash, 2026-11-19), so a
+     skipped record still names the entity. */
+  const asIs = uniq(changes.map((c) => c.setting as ChangeSetting)).map((s) => ({ label: settingLabel(s), before: settingText(s, r, ents), after: settingText(s, r, ents) }));
+  const base = { row: r, priceBefore: price, priceAfter: price, next: r, lines: asIs };
   if (!changes.length) return { ...base, outcome: "skipped", reason: "No change set" };
   /* AN ADJUSTMENT LANDS ONCE — running the rule again does not add +2% on
      top of +2% where an earlier run already did it. */
@@ -569,8 +595,12 @@ export function previewRule(def: RuleDef, rows: ConfigRow[], ents: EntityMap, ad
   const willUpdate = new Set(updated.map((p) => p.row.id));
   const kept = new Set(matched.map((r) => r.id));
   const groups = groupsOf(def);
-  const asking = groups.some((g) => !groupEmpty(g));
-  const sets = groups.map((g) => (asking && groupEmpty(g) ? [] : matched.filter((r) => groupHits(g, r, ents))));
+  /* EACH COMBINATION ON ITS OWN — what it matches by itself, after Exclude
+     (with AND between them, the rule takes only what all of them share). */
+  const excl = def.exclude.filter(exceptSet);
+  const pool = rows.filter((r) => !excl.some((t) => inTarget(t, r)));
+  /* A combination with nothing picked matches nothing — no counts (Yash, 2026-11-19). */
+  const sets = groups.map((g, i) => (groupEmpty(g) ? [] : pool.filter((r) => groupHits(g, r, ents, matchOf(def, i)))));
   const groupImpacts: GroupImpact[] = groups.map((g, i) => {
     const mine = sets[i];
     const elsewhere = new Set(sets.filter((_, k) => k !== i).flatMap((s) => s.map((r) => r.id)));
@@ -584,7 +614,7 @@ export function previewRule(def: RuleDef, rows: ConfigRow[], ents: EntityMap, ad
       shared: mine.filter((r) => earlier.has(r.id)).length,
       sameAs: same >= 0 ? same + 1 : null,
       /* A copy is flagged as the copy (sameAs) — neither half also says "adds nothing". */
-      addsNothing: !groupEmpty(g) && groups.length > 1 && mine.length > 0 && mine.every((r) => elsewhere.has(r.id)) && !groups.some((h, k) => k !== i && sameGroup(h, g)),
+      addsNothing: joinOf(def) === "or" && !groupEmpty(g) && groups.length > 1 && mine.length > 0 && mine.every((r) => elsewhere.has(r.id)) && !groups.some((h, k) => k !== i && sameGroup(h, g)),
       empty: !groupEmpty(g) && mine.length === 0,
       asked: !groupEmpty(g),
       unique: mine.filter((r) => !elsewhere.has(r.id)).length,
@@ -689,9 +719,9 @@ function startRun(rule: Rule, rows: ConfigRow[], ents: EntityMap, at: number): {
   const p = previewRule(rule, withOverlay(rows, state.overlay), ents, adjustedBy(rule));
   const overlay: Record<string, ConfigRow> = {};
   const results: RunResult[] = p.list.map((x) => {
-    if (x.outcome !== "updated") return { rowId: x.row.id, outcome: x.outcome, reason: x.reason };
+    if (x.outcome !== "updated") return { rowId: x.row.id, outcome: x.outcome, reason: x.reason, lines: x.lines };
     const why = failureOf(rule.id, n, x.row.id);
-    if (why) return { rowId: x.row.id, outcome: "failed", reason: why };
+    if (why) return { rowId: x.row.id, outcome: "failed", reason: why, lines: x.lines.map((l) => ({ ...l, after: l.before })) };
     overlay[x.row.id] = x.next;
     return { rowId: x.row.id, outcome: "updated", before: x.row, lines: x.lines, priceBefore: x.priceBefore, priceAfter: x.priceAfter };
   });

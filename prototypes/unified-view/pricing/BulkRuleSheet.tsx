@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { BookmarkPlus, MoreHorizontal, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Clock, FolderOpen, Gauge, Info, Plus, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Clock, FolderOpen, Gauge, Info, Plus, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Pill, type PillKind } from "@/components/ui/pill";
 import { QuietPattern } from "@/components/ui/quiet-pattern";
 import { Progress } from "@/components/ui/progress";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StageTrack } from "@/components/ui/stage-track";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SheetField, SheetSection } from "@/components/side-sheet/parts";
 import { TableCellInput, TableCellMultiSelect, TableCellSelect, TableRowRemove } from "@/components/form-layout/table-cells";
@@ -29,7 +27,6 @@ import {
   MARKET_NAMES,
   REGION_NAMES,
   SETTINGS,
-  SOURCES,
   WHICH,
   actionLabel,
   actionsFor,
@@ -39,7 +36,6 @@ import {
   blankCondition,
   COND_FIELDS,
   condLabel,
-  factsOfRow,
   groupsOf,
   regionOf,
   assetOf,
@@ -199,7 +195,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
 
   const ready = d.changes.some(changeReady);
   const pending = [
-    !d.name.trim() && { key: "name", label: isTemplate ? "Enter a template name" : "Enter a rule name", target: stepId("rule") },
+    !d.name.trim() && { key: "name", label: "Enter a name", target: stepId("rule") },
     !d.conditions && d.where.length > 1 && d.where.some((w) => !w.region) && { key: "region", label: "Choose a region on each condition", target: stepId("where") },
     !d.conditions && d.targets.length > 1 && d.targets.some((t) => !t.customerId) && { key: "customer", label: "Choose a customer on each line", target: stepId("applies") },
     !isTemplate && !preview.groups.some((g) => g.asked) && { key: "if", label: "Add a condition", target: stepId("where") },
@@ -208,15 +204,6 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
     !isTemplate && ready && preview.updated.length === 0 && { key: "none", label: "Nothing to update", target: stepId("change") },
   ].filter(Boolean) as { key: string; label: string; target: string }[];
 
-  const saveAsTemplate = () => {
-    if (!d.name.trim()) {
-      setRaised(true);
-      attend(stepId("rule"));
-      return toast.warning("Enter a rule name to save it as a template");
-    }
-    const t = createTemplate({ ...defOf(d), name: d.name.trim() });
-    toast.success(`${t.name} saved as a template`);
-  };
   /* APPLY STAYS ON THIS PAGE (Yash, 2026-11-19) — no new sheet: the page
      becomes the rule, and its status bar follows the run. */
   const apply = () => {
@@ -317,22 +304,14 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
 
   const body = (
     <div className="flex min-w-0 flex-col gap-10">
-      <RuleSection d={d} set={set} setD={setD} isTemplate={isTemplate} canLoad={creating && !isTemplate} templates={bulk.templates} />
+      <RuleSection d={d} set={set} setD={setD} isTemplate={isTemplate} canLoad={false} templates={bulk.templates} />
       <GroupsSection
         groups={d.groups ?? [[blankCondition()]]}
-        onChange={(groups) => set("groups", groups)}
+        matches={d.matches ?? []}
+        join={d.join ?? "or"}
+        onChange={(p) => setD((x) => ({ ...x, ...p }))}
         impacts={asRan.groups}
-        onRecords={(gi, which) =>
-          focusPrices(
-            uniq(
-              Object.values(asRan.combos)
-                .filter((ks) => ks.includes(gi + 1) && (which === "unique" ? ks.length === 1 : ks.length > 1))
-                .map((ks) => `combination:${comboLabel(ks)}`)
-            )
-          )
-        }
         configRows={bulk.rows}
-        source={d.source}
         ents={bulk.entityMap}
       />
       <ChangeSection changes={d.changes} onChange={(changes) => set("changes", changes)} entities={bulk.entities} />
@@ -409,10 +388,10 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
       footerAside={footerAside}
       footerPrimary={footerPrimary}
       headerAside={rule ? <StatusPill rule={rule} /> : undefined}
-      /* SAVE AS TEMPLATE, IN ⋯ (Yash, 2026-11-19) — Apply stays the one
-         primary (UX-8); a rule, new or saved, can be kept as a template. */
+      /* DUPLICATE, IN ⋯ (Yash, 2026-11-19) — templates are hidden; a rule is
+         reused by duplicating it. */
       headerMenu={
-        isTemplate ? undefined : (
+        rule ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm" aria-label="More rule actions">
@@ -420,31 +399,18 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem onSelect={saveAsTemplate}>
-                <BookmarkPlus />
-                Save as template
+              <DropdownMenuItem onSelect={() => onOpen({ kind: "rule", id: null, from: { ...defOf(d), name: `${d.name} (copy)` } })}>
+                <Copy />
+                Duplicate
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        )
-      }
-      headerSubtitle={<span className="text-sm text-muted-foreground">{isTemplate ? "Bulk template" : "Bulk rule"}</span>}
-      /* THE STATUS AS A TRACK only while there is something to follow —
-         scheduled or running. Once a rule has run, the header's pill says it. */
-      steps={
-        rule && (scheduled || running) ? (
-          <StageTrack
-            compact
-            className="my-2.5"
-            stages={[
-              { key: "Scheduled", label: "Scheduled" },
-              { key: "Running", label: "Running" },
-              { key: "Done", label: "Done" },
-            ]}
-            current={ruleStatus(rule)}
-          />
         ) : undefined
       }
+      /* THE TITLE ALONE (Yash, 2026-11-19) — no "Bulk rule" under it. */
+      /* THE STATUS AS A TRACK only while there is something to follow —
+         scheduled or running. Once a rule has run, the header's pill says it. */
+      /* NO STATUS TRACK (Yash, 2026-11-19) — the Impact card's progress says it. */
       onSubmit={submit}
     >
       {isTemplate ? (
@@ -565,19 +531,6 @@ function RecipeSection({
 
 /* ----------------------------------------------------------------- rule -- */
 
-/** ONE OF TWO — a segment control, not radios (Yash, 2026-11-19). */
-function Choice<T extends string>({ id, value, options, onChange }: { id: string; value: T; options: { key: T; label: string }[]; onChange: (v: T) => void }) {
-  return (
-    <ToggleGroup type="single" variant="outline" value={value} onValueChange={(v) => v && onChange(v as T)} aria-label={id} className="w-full">
-      {options.map((o) => (
-        <ToggleGroupItem key={o.key} value={o.key} className="flex-1 px-4">
-          {o.label}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
-  );
-}
-
 function RuleSection({
   d,
   set,
@@ -605,7 +558,7 @@ function RuleSection({
       {/* TWO ROWS OF FIELDS, 24px apart — as the fields sit across. */}
       <div className="flex flex-col gap-6">
         <div className={cn("grid gap-6", isTemplate ? "grid-cols-1" : "grid-cols-[minmax(0,1fr)_minmax(0,200px)_164px]")}>
-          <SheetField label={isTemplate ? "Template name" : "Rule name"} required>
+          <SheetField label="Name" required>
             <div className="flex gap-2">
               <Input value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Enter a name" />
               {canLoad && (
@@ -634,7 +587,7 @@ function RuleSection({
           </SheetField>
           {!isTemplate && (
             <>
-              <SheetField label="Planned date" required>
+              <SheetField label="Execution date" required>
                 <DateField value={d.day} onChange={(day) => set("day", day)} dayDisabled={(day) => day.getTime() < new Date(NOW).setHours(0, 0, 0, 0)} />
               </SheetField>
               <SheetField label="Time">
@@ -647,7 +600,7 @@ function RuleSection({
                     </span>
                   </SelectTrigger>
                   <SelectContent className="max-h-72">
-                    <SelectItem value={NO_TIME}>On run</SelectItem>
+                    <SelectItem value={NO_TIME}>Immediately</SelectItem>
                     {TIMES.filter((v) => !(d.day && sameDay(d.day.getTime(), NOW) && whenOf(d.day, v) < NOW)).map((v) => (
                       <SelectItem key={v} value={v}>
                         {timeLabel(v)}
@@ -659,9 +612,6 @@ function RuleSection({
             </>
           )}
         </div>
-        <SheetField label="Pricing source">
-          <Choice id="source" value={d.source} options={SOURCES} onChange={(v) => set("source", v)} />
-        </SheetField>
       </div>
     </SheetSection>
   );
@@ -720,6 +670,8 @@ function condOptions(f: CondField, ents: EntityMap): { names: string[]; toName: 
       return plain(Object.values(APPLIED));
     case "configurations":
       return { names: WHICH.map((w) => w.label), toName: (v) => whichLabel(v as Which), toValue: (n) => WHICH.find((w) => w.label === n)?.key ?? n };
+    case "source":
+      return plain(["First party", "3PL"]);
   }
 }
 
@@ -749,36 +701,38 @@ function emptyWhy(g: Condition[], rows: ConfigRow[], ents: EntityMap): string {
  *  that matches nothing, adds nothing, or repeats another. */
 function GroupsSection({
   groups,
+  matches,
+  join,
   onChange,
   impacts,
-  onRecords,
   configRows,
-  source,
   ents,
 }: {
   groups: Condition[][];
-  onChange: (g: Condition[][]) => void;
+  /** Per combination: Match all (AND) or any (OR) of its conditions. */
+  matches: ("all" | "any")[];
+  /** Between combinations: AND or OR. */
+  join: "and" | "or";
+  onChange: (p: { groups?: Condition[][]; matches?: ("all" | "any")[]; join?: "and" | "or" }) => void;
   impacts: GroupImpact[];
-  /** Open this combination's records — those only it matched, or those it shares. */
-  onRecords: (gi: number, which: "unique" | "repeated") => void;
   configRows: ConfigRow[];
-  source: RuleDef["source"];
   ents: EntityMap;
 }) {
   const [added, setAdded] = React.useState<string | null>(null);
-  const setGroup = (gi: number, g: Condition[]) => onChange(groups.map((x, k) => (k === gi ? g : x)));
-  const sourced = React.useMemo(() => configRows.filter((r) => factsOfRow(r, ents).source === source), [configRows, ents, source]);
+  const setGroup = (gi: number, g: Condition[]) => onChange({ groups: groups.map((x, k) => (k === gi ? g : x)) });
+  const matchAt = (gi: number) => matches[gi] ?? "all";
+  const sourced = configRows;
   const byLabel = (l: string) => COND_FIELDS.find((x) => x.label === l)!.key;
   return (
     <RecipeSection
       id={stepId("where")}
       tag="If"
-      rest="it matches any of the combinations"
+      rest="it matches these conditions"
       boxed={false}
       info={
         <>
-          <p>Every condition in a combination must hold.</p>
-          <p>A record that meets any one combination gets the change. A record in two combinations changes once.</p>
+          <p>In a combination, Match all needs every condition to hold; Match any needs one.</p>
+          <p>Between combinations, AND needs a record to meet all of them; OR needs any one. A record changes once.</p>
         </>
       }
     >
@@ -796,10 +750,21 @@ function GroupsSection({
           return (
             <React.Fragment key={gi}>
               {/* OR BETWEEN GROUPS — its own line, so it reads apart from the AND inside. */}
+              {/* AND OR OR BETWEEN COMBINATIONS (Yash, 2026-11-19) — one choice for
+                  the rule, shown on every line between them, so there is no
+                  order to read. */}
               {gi > 0 && (
-                <div className="flex items-center gap-3 py-3" aria-label="Or">
+                <div className="flex items-center gap-2 py-2">
                   <span className="h-px flex-1 bg-border" />
-                  <span className="inline-flex h-6 items-center rounded-full bg-muted px-2.5 text-xs font-semibold text-muted-foreground">OR</span>
+                  <Select value={join} onValueChange={(v) => onChange({ join: v as "and" | "or" })}>
+                    <SelectTrigger size="sm" className="h-7 w-auto gap-1 bg-muted px-2.5 text-xs font-semibold" aria-label="Between combinations">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="and">AND</SelectItem>
+                      <SelectItem value="or">OR</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <span className="h-px flex-1 bg-border" />
                 </div>
               )}
@@ -818,45 +783,32 @@ function GroupsSection({
                       )}
                     </span>
                     <span className="flex shrink-0 items-center gap-3">
-                      {/* UNIQUE AND REPEATED, NO TOTAL (Yash, 2026-11-19) — each count
-                          opens its records; repeated says where on hover. */}
-                      {im && im.matched > 0 && (
-                        <span className="text-sm text-muted-foreground">
-                          {im.repeated > 0 && "Records: "}
-                          <button
-                            type="button"
-                            onClick={() => onRecords(gi, "unique")}
-                            className="underline decoration-current/50 decoration-dotted underline-offset-4 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-                          >
-                            {im.repeated > 0 ? `${im.unique.toLocaleString()} unique` : `${plural(im.unique, "unique record")} matched`}
-                          </button>
-                          {im.repeated > 0 && (
-                            <>
-                              {" · "}
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    type="button"
-                                    onClick={() => onRecords(gi, "repeated")}
-                                    className="underline decoration-current/50 decoration-dotted underline-offset-4 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-                                  >
-                                    {im.repeated.toLocaleString()} repeated
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  {/* WHERE THEY REPEAT, AND THAT THE CHANGE LANDS ONCE (Yash, 2026-11-19). */}
-                                  {im.repeatedWith.map((x) => `${x.n.toLocaleString()} also in combination ${x.with}`).join(" · ")}. The change applies to
-                                  each record once.
-                                </TooltipContent>
-                              </Tooltip>
-                            </>
-                          )}
-                        </span>
-                      )}
+                      {/* MATCH ALL OR ANY (Yash, 2026-11-19); records stay in the Impact card. */}
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                        Match
+                        <Select
+                          value={matchAt(gi)}
+                          onValueChange={(v) => onChange({ matches: groups.map((_, k) => (k === gi ? (v as "all" | "any") : matchAt(k))) })}
+                        >
+                          <SelectTrigger size="sm" className="w-[112px]" aria-label={`Combination ${gi + 1} match`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All (AND)</SelectItem>
+                            <SelectItem value="any">Any (OR)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </span>
                       {groups.length > 1 && (
                         <>
-                          {im && im.matched > 0 && <span aria-hidden className="h-5 w-px bg-border" />}
-                          <Button variant="ghost" size="icon-sm" aria-label={`Delete combination ${gi + 1}`} title="Delete combination" onClick={() => onChange(groups.filter((_, k) => k !== gi))}>
+                          <span aria-hidden className="h-5 w-px bg-border" />
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Delete combination ${gi + 1}`}
+                            title="Delete combination"
+                            onClick={() => onChange({ groups: groups.filter((_, k) => k !== gi), matches: groups.map((_, k) => matchAt(k)).filter((_, k) => k !== gi) })}
+                          >
                             <Trash2 />
                           </Button>
                         </>
@@ -901,7 +853,7 @@ function GroupsSection({
                         return (
                           <tr key={i} className={TR}>
                             {/* WHERE, THEN AND BETWEEN CONDITIONS. */}
-                            <td className="px-3 text-xs font-semibold text-muted-foreground">{i === 0 ? "Where" : "And"}</td>
+                            <td className="px-3 text-xs font-semibold text-muted-foreground">{i === 0 ? "Where" : matchAt(gi) === "any" ? "Or" : "And"}</td>
                             <td className="relative p-0">
                               <TableCellMultiSelect
                                 values={c.field ? [condLabel(c.field)] : []}
@@ -983,11 +935,11 @@ function GroupsSection({
             size="sm"
             onClick={() => {
               setAdded(`${groups.length}-0`);
-              onChange([...groups, [blankCondition()]]);
+              onChange({ groups: [...groups, [blankCondition()]], matches: [...groups.map((_, k) => matchAt(k)), "all"] });
             }}
           >
             <Plus />
-            Add OR combination
+            Add combination
           </Button>
           <span className="h-px flex-1 bg-border" />
         </div>
@@ -1080,8 +1032,18 @@ function TargetSection({
           <tr className="border-b border-border bg-fp-table-header">
             <th className={TH}>Customer</th>
             <th className={TH}>Ship-tos</th>
-            <th className={TH}>Products</th>
-            {exclude ? <th className={TH}>Assets</th> : <th className={TH}>Configurations</th>}
+            {/* EXCLUDE READS CUSTOMER, SHIP-TO, ASSET, PRODUCT (Yash, 2026-11-19). */}
+            {exclude ? (
+              <>
+                <th className={TH}>Assets</th>
+                <th className={TH}>Products</th>
+              </>
+            ) : (
+              <>
+                <th className={TH}>Products</th>
+                <th className={TH}>Configurations</th>
+              </>
+            )}
             <th aria-hidden className={BIN_TH} />
           </tr>
         </thead>
@@ -1093,6 +1055,20 @@ function TargetSection({
             const taken = new Set(atShiptos.map((x) => x.productId));
             const unavailable = Object.fromEntries(PRODUCTS.filter((p) => !taken.has(p.id)).map((p) => [p.name, "Not priced at these ship-tos"]));
             const others = rows.filter((_, k) => k !== i).map((x) => x.customerId).filter(Boolean);
+            const productCell = (
+                <td className="relative p-0">
+                <TableCellMultiSelect
+                  values={r.productIds.length ? r.productIds.map((p) => productOf(p).name) : exclude ? [] : [ALL_PRODUCTS]}
+                  options={PRODUCTS.map((p) => p.name)}
+                  allOption={exclude ? undefined : ALL_PRODUCTS}
+                  placeholder="Select products"
+                  unavailable={unavailable}
+                  unitLabel="product"
+                  aria-label={`Products, row ${i + 1}`}
+                  onChange={(v) => setRow(i, { productIds: v.includes(ALL_PRODUCTS) ? [] : v.map((n) => productByName.get(n)!).filter(Boolean) })}
+                />
+              </td>
+            );
             return (
               <tr key={i} className={TR}>
                 <td className="relative p-0">
@@ -1127,18 +1103,7 @@ function TargetSection({
                     }}
                   />
                 </td>
-                <td className="relative p-0">
-                  <TableCellMultiSelect
-                    values={r.productIds.length ? r.productIds.map((p) => productOf(p).name) : exclude ? [] : [ALL_PRODUCTS]}
-                    options={PRODUCTS.map((p) => p.name)}
-                    allOption={exclude ? undefined : ALL_PRODUCTS}
-                    placeholder="Select products"
-                    unavailable={unavailable}
-                    unitLabel="product"
-                    aria-label={`Products, row ${i + 1}`}
-                    onChange={(v) => setRow(i, { productIds: v.includes(ALL_PRODUCTS) ? [] : v.map((n) => productByName.get(n)!).filter(Boolean) })}
-                  />
-                </td>
+                {!exclude && productCell}
                 {exclude && (
                   <td className="relative p-0">
                     {/* THE TANKS OF WHAT THIS ROW NAMES — its customer, ship-tos, products. */}
@@ -1160,6 +1125,7 @@ function TargetSection({
                     })()}
                   </td>
                 )}
+                {exclude && productCell}
                 {!exclude && (
                   <td className="relative p-0">
                     {/* ONE VALUE — a line changes its set-up prices, its missing ones, or both. */}
@@ -1428,7 +1394,7 @@ function RecordsInfo() {
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 text-sm text-muted-foreground">
         <p>A record represents one ship-to and product combination, where the change will be applied.</p>
-        <p className="mt-2">For example, Diesel at Creole Batch Plant is one record.</p>
+        <p className="mt-2">For example, Diesel at Creole Batch Plant ship-to is one record.</p>
       </PopoverContent>
     </Popover>
   );
@@ -1571,8 +1537,8 @@ function PreviewImpactCard({
             <Matched n={Z} />
             {ready && (
               <>
-                <OutOf label="Will update" n={preview.updated.length} of={Z} onOpen={onFilter && (() => onFilter([`status:${WILL}`]))} split={preview.split.update} />
-                <OutOf label="Skipped" n={preview.skipped.length} of={Z} onOpen={onFilter && (() => onFilter([`status:${NOT}`]))} split={preview.split.skip} />
+                <OutOf label="Will update" n={preview.updated.length} of={Z} onOpen={onFilter && (() => onFilter([`status:${WILL}`]))} />
+                <OutOf label="Skipped" n={preview.skipped.length} of={Z} onOpen={onFilter && (() => onFilter([`status:${NOT}`]))} />
               </>
             )}
           </dl>
@@ -1621,8 +1587,7 @@ function RunImpactCard({
       <dl className="flex flex-col border-b border-border py-2">
         <Matched n={run.total} />
         <OutOf label="Updated" n={of("updated").length} of={run.total} onOpen={go("updated")} />
-        <OutOf label="Unchanged" n={of("unchanged").length} of={run.total} onOpen={go("unchanged")} hideZero />
-        <OutOf label="Skipped" n={of("skipped").length} of={run.total} onOpen={go("skipped")} hideZero />
+        <OutOf label="Skipped" n={of("unchanged").length + of("skipped").length} of={run.total} onOpen={go("skipped")} hideZero />
         <OutOf label="Failed" n={of("failed").length} of={run.total} onOpen={go("failed")} tone="caution" hideZero />
       </dl>
       <Settings changes={rule.changes} ents={ents} />
@@ -1708,9 +1673,11 @@ function RunSection({
 
 /* -------------------------------------------------------- price list -- */
 
-const WILL = "Will change";
-const NOT = "Not changing";
-const OUTCOME: Record<RunResult["outcome"], string> = { updated: "Updated", unchanged: "Unchanged", skipped: "Skipped", failed: "Failed" };
+/* THE IMPACT CARD'S WORDS, IN THE FILTER TOO (Yash, 2026-11-19). A record
+   already holding the change and one that cannot take it are both Skipped. */
+const WILL = "Will update";
+const NOT = "Skipped";
+const OUTCOME: Record<RunResult["outcome"], string> = { updated: "Updated", unchanged: "Skipped", skipped: "Skipped", failed: "Failed" };
 
 /** Every price a new rule reaches: the ones that change, then the rest with why. */
 const allOfPreview = (preview: ReturnType<typeof previewRule>): PriceRow[] =>
@@ -1762,10 +1729,10 @@ function PricesView({
           { key: "shipto", label: "Ship-to", width: 190, sortable: true },
           { key: "customer", label: "Customer", width: 160, sortable: true },
           { key: "product", label: "Product", width: 150, sortable: true },
-          ...(combined ? [{ key: "combination", label: "Combination", width: 170, sortable: true }] : []),
           { key: "change", label: "Change", width: 236, sortable: true },
+          /* NO OUTCOME OR COMBINATION COLUMN (Yash, 2026-11-19) — both stay as
+             filters; an unchanged record reads "OPIS Rack High → OPIS Rack High". */
           { key: "price", label: "Price ($/gal)", width: 160, sortable: true },
-          { key: "status", label: "Outcome", width: 124, sortable: true },
         ],
         rows: rows.map(
           (p, i): ViewRow => ({
@@ -1776,10 +1743,12 @@ function PricesView({
               product: productOf(p.row.productId).name,
               customer: customerOf(p.row.customerId).name,
               combination: p.combos?.length ? comboLabel(p.combos) : "—",
-              change:
-                p.priceAfter != null
-                  ? (p.lines ?? []).filter((l) => l.before !== l.after).map((l) => `${l.label} ${l.before} → ${l.after}`).join(" · ")
-                  : p.reason ?? "—",
+              change: (p.lines ?? []).length
+                ? (p.lines ?? [])
+                    .filter((l) => p.priceAfter == null || l.before !== l.after)
+                    .map((l) => `${l.label} ${l.before} → ${l.after}`)
+                    .join(" · ")
+                : p.reason ?? "—",
               price:
                 p.priceAfter != null ? `${p.priceBefore == null ? "—" : money(p.priceBefore)} → ${money(p.priceAfter)}` : p.priceBefore == null ? "—" : money(p.priceBefore),
             },
@@ -1789,15 +1758,22 @@ function PricesView({
               customer: customerOf(p.row.customerId).name,
               shipto: shiptoOf(p.row.shiptoId).name,
               product: productOf(p.row.productId).name,
-              combination: p.combos?.length ? comboLabel(p.combos) : "—",
+            },
+            /* MATCHED BY — each single combination the record meets; one in two
+               shows under both (Yash, 2026-11-19). ENTITY — the settings the
+               rule touches on it. */
+            multi: {
+              combination: (p.combos ?? []).map((k) => `Combination ${k}`),
+              setting: uniq((p.lines ?? []).map((l) => l.label)),
             },
           })
         ),
         facets: [
-          { key: "status", label: "Outcome", order: [WILL, NOT, ...Object.values(OUTCOME)] },
+          { key: "status", label: "Outcome", order: uniq([WILL, NOT, ...Object.values(OUTCOME)]) },
           /* "MATCHED BY", not "Combination" — its chip with two values picked
              read "Combination 2", like the second combination. */
           ...(combined ? [{ key: "combination", label: "Matched by" }] : []),
+          { key: "setting", label: "Entity" },
           { key: "product", label: "Product", searchable: true },
           { key: "shipto", label: "Ship-to", searchable: true },
           { key: "customer", label: "Customer", searchable: true },
@@ -1821,10 +1797,10 @@ function PricesView({
               </span>
             );
           if (key === "change")
-            return p.priceAfter != null ? (
+            return (p.lines ?? []).length ? (
               <span className="flex min-w-0 flex-col">
                 {(p.lines ?? [])
-                  .filter((l) => l.before !== l.after)
+                  .filter((l) => p.priceAfter == null || l.before !== l.after)
                   .map((l) => (
                     <span key={l.label} className="truncate tabular-nums">
                       <span className="text-muted-foreground">

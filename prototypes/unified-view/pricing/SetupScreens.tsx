@@ -36,14 +36,14 @@ import { RecordSheet, useDraftSaveState, DraftStatusChip } from "../RecordSheet"
 import { ActivityCard, SheetRail, type TimelineEntry } from "../SheetCards";
 import { StandardList } from "../StandardList";
 import { TokenMultiSelect } from "../TokenMultiSelect";
-import { changeSummary, fmtWhen, type ChangeRecord, type Entity, type EntityMap } from "./changeLog";
+import { changeSummary, fmtWhen, type ChangeRecord, type Entity, type EntityMap, type SetupField } from "./changeLog";
 import { fitTab } from "./customerShiptoViews";
 import { ChangeSheet } from "./ChangeSheet";
 import {
   createSetup,
   logSetup,
   metaOf,
-  saveSetupValue,
+  saveSetupChange,
   setSetupActive,
   updateSetup,
   useChangeLog,
@@ -294,6 +294,28 @@ function diffOf(a: Draft, b: Draft): string[] {
   return out;
 }
 
+/** A margin's one rate, as the sheet reads it: the first product row's, the
+ *  first tier's, or the fixed rate. */
+const rateOf = (d: Draft) =>
+  d.meta.appliesTo === "specific"
+    ? (d.meta.productRows?.[0]?.rate ?? 0)
+    : d.meta.rateKind === "volume"
+      ? (d.meta.tiers?.[0]?.rate ?? 0)
+      : Number(d.value) || 0;
+
+/** The record's own fields that moved, old → new, for the Activity feed. */
+function fieldsOf(a: Draft, b: Draft): { field: SetupField; from: string; to: string }[] {
+  const out: { field: SetupField; from: string; to: string }[] = [];
+  if (a.name.trim() !== b.name.trim()) out.push({ field: "name", from: a.name.trim(), to: b.name.trim() });
+  if (a.desc !== b.desc) out.push({ field: "desc", from: a.desc, to: b.desc });
+  if ((a.meta.address ?? "") !== (b.meta.address ?? "")) out.push({ field: "address", from: a.meta.address ?? "", to: b.meta.address ?? "" });
+  if (list(a.meta.hubs) !== list(b.meta.hubs)) out.push({ field: "hubs", from: list(a.meta.hubs), to: list(b.meta.hubs) });
+  if (!!a.meta.showInTodays !== !!b.meta.showInTodays)
+    out.push({ field: "todays", from: a.meta.showInTodays ? "Shown" : "Hidden", to: b.meta.showInTodays ? "Shown" : "Hidden" });
+  if (a.meta.active !== b.meta.active) out.push({ field: "active", from: a.meta.active ? "Active" : "Inactive", to: b.meta.active ? "Active" : "Inactive" });
+  return out;
+}
+
 const ISO = (t: number) => new Date(t).toISOString();
 
 function SetupSheet({
@@ -339,9 +361,19 @@ function SetupSheet({
         before: { name: start.name, desc: start.desc, value: start.value === "" ? undefined : Number(start.value), meta: start.meta },
         action: "Updated",
       });
-      const fixed = kind === "margin" && d.meta.appliesTo === "all" && d.meta.rateKind === "fixed";
-      const amount = Number(d.value);
-      if (fixed && Number.isFinite(amount)) changeId.current = saveSetupValue({ changeId: changeId.current, id: id!, base: Number(start.value) || 0, amount });
+      /* EVERY EDIT IS A CHANGE IN THE ACTIVITY FEED (Yash, 2026-11-18) —
+         the rate (any margin rate kind) with its price impact, and each
+         field, reaching the ship-tos that use this record. */
+      const amount = rateOf(d);
+      changeId.current = saveSetupChange({
+        changeId: changeId.current,
+        id: id!,
+        fields: fieldsOf(start, d),
+        value:
+          kind === "margin" && Number.isFinite(amount)
+            ? { base: rateOf(start), amount, products: d.meta.appliesTo === "specific" ? d.meta.productRows?.[0]?.products : undefined }
+            : undefined,
+      });
     }, 600);
     return () => window.clearTimeout(t);
   }, [d]); // eslint-disable-line react-hooks/exhaustive-deps

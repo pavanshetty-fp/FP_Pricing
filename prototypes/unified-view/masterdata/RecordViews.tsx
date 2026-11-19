@@ -116,7 +116,11 @@ export function RecordViews({
   initialPicked,
   apply,
   hideSingleTab = false,
+  quickFilters,
 }: {
+  /** A control BEFORE search — the coarsest cut, which set is being
+   *  searched: a run picker (opt-in; Pricing bulk rule, Yash 2026-11-18). */
+  quickFilters?: React.ReactNode;
   /** No tab strip when there is only one view — a record's activity
    *  (Pricing, Yash 2026-11-17). */
   hideSingleTab?: boolean;
@@ -273,6 +277,7 @@ export function RecordViews({
             patch({ page: 1 });
           }}
           searchPlaceholder={searchPlaceholder}
+          quickFilters={quickFilters}
           filters={
             <ListFilters
               facets={facets}

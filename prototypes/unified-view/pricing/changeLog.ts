@@ -240,8 +240,22 @@ const OP_ACTION: Record<Operation, Action> = {
   edit: "Updated",
   create: "Added",
 };
-export const editAction = (e: { operation: Operation }) => OP_ACTION[e.operation];
-export function recordAction(c: { edits: { operation: Operation }[]; undoOf?: string; configures?: boolean; resets?: boolean; rollbackOf?: string }): Action {
+/* A SETUP RECORD'S OWN FIELDS (Yash, 2026-11-18) — a margin, rate type or
+   market renamed, re-described, its hubs or address moved, shown on or off
+   Today's pricing, or switched off. Every such edit is a change in the
+   Activity feed; it reaches the ship-tos that use the record. */
+export type SetupField = "name" | "desc" | "address" | "hubs" | "todays" | "active";
+export const FIELD_LABEL: Record<SetupField, string> = {
+  name: "Name",
+  desc: "Description",
+  address: "Market address",
+  hubs: "Hubs",
+  todays: "Today's pricing",
+  active: "Status",
+};
+export const editAction = (e: { operation: Operation; field?: SetupField; to?: string }) =>
+  e.field === "active" && e.to === "Inactive" ? "Deactivated" : OP_ACTION[e.operation];
+export function recordAction(c: { edits: { operation: Operation; field?: SetupField; to?: string }[]; undoOf?: string; configures?: boolean; resets?: boolean; rollbackOf?: string }): Action {
   if (c.configures) return "Added";
   if (c.resets || c.rollbackOf || c.undoOf) return "Updated";
   const a = [...new Set(c.edits.map(editAction))];
@@ -249,6 +263,7 @@ export function recordAction(c: { edits: { operation: Operation }[]; undoOf?: st
 }
 /** One line's action: for a list, did things come off, go on, or both. */
 export function lineAction(l: ImpactLine): Action {
+  if (l.field) return l.field === "active" && l.after === "Inactive" ? "Deactivated" : "Updated";
   if (!IS_LIST[l.setting]) return "Updated";
   if (l.before.includes(" · ")) return "Updated";
   const off = l.beforeIds.some((id) => !l.afterIds.includes(id));
@@ -270,6 +285,12 @@ export interface Edit {
   configure?: boolean;
   /** Puts a ShipTo row back on its customer's pricing. */
   reset?: boolean;
+  /** Edit: one of the record's own fields, not its value — from → to. */
+  field?: SetupField;
+  from?: string;
+  to?: string;
+  /** Edit: a margin's rate for these products only. */
+  products?: string[];
 }
 
 /** Where the change was made. */
@@ -304,6 +325,8 @@ export interface ImpactLine {
   afterIds: string[];
   /** $/gal the row's price moves by (0 for name-only settings). */
   delta: number;
+  /** A setup record's own field changed here — the price did not. */
+  field?: SetupField;
   outcome: "changed" | "failed" | "pending";
   error?: string;
 }
@@ -409,7 +432,9 @@ export function applyEdit(row: ConfigRow, e: Edit): ConfigRow {
 
 /** A Pricing Setup edit changes the entity itself, so every row using it moves. */
 function rowsUsing(rows: ConfigRow[], id: string, setting: Setting) {
-  return rows.filter((r) => IS_LIST[setting] && r[ROW_KEY[setting as keyof typeof ROW_KEY]].includes(id));
+  return rows.filter((r) =>
+    IS_LIST[setting] ? r[ROW_KEY[setting as keyof typeof ROW_KEY]].includes(id) : (r as unknown as Record<string, unknown>)[setting] === id
+  );
 }
 
 export interface Projection {
@@ -437,11 +462,26 @@ export function project(rows: ConfigRow[], edits: Edit[], ents: EntityMap, befor
   const lines: ImpactLine[] = [];
   let noChange = 0;
   for (const e of edits) {
+    if (e.operation === "edit" && e.field) {
+      for (const row of rowsUsing(rows, e.entityIds[0], e.setting))
+        lines.push({
+          ...lineBase(row, e.setting),
+          before: e.from ?? "",
+          after: e.to ?? "",
+          beforeIds: [e.entityIds[0]],
+          afterIds: [e.entityIds[0]],
+          delta: 0,
+          field: e.field,
+        });
+      continue;
+    }
     if (e.operation === "edit") {
       const ent0 = (before ?? ents).get(e.entityIds[0]);
       const ent1 = ents.get(e.entityIds[0]);
       if (!ent0 || !ent1 || ent0.value === ent1.value) continue;
-      for (const row of rowsUsing(rows, e.entityIds[0], e.setting)) {
+      for (const row of rowsUsing(rows, e.entityIds[0], e.setting).filter(
+        (r) => !e.products || e.products.includes(r.productId) || e.products.includes(productOf(r.productId).name)
+      )) {
         lines.push({
           ...lineBase(row, e.setting),
           before: `${ent0.name} · ${money(ent0.value ?? 0)}`,
@@ -484,22 +524,26 @@ export function project(rows: ConfigRow[], edits: Edit[], ents: EntityMap, befor
  *  prices and quoted prices keep the price they have. One set per row, priced
  *  by the row's net move. */
 export function ordersFor(lines: ImpactLine[], rows: Map<string, ConfigRow>, at: number, seed: string): OrderImpact[] {
-  const byRow = new Map<string, { l: ImpactLine; delta: number }>();
+  /* A RENAME REACHES ORDERS, AT THE SAME PRICE (Yash, 2026-11-18) — they
+     show the new name. Other field edits (description, hubs, status…)
+     reach no order. */
+  const byRow = new Map<string, { l: ImpactLine; delta: number; nameOnly: boolean }>();
   for (const l of lines) {
     if (l.outcome === "failed") continue;
+    if (l.field && l.field !== "name") continue;
     const cur = byRow.get(l.rowId);
-    byRow.set(l.rowId, { l, delta: (cur?.delta ?? 0) + l.delta });
+    byRow.set(l.rowId, { l, delta: (cur?.delta ?? 0) + l.delta, nameOnly: (cur?.nameOnly ?? true) && l.field === "name" });
   }
   const out: OrderImpact[] = [];
-  for (const [rowId, { l, delta: d }] of byRow) {
+  for (const [rowId, { l, delta: d, nameOnly }] of byRow) {
     const h = hash(`o${seed}${rowId}`);
     const n = h > 0.62 ? 2 : h > 0.3 ? 1 : 0;
     for (let i = 0; i < n; i++) {
       const k = hash(`k${seed}${rowId}${i}`);
       const row = rows.get(rowId);
       const price = (row?.base ?? 2.9) + 0.6 + Math.round(hash(`pr${rowId}`) * 300) / 1000;
-      const delta = d || Math.round((hash(`d${seed}${rowId}`) - 0.45) * 60) / 1000;
-      const kept = k > 0.82;
+      const delta = nameOnly ? 0 : d || Math.round((hash(`d${seed}${rowId}`) - 0.45) * 60) / 1000;
+      const kept = !nameOnly && k > 0.82;
       out.push({
         id: `ORD-${58000 + Math.floor(hash(`id${seed}${rowId}${i}`) * 9000)}`,
         rowId,
@@ -521,6 +565,9 @@ export function ordersFor(lines: ImpactLine[], rows: Map<string, ConfigRow>, at:
 export function editTitle(e: Edit, ents: EntityMap): string {
   const names = e.entityIds.map((id) => ents.get(id)?.name ?? id).join(", ");
   const s = SETTING_LABEL[e.setting];
+  if (e.field === "name") return `${e.from} renamed to ${e.to}`;
+  if (e.field === "active") return `${names} ${e.to === "Inactive" ? "deactivated" : "activated"}`;
+  if (e.field) return `${names}: ${FIELD_LABEL[e.field].toLowerCase()} updated`;
   switch (e.operation) {
     case "add":
       return e.setting === "adder" ? `Adjustment ${names} added` : `${names} added`;
@@ -732,6 +779,13 @@ function storyPlans(): Plan[] {
     { at: at(9, 10, 30), by: "Valarie Rogers", source: "customer", edits: inherit("redriver", "margin", "replace", ["m-contractor-margin"]) },
     { at: at(5, 14, 5), by: "Priya Nair", source: "customer", edits: inherit("pelican", "fee", "add", ["f-delivery-fee"]) },
     { at: at(1, 9, 40), by: "Marcus Hale", source: "customer", edits: inherit("delta-ag", "rateType", "set", ["r-opis-rack-avg"]) },
+    // Pricing Setup: a record's own fields (Yash, 2026-11-18) — renamed,
+    // re-described, hubs moved, switched off — each reaching its ship-tos.
+    { at: at(2, 15, 30), by: "Marcus Hale", source: "setup", edits: () => [{ setting: "margin", operation: "edit", entityIds: ["m-contractor-margin"], rowIds: [], field: "name", from: "Contractor Rack Margin", to: "Contractor Margin" }] },
+    { at: at(5, 10, 15), by: "Priya Nair", source: "setup", edits: () => [{ setting: "rateType", operation: "edit", entityIds: ["r-opis-rack-avg"], rowIds: [], field: "name", from: "OPIS Average", to: "OPIS Rack Avg" }] },
+    { at: at(4, 13, 40), by: "Cody McLelland", source: "setup", edits: () => [{ setting: "market", operation: "edit", entityIds: ["k-lake-charles"], rowIds: [], field: "hubs", from: "Lake Charles hub", to: "Lake Charles hub, Sulphur hub" }] },
+    { at: at(1, 16, 5), by: "Valarie Rogers", source: "setup", edits: () => [{ setting: "rateType", operation: "edit", entityIds: ["r-opis-rack-high"], rowIds: [], field: "active", from: "Active", to: "Inactive" }] },
+    { at: at(8, 9, 20), by: "Yash J", source: "setup", edits: () => [{ setting: "margin", operation: "edit", entityIds: ["m-winter-fleet-margin"], rowIds: [], field: "desc", from: "Seasonal fleet accounts", to: "Seasonal fleet accounts, Nov–Feb" }] },
     // Pricing Setup: a new fee created (not on any row yet).
     { at: at(2, 11, 20), by: "Yash J", source: "setup", edits: () => [{ setting: "fee", operation: "create", entityIds: ["f-weekend-delivery-fee"], rowIds: [] }] },
     // A change undone straight after.
@@ -1047,6 +1101,10 @@ export function editParts(e: Edit, lines: ImpactLine[], ents: EntityMap): Summar
   };
   const label = ({ margin: "margins", fee: "fees", tax: "taxes", rateType: "rate types", market: "markets", adder: "adders" } as const)[e.setting];
   const list = (ids: string[]): SummaryPart => ({ names: ids.map(name), label });
+  if (e.field === "name") return [`${e.from} → ${e.to}`];
+  if (e.field === "active") return [list(e.entityIds)];
+  if (e.field === "desc") return [list(e.entityIds), ": description updated"];
+  if (e.field) return [list(e.entityIds), `: ${FIELD_LABEL[e.field].toLowerCase()} ${e.from || "none"} → ${e.to || "none"}`];
   if (e.operation === "add" || e.operation === "remove" || e.operation === "create") return [list(e.entityIds)];
   if (e.operation === "edit") {
     const was = lines.find((l) => l.setting === e.setting && l.beforeIds.includes(e.entityIds[0]))?.before.split(" · ")[1];

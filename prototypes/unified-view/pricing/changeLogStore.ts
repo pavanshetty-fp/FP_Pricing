@@ -14,6 +14,7 @@ import {
   stateProjection,
   type Source,
   type Setting,
+  type SetupField,
   type ChangeRecord,
   type ConfigRow,
   type Edit,
@@ -91,6 +92,16 @@ export interface SetupMeta {
 }
 
 const SEED = buildSeed();
+/* The sample setup edits leave their records as they say: Lake Charles has
+   a second hub, OPIS Rack High is switched off. */
+const SEED_META = (): Record<string, SetupMeta> => {
+  const out: Record<string, SetupMeta> = {};
+  for (const e of SEED.entities) {
+    if (e.id === "k-lake-charles") out[e.id] = { ...metaOf(e, {}), hubs: ["Lake Charles hub", "Sulphur hub"] };
+    if (e.id === "r-opis-rack-high") out[e.id] = { ...metaOf(e, {}), active: false };
+  }
+  return out;
+};
 let state: State = { rows: SEED.rows, entities: SEED.entities, changes: SEED.changes, customerOwn: {}, meta: {}, audit: seedAudit(SEED.entities, SEED.changes), tick: 0 };
 const listeners = new Set<() => void>();
 const set = (next: Partial<State>) => {
@@ -416,7 +427,7 @@ export function rollbackSetup(id: string): boolean {
   const e = s.entities.find((x) => x.id === id);
   if (!entry || !entry.before || !e) return false;
   const b = entry.before;
-  if (b.value !== undefined && e.value !== b.value) saveSetupValue({ changeId: null, id, base: e.value ?? 0, amount: b.value });
+  if (b.value !== undefined && e.value !== b.value) saveSetupChange({ changeId: null, id, fields: [], value: { base: e.value ?? 0, amount: b.value } });
   updateSetup(id, { name: b.name, desc: b.desc, meta: b.meta });
   logSetup(id, `rollback-${nowOf(state)}`, [`Rolled back: ${entry.changes.join(", ")}`], { action: "Rolled back" });
   return true;
@@ -460,21 +471,31 @@ export function updateSetup(id: string, patch: { name?: string; desc?: string; m
   });
 }
 
-/** A margin's rate changed in its sheet — ONE change per open sheet, rewritten
- *  as the rate settles (as savePricing). Returns the change id, or null when
- *  the rate is back where it started. */
-export function saveSetupValue(opts: { changeId: string | null; id: string; base: number; amount: number }): string | null {
+/** A SETUP SHEET'S EDITS, AS ONE CHANGE (Yash, 2026-11-18) — its rate (a
+ *  margin, any rate kind) and its own fields (name, description, hubs,
+ *  address, Today's pricing, status), rewritten as the sheet settles, as
+ *  savePricing. Returns the change id, or null when nothing differs. */
+export function saveSetupChange(opts: {
+  changeId: string | null;
+  id: string;
+  fields: { field: SetupField; from: string; to: string }[];
+  value?: { base: number; amount: number; products?: string[] };
+}): string | null {
   const s = state;
   const ent = s.entities.find((e) => e.id === opts.id)!;
-  const before = new Map(s.entities.map((e) => [e.id, e.id === opts.id ? { ...e, value: opts.base } : e]));
-  const after = new Map(s.entities.map((e) => [e.id, e.id === opts.id ? { ...e, value: opts.amount } : e]));
-  const entities = s.entities.map((e) => (e.id === opts.id ? { ...e, value: opts.amount } : e));
+  const v = opts.value && opts.value.amount !== opts.value.base ? opts.value : null;
+  const before = new Map(s.entities.map((e) => [e.id, e.id === opts.id && v ? { ...e, value: v.base } : e]));
+  const after = new Map(s.entities.map((e) => [e.id, e.id === opts.id && v ? { ...e, value: v.amount } : e]));
+  const entities = v ? s.entities.map((e) => (e.id === opts.id ? { ...e, value: v.amount } : e)) : s.entities;
   const without = s.changes.filter((c) => c.id !== opts.changeId);
-  if (opts.amount === opts.base) {
+  const edits: Edit[] = [
+    ...(v ? [{ setting: ent.setting, operation: "edit" as const, entityIds: [opts.id], amount: v.amount, rowIds: [], products: v.products }] : []),
+    ...opts.fields.map((f) => ({ setting: ent.setting, operation: "edit" as const, entityIds: [opts.id], rowIds: [], ...f })),
+  ];
+  if (!edits.length) {
     set({ entities, changes: without });
     return null;
   }
-  const edits: Edit[] = [{ setting: ent.setting, operation: "edit", entityIds: [opts.id], amount: opts.amount, rowIds: [] }];
   const proj = project(s.rows, edits, after, before);
   const id = opts.changeId ?? nextId(s);
   const prev = s.changes.find((c) => c.id === opts.changeId);
@@ -502,6 +523,8 @@ export function setSetupActive(id: string, active: boolean) {
   const before: SetupSnapshot = { name: e.name, desc: e.desc ?? "", value: e.value, meta: metaOf(e, s.meta) };
   set({ meta: { ...s.meta, [id]: { ...metaOf(e, s.meta), active } }, tick: s.tick + 1 });
   logSetup(id, `status-${nowOf(state)}`, [active ? "Activated" : "Deactivated"], { before, action: active ? "Activated" : "Deactivated" });
+  /* …and in the Activity feed, with the ship-tos that use it. */
+  saveSetupChange({ changeId: null, id, fields: [{ field: "active", from: active ? "Inactive" : "Active", to: active ? "Active" : "Inactive" }] });
 }
 
 /** Write (or rewrite) one sheet session's entry in a record's activity. An
@@ -522,3 +545,6 @@ export function useChangeLog() {
   const latestId = React.useMemo(() => latestIdOf(s.changes), [s.changes]);
   return { changes: s.changes, rows: s.rows, customerOwn: s.customerOwn, entities: s.entities, meta: s.meta, audit: s.audit, entityMap, latestId, now: nowOf(s) };
 }
+
+/* Seeded after metaOf and its tables exist. */
+state = { ...state, meta: SEED_META() };

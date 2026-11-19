@@ -58,6 +58,8 @@ import {
   Fuel,
   Timer,
   Building2,
+  Workflow,
+  LayoutTemplate,
 } from "lucide-react";
 import { useTopBannerShown } from "./HeadFold";
 import { MasterAssetsScreen } from "./masterdata/AssetsScreen";
@@ -66,6 +68,7 @@ import { setHeaderSlot } from "./headerSlot";
 import { CustomerShiptoDashboard } from "./pricing/CustomerShiptoDashboard";
 import { OrderTraceScreen } from "./pricing/OrderTraceScreen";
 import { CustomerPricingScreen, ShiptoPricingScreen } from "./pricing/ConfigScreens";
+import { BulkRulesScreen, BulkTemplatesScreen } from "./pricing/BulkRulesScreen";
 import { MarginSetupScreen, MarketSetupScreen, RateTypeSetupScreen } from "./pricing/SetupScreens";
 import { MasterCustomersScreen } from "./masterdata/CustomersScreen";
 import { MasterShipTosScreen } from "./masterdata/ShipTosScreen";
@@ -274,6 +277,8 @@ const SUB_NAV: Record<string, NavGroup[]> = {
       items: [
         { key: "pricing-config-customer", label: "Customer", icon: <Users /> },
         { key: "pricing-config-shipto", label: "Ship-to", icon: <MapPin /> },
+        { key: "pricing-config-bulk-rules", label: "Bulk rules", icon: <Workflow /> },
+        { key: "pricing-config-bulk-templates", label: "Bulk templates", icon: <LayoutTemplate /> },
       ],
     },
   ],
@@ -990,6 +995,10 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         return <CustomerPricingScreen />;
       case "pricing-config-shipto":
         return <ShiptoPricingScreen />;
+      case "pricing-config-bulk-rules":
+        return <BulkRulesScreen />;
+      case "pricing-config-bulk-templates":
+        return <BulkTemplatesScreen />;
       case "pricing-setup-rate-type":
         return <RateTypeSetupScreen />;
       case "pricing-setup-market":

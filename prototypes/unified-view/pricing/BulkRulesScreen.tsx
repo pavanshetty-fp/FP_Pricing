@@ -71,11 +71,11 @@ type RKey = "rule" | "change" | "amount" | "scope" | "status" | "lastRun" | "upd
 const RULE_COLUMNS: ListColumn<RKey>[] = [
   { key: "rule", label: "Rule", width: 240, sortable: true },
   { key: "change", label: "Change", width: 200, sortable: true },
-  { key: "amount", label: "Value", width: 180, sortable: true },
+  /* NO VALUE COLUMN (Yash, 2026-11-19) — Change says what the rule does. */
   { key: "scope", label: "Scope", width: 220, sortable: true },
   { key: "status", label: "Status", width: 140, sortable: true },
   { key: "lastRun", label: "Last run", width: 200, sortable: true },
-  { key: "updated", label: "Prices updated", width: 150, sortable: true },
+  { key: "updated", label: "Records updated", width: 150, sortable: true },
   { key: "runs", label: "Runs", width: 90, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
@@ -125,7 +125,11 @@ export function BulkRulesScreen() {
       return ruleStatus(a) === "Scheduled" ? ta - tb : tb - ta;
     });
   }, [bulk.rules]);
-  const columns = React.useMemo(() => fitColumns(RULE_COLUMNS, bulk.rules, (r, k) => [text(r, k)], ["status"]), [bulk.rules]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* THE SCOPE IN FULL, UP TO 360 — longer cuts off with "…", whole on hover (Yash, 2026-11-19). */
+  const columns = React.useMemo(
+    () => fitColumns(RULE_COLUMNS, bulk.rules, (r, k) => [text(r, k)], ["status"]).map((c) => (c.key === "scope" ? { ...c, width: Math.min(c.width ?? 360, 360) } : c)),
+    [bulk.rules] // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const facets: ListFacet[] = (["status", "change"] as const).map((key) => ({
     key,
     label: RULE_COLUMNS.find((c) => c.key === key)!.label,
@@ -143,6 +147,12 @@ export function BulkRulesScreen() {
         renderCell={(r, key) => {
           if (key === "status") return <StatusPill rule={r} />;
           const t = text(r, key);
+          if (key === "scope")
+            return (
+              <span className="block min-w-0 truncate" title={t}>
+                {t}
+              </span>
+            );
           return t === "—" ? <span className="text-muted-foreground">—</span> : t;
         }}
         rowMenu={(r) => (

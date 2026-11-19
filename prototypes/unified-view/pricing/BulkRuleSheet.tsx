@@ -1982,8 +1982,8 @@ function Breakdown({ row, ents, lines, priceAfter }: { row: ConfigRow; ents: Ent
     <div className="flex flex-col gap-0.5 text-sm">
       <div className="grid grid-cols-[140px_repeat(2,minmax(0,200px))] gap-x-6 px-2 pb-1 text-xs font-medium text-muted-foreground">
         <span>Setting</span>
-        <span>Current</span>
-        <span>Proposed</span>
+        <span>Before</span>
+        <span>After</span>
       </div>
       {now.map(([k, v]) => cells(k, v, after.get(k) ?? v))}
       <div className="mt-1 border-t border-border pt-1">{cells(total[0], total[1], total[2], true)}</div>

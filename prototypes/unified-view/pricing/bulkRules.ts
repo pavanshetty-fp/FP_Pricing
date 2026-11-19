@@ -6,7 +6,6 @@ import {
   customerOf,
   effectivePrice,
   money,
-  plural,
   productOf,
   readSetting,
   shiptoOf,
@@ -219,7 +218,7 @@ export const COND_FIELDS: { key: CondField; label: string; one?: boolean }[] = [
   { key: "product", label: "Product" },
   /* THE PRICING SOURCE IS A CONDITION (Yash, 2026-11-19) — not a field of
      its own; left out, a rule reaches first party and 3PL alike. */
-  { key: "source", label: "Pricing source" },
+  { key: "source", label: "Pricing source", one: true },
   { key: "businessLine", label: "Business line" },
   { key: "los", label: "LOS" },
   /* MORE OF WHAT A PRICE CARRIES (Yash, 2026-11-18: "more conditions"). */
@@ -250,7 +249,8 @@ export const ALL_LABEL: Record<CondField, string> = {
   rateType: "All rate types",
   applied: "Any applied pricing",
   configurations: "Both",
-  source: "All pricing sources",
+  /* ONE OF THREE — Both, First party or 3PL (Yash, 2026-11-19). */
+  source: "Both",
 };
 
 export const APPLIED: Record<ConfigRow["applied"], string> = { shipto: "Ship-to", customer: "Customer", hub: "Hub" };
@@ -951,24 +951,29 @@ export function whereText(d: RuleDef) {
   return rows.length === 1 ? one(rows[0]) : `${one(rows[0])} +${rows.length - 1} more`;
 }
 
-/** Where a definition applies, in a few words. */
+/** WHERE A RULE APPLIES, IN FULL (Yash, 2026-11-19) — every value of every
+ *  condition, the pricing source included, as far as the cell has room; each
+ *  combination's conditions joined by "·" (all) or "or" (any), combinations
+ *  by AND / OR. */
 export function scopeText(d: RuleDef) {
-  if (d.conditions) {
-    const set = d.conditions.filter((c) => c.field && c.values.length && !c.values.includes(ALL_VALUES));
-    if (!set.length) return "All prices";
-    const one = (c: Condition) =>
-      c.field === "customer" ? customerOf(c.values[0]).name : c.field === "shipto" ? shiptoOf(c.values[0]).name : c.field === "product" ? productOf(c.values[0]).name : c.values[0];
-    const first = set[0];
-    const head = first.values.length === 1 ? one(first) : `${plural(first.values.length, condLabel(first.field as CondField).toLowerCase())}`;
-    return set.length === 1 ? head : `${head} +${set.length - 1}`;
-  }
-  const parts: string[] = [];
-  const targets = d.targets.filter((t) => t.customerId);
-  if (targets.length) parts.push(targets.length === 1 ? customerOf(targets[0].customerId).name : plural(targets.length, "customer"));
-  const vals = uniq(d.where.flatMap((w) => [...w.businessLines, ...w.los, ...(w.region ? [w.region] : []), ...w.markets]));
-  if (vals.length) parts.push(vals.length === 1 ? vals[0] : `${vals[0]} +${vals.length - 1}`);
-  if (d.targets.some((t) => t.which === "unconfigured")) parts.push("Unconfigured");
-  return parts.length ? parts.join(" · ") : "All prices";
+  const name = (c: Condition, v: string) =>
+    c.field === "customer"
+      ? customerOf(v).name
+      : c.field === "shipto"
+        ? shiptoOf(v).name
+        : c.field === "product"
+          ? productOf(v).name
+          : c.field === "configurations"
+            ? whichLabel(v as Which)
+            : v;
+  const groups = groupsOf(d)
+    .map((g, i) => {
+      const set = g.filter((c) => c.field && c.values.length && !c.values.includes(ALL_VALUES));
+      return set.map((c) => c.values.map((v) => name(c, v)).join(", ")).join(matchOf(d, i) === "any" ? " or " : " · ");
+    })
+    .filter(Boolean);
+  if (!groups.length) return "All records";
+  return groups.length === 1 ? groups[0] : groups.map((g) => `(${g})`).join(` ${joinOf(d).toUpperCase()} `);
 }
 
 export const shiptoName = (id: string) => shiptoOf(id).name;

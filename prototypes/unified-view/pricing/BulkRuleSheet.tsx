@@ -3,6 +3,16 @@ import { toast } from "sonner";
 import { Copy, MoreHorizontal, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Clock, FolderOpen, Gauge, Info, Plus, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/ui/date-picker";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -225,7 +235,8 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
   };
 
   /* THE ACT SAYS HOW MANY once there is a change to count. */
-  const createAction = isTemplate ? "Create template" : later ? `Schedule for ${fmtWhen(at)}` : "Apply";
+  /* RUN RULE, NOT APPLY, ON THE FIRST RUN (Yash, 2026-11-20). */
+  const createAction = isTemplate ? "Create template" : later ? `Schedule for ${fmtWhen(at)}` : "Run rule";
 
   const run = rule ? lastRun(rule) : null;
   /* A RAN RULE READS AS IT STOOD WHEN IT RAN (Yash, 2026-11-19) — "No
@@ -245,7 +256,32 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
   const shown = doneRuns.find((x) => x.id === runId) ?? run;
   const scheduled = run?.status === "scheduled";
   const running = run?.status === "running";
-  const rerunnable = !!rule && !running && preview.updated.length > 0;
+  /* AFTER A RUN, ONE OF THREE (Yash, 2026-11-20). Failed records first —
+     they are retried; then records that need another run (what would change
+     now, less the failures); else nothing needs it. "Rerun available" only
+     when the system knows records need it. */
+  const rowOf = React.useMemo(() => new Map(bulk.rows.map((r) => [r.id, r])), [bulk.rows]);
+  const failed = run && run.status === "done" ? run.results.filter((x) => x.outcome === "failed") : [];
+  const failedIds = new Set(failed.map((x) => x.rowId));
+  /* A FAILED RECORD SHOWS WHAT A RETRY WOULD CHANGE, AND WHY IT FAILED (Yash, 2026-11-20). */
+  const willOf = new Map(preview.list.map((p) => [p.row.id, p]));
+  const failedRows: PriceRow[] = failed
+    .map((x) => {
+      const w = willOf.get(x.rowId);
+      const row = x.before ?? rowOf.get(x.rowId)!;
+      return { row, outcome: "Failed", reason: x.reason, lines: w?.lines, priceBefore: w?.priceBefore ?? (row && row.configured ? priceOf(row, bulk.entityMap) : null), priceAfter: w && w.outcome === "updated" ? w.priceAfter : null };
+    })
+    .filter((x) => x.row);
+  const needRows = preview.updated.filter((p) => !failedIds.has(p.row.id));
+  const after: "failed" | "rerun" | "none" | null =
+    !rule || scheduled || running ? null : failedRows.length ? "failed" : needRows.length ? "rerun" : "none";
+  const [review, setReview] = React.useState<"rerun" | "failures" | null>(null);
+  const [confirmAgain, setConfirmAgain] = React.useState(false);
+  const rerun = (verb: string, n: number) => {
+    if (!rule) return;
+    runAgain(rule.id, bulk.rows, bulk.entityMap);
+    toast.success(n ? `${verb} ${plural(n, "record")}` : `${rule.name} running again`);
+  };
 
   /* THE BOTTOM BAR SPEAKS FOR THE NEXT RUN (Yash, 2026-11-18): when prices
      have moved since the last run, it says how many need attention, beside
@@ -269,32 +305,37 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
     submit();
   };
   const createAside = creating && raised && pending.length > 0 ? <PendingStrip tone="caution" pending={pending} /> : undefined;
-  const footerAside = createAside ?? (rule && !scheduled && !running ? (
-      rerunnable ? (
-        <span className="flex items-center gap-2 text-sm text-foreground">
-          <CircleAlert className="size-4 shrink-0 text-fp-banner-accent-caution" />
-          <span>
-            <span className="font-medium">Re-run available</span>
-            <span className="text-muted-foreground">
-              {" "}
-              · {preview.updated.length.toLocaleString()} of {plural(preview.matched, "record")} need attention
-            </span>
-          </span>
-        </span>
+  const status = (tone: "caution" | "ok", lead: string, rest?: string) => (
+    <span className={cn("flex items-center gap-2 text-sm", tone === "ok" ? "text-muted-foreground" : "text-foreground")}>
+      {tone === "ok" ? (
+        <CircleCheck className="size-4 shrink-0 text-fp-banner-accent-success" />
       ) : (
-        <span className="flex items-center gap-2 text-sm text-muted-foreground">
-          <CircleCheck className="size-4 shrink-0 text-fp-banner-accent-success" />
-          Up to date · nothing to re-run
-        </span>
-      )
-    ) : undefined);
+        <CircleAlert className="size-4 shrink-0 text-fp-banner-accent-caution" />
+      )}
+      <span>
+        <span className={cn(tone !== "ok" && "font-medium")}>{lead}</span>
+        {rest && <span className="text-muted-foreground"> · {rest}</span>}
+      </span>
+    </span>
+  );
+  const footerAside =
+    createAside ??
+    (after === "failed"
+      ? status("caution", "Run partially failed", `${failedRows.length.toLocaleString()} of ${plural(run!.total, "record")} failed`)
+      : after === "rerun"
+        ? status("caution", "Rerun available", `${needRows.length.toLocaleString()} of ${plural(preview.matched, "record")} ${needRows.length === 1 ? "needs" : "need"} attention`)
+        : after === "none"
+          ? status("ok", "No records need attention")
+          : undefined);
   const footerPrimary = rule ? (
-    /* RUN IN PLACE (Yash, 2026-11-19) — the prices that will change are on
-       this page already; the status bar follows the run. */
     scheduled ? (
       <Button onClick={runNow}>Run now</Button>
-    ) : rerunnable ? (
-      <Button onClick={runNow}>Rerun</Button>
+    ) : after === "failed" ? (
+      <Button onClick={() => setReview("failures")}>Review failures</Button>
+    ) : after === "rerun" ? (
+      <Button onClick={() => setReview("rerun")}>Review rerun</Button>
+    ) : after === "none" ? (
+      <Button onClick={() => setConfirmAgain(true)}>Run again</Button>
     ) : null
   ) : template ? (
     <Button onClick={() => onOpen({ kind: "rule", id: null, from: { ...defOf(d), name: "" } })}>Create rule from template</Button>
@@ -440,6 +481,40 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
         </div>
       )}
       {list && <ListSheet list={list} ents={bulk.entityMap} onClose={() => setList(null)} />}
+      {review === "rerun" && (
+        <ReviewRunSheet
+          title="Review rerun"
+          action={`Rerun ${plural(needRows.length, "record")}`}
+          kind="change"
+          rows={needRows.map((p) => ({ row: p.row, lines: p.lines, priceBefore: p.priceBefore, priceAfter: p.priceAfter }))}
+          ents={bulk.entityMap}
+          onConfirm={() => rerun("Rerunning", needRows.length)}
+          onClose={() => setReview(null)}
+        />
+      )}
+      {review === "failures" && (
+        <ReviewRunSheet
+          title="Review failures"
+          action={`Retry ${plural(failedRows.length, "record")}`}
+          kind="why"
+          rows={failedRows}
+          ents={bulk.entityMap}
+          onConfirm={() => rerun("Retrying", failedRows.length)}
+          onClose={() => setReview(null)}
+        />
+      )}
+      <AlertDialog open={confirmAgain} onOpenChange={setConfirmAgain}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>No records need rerunning</AlertDialogTitle>
+            <AlertDialogDescription>All records are up to date. You can still run this rule again if needed.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => rerun("", 0)}>Run again</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {priceOpen && <PriceSheet price={priceOpen} ents={bulk.entityMap} onClose={() => setPriceOpen(null)} />}
     </RecordSheet>
   );
@@ -1716,6 +1791,8 @@ function PricesView({
   /* WHERE EACH RECORD CAME FROM (Yash, 2026-11-19) — a Combination column
      and filter once the rule has more than one combination. */
   const combined = new Set(rows.flatMap((p) => p.combos ?? [])).size > 1;
+  /* WHY IT FAILED — its own column once a failed record also shows its change. */
+  const failedWhy = rows.some((p) => p.outcome === "Failed" && p.reason && (p.lines ?? []).length);
   const tabs = React.useMemo<ViewTab[]>(
     () => [
       {
@@ -1726,13 +1803,15 @@ function PricesView({
         columns: [
           /* WIDTHS THAT FIT THE SHEET — no sideways scroll at the sheet's
              width; the customer beside its ship-to (Yash, 2026-11-18). */
-          { key: "shipto", label: "Ship-to", width: 190, sortable: true },
-          { key: "customer", label: "Customer", width: 160, sortable: true },
-          { key: "product", label: "Product", width: 150, sortable: true },
-          { key: "change", label: "Change", width: 236, sortable: true },
+          { key: "shipto", label: "Ship-to", width: failedWhy ? 180 : 190, sortable: true },
+          { key: "customer", label: "Customer", width: failedWhy ? 150 : 160, sortable: true },
+          { key: "product", label: "Product", width: failedWhy ? 140 : 150, sortable: true },
+          /* WHY IT FAILED, BEFORE ITS CHANGE (Yash, 2026-11-20). */
+          ...(failedWhy ? [{ key: "why", label: "Why", width: 200, sortable: true }] : []),
+          { key: "change", label: "Change", width: failedWhy ? 210 : 236, sortable: true },
           /* NO OUTCOME OR COMBINATION COLUMN (Yash, 2026-11-19) — both stay as
              filters; an unchanged record reads "OPIS Rack High → OPIS Rack High". */
-          { key: "price", label: "Price ($/gal)", width: 160, sortable: true },
+          { key: "price", label: "Price ($/gal)", width: failedWhy ? 150 : 160, sortable: true },
         ],
         rows: rows.map(
           (p, i): ViewRow => ({
@@ -1749,6 +1828,7 @@ function PricesView({
                     .map((l) => `${l.label} ${l.before} → ${l.after}`)
                     .join(" · ")
                 : p.reason ?? "—",
+              why: p.outcome === "Failed" ? p.reason ?? "—" : "—",
               price:
                 p.priceAfter != null ? `${p.priceBefore == null ? "—" : money(p.priceBefore)} → ${money(p.priceAfter)}` : p.priceBefore == null ? "—" : money(p.priceBefore),
             },
@@ -1790,7 +1870,7 @@ function PricesView({
               </span>
             );
           /* NAMES CUT TO THEIR COLUMN — a list cell does not truncate on its own. */
-          if (key === "customer" || key === "product")
+          if (key === "customer" || key === "product" || key === "why")
             return (
               <span className="block truncate" title={r.text[key]}>
                 {r.text[key]}
@@ -1826,7 +1906,7 @@ function PricesView({
         },
       },
     ],
-    [rows, onOpen, combined]
+    [rows, onOpen, combined, failedWhy]
   );
   void ents;
   return (
@@ -1997,6 +2077,50 @@ function Breakdown({ row, ents, lines, priceAfter }: { row: ConfigRow; ents: Ent
 const WIDE_PRICES = [CELL.check, CELL.name, CELL.name, 360, CELL.number + 66];
 
 /** A count's list, in a sheet over the rule — read only. */
+/** REVIEW BEFORE A RERUN OR A RETRY (Yash, 2026-11-20) — the records it
+ *  would touch, over the rule: what changes on each, or why each failed;
+ *  Cancel, or the act with its count. */
+function ReviewRunSheet({
+  title,
+  action,
+  kind,
+  rows,
+  ents,
+  onConfirm,
+  onClose,
+}: {
+  title: string;
+  action: string;
+  kind: "change" | "why";
+  rows: PriceRow[];
+  ents: EntityMap;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  /* THE SAME LIST AS RECORDS UPDATED (Yash, 2026-11-20) — search, Filters,
+     Ship-to · Customer · Product · Change · Price; a row opens its make-up. */
+  const [price, setPrice] = React.useState<PriceRow | null>(null);
+  return (
+    <RecordSheet
+      level={2}
+      open
+      onOpenChange={(v) => !v && onClose()}
+      mode="create"
+      fit={{ tables: [kind === "why" ? [180, 150, 140, 200, 210, 150] : [190, 160, 150, 236, 160]] }}
+      createTitle={title}
+      editTitle={title}
+      createAction={action}
+      canSubmit={rows.length > 0}
+      /* NO CANCEL (G23) — Yash asked Cancel / Rerun; the guardrail says Close is the exit. Raised with Yash. */
+      showCancel={false}
+      onSubmit={onConfirm}
+    >
+      <PricesView resetKey={title} rows={rows} ents={ents} apply={null} onOpen={setPrice} />
+      {price && <PriceSheet price={price} ents={ents} onClose={() => setPrice(null)} />}
+    </RecordSheet>
+  );
+}
+
 function ListSheet({ list, ents, onClose }: { list: PriceList; ents: EntityMap; onClose: () => void }) {
   const [shown, setShown] = React.useState(50);
   const [open, setOpen] = React.useState<string | null>(null);

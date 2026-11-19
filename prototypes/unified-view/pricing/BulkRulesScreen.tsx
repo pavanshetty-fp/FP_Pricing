@@ -199,13 +199,14 @@ export function BulkRulesScreen() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {next && next.updated.length === 0 ? "Nothing would change" : `${rerun && lastRun(rerun)?.status === "scheduled" ? "Run" : "Rerun"} ${rerun?.name ?? ""}?`}
+              {/* SAME WORDS AS THE SHEET FOOTER (Yash, 2026-11-20): Run again when nothing needs it, Rerun X records when some do. */}
+              {next && next.updated.length === 0 ? "No records need rerunning" : `${rerun && lastRun(rerun)?.status === "scheduled" ? "Run" : "Rerun"} ${rerun?.name ?? ""}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {next && next.updated.length === 0
-                ? `All ${plural(next.matched, "price")} this rule reaches are already up to date.`
+                ? "All records are up to date. You can still run this rule again if needed."
                 : next
-                  ? `${next.updated.length.toLocaleString()} of ${plural(next.matched, "price")} will change at ${plural(next.shiptos.length, "ship-to")} for ${plural(next.customers.length, "customer")}.`
+                  ? `${next.updated.length.toLocaleString()} of ${plural(next.matched, "record")} ${next.updated.length === 1 ? "needs" : "need"} attention.`
                   : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -218,7 +219,7 @@ export function BulkRulesScreen() {
                 toast.success(`${rerun.name} running`);
               }}
             >
-              {next && next.updated.length === 0 ? "Run anyway" : `Run on ${plural(next?.updated.length ?? 0, "price")}`}
+              {next && next.updated.length === 0 ? "Run again" : `Rerun ${plural(next?.updated.length ?? 0, "record")}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

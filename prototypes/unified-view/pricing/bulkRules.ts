@@ -216,6 +216,9 @@ export const COND_FIELDS: { key: CondField; label: string; one?: boolean }[] = [
   { key: "rateType", label: "Rate type" },
   { key: "market", label: "Market" },
   { key: "product", label: "Product" },
+  /* CONFIGURATION, IN SIGHT (Yash, 2026-11-20) — it sat last, below the
+     picker's fold. One of three: Configured, Unconfigured, Both. */
+  { key: "configurations", label: "Configuration", one: true },
   /* THE PRICING SOURCE IS A CONDITION (Yash, 2026-11-19) — not a field of
      its own; left out, a rule reaches first party and 3PL alike. */
   { key: "source", label: "Pricing source", one: true },
@@ -224,7 +227,6 @@ export const COND_FIELDS: { key: CondField; label: string; one?: boolean }[] = [
   /* MORE OF WHAT A PRICE CARRIES (Yash, 2026-11-18: "more conditions"). */
   { key: "category", label: "Product category" },
   { key: "applied", label: "Applied pricing" },
-  { key: "configurations", label: "Configurations", one: true },
 ];
 export const condLabel = (f: CondField) => COND_FIELDS.find((x) => x.key === f)!.label;
 /** One condition — a field and its values (ids for customer, ship-to and

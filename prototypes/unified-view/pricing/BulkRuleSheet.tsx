@@ -1650,12 +1650,12 @@ function RunImpactCard({
       {running && (
         <div className="flex flex-col gap-2 border-b border-border bg-accent-violet-soft px-4 py-3">
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-base font-medium text-foreground">Applying…</span>
+            <span className="text-base font-medium text-foreground">Running…</span>
             <span className="text-sm tabular-nums text-muted-foreground">
               {run.progress.toLocaleString()} of {plural(run.total, "record")}
             </span>
           </div>
-          <Progress value={run.total ? (run.progress / run.total) * 100 : 0} aria-label="Applying" />
+          <Progress value={run.total ? (run.progress / run.total) * 100 : 0} aria-label="Running" />
         </div>
       )}
       <Who preview={before} />

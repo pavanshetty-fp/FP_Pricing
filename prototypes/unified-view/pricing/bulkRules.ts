@@ -219,6 +219,8 @@ export const COND_FIELDS: { key: CondField; label: string; one?: boolean }[] = [
   /* CONFIGURATION, IN SIGHT (Yash, 2026-11-20) — it sat last, below the
      picker's fold. One of three: Configured, Unconfigured, Both. */
   { key: "configurations", label: "Configuration", one: true },
+  /* APPLIED PRICING, IN SIGHT (Yash, 2026-11-20) — Ship-to · Customer · Hub. */
+  { key: "applied", label: "Applied pricing" },
   /* THE PRICING SOURCE IS A CONDITION (Yash, 2026-11-19) — not a field of
      its own; left out, a rule reaches first party and 3PL alike. */
   { key: "source", label: "Pricing source", one: true },
@@ -226,7 +228,6 @@ export const COND_FIELDS: { key: CondField; label: string; one?: boolean }[] = [
   { key: "los", label: "LOS" },
   /* MORE OF WHAT A PRICE CARRIES (Yash, 2026-11-18: "more conditions"). */
   { key: "category", label: "Product category" },
-  { key: "applied", label: "Applied pricing" },
 ];
 export const condLabel = (f: CondField) => COND_FIELDS.find((x) => x.key === f)!.label;
 /** One condition — a field and its values (ids for customer, ship-to and
@@ -407,6 +408,16 @@ export const groupHits = (g: Condition[], r: ConfigRow, ents: EntityMap, match: 
   const asked = g.filter((c) => c.field && c.values.length);
   return asked.length === 0 || asked.some((c) => conditionHits(c, r, ents));
 };
+/* WHERE A CHANGE IS WRITTEN (Yash, 2026-11-20) — the hierarchy. A
+   combination with a Ship-to, or a Product / Product category, writes to the
+   ship-to configuration (customer configuration has no products); every
+   other combination writes to the customer configuration, and only the
+   ship-tos that inherit from the customer take it. Region, Market, LOS and
+   the rest only narrow who is affected. */
+export type Level = "customer" | "shipto";
+const SHIPTO_LEVEL = new Set<CondField>(["shipto", "product", "category"]);
+export const levelOf = (g: Condition[]): Level => (g.some((c) => c.field && SHIPTO_LEVEL.has(c.field) && c.values.length) ? "shipto" : "customer");
+
 /** How a rule's combinations match and join. */
 export const matchOf = (d: RuleDef, i: number) => d.matches?.[i] ?? "all";
 export const joinOf = (d: RuleDef) => d.join ?? "or";
@@ -526,18 +537,25 @@ export interface Preview {
   priceBefore: number | null;
   priceAfter: number | null;
   next: ConfigRow;
+  /** Where it is written. */
+  level: Level;
+  /** An inherited (customer) or hub ship-to this write gives its own pricing. */
+  override?: "customer" | "hub";
 }
 
 /** What one rule does to one price. */
-export function previewRow(def: RuleDef, r: ConfigRow, ents: EntityMap, adjusted?: Set<string>): Preview {
+export function previewRow(def: RuleDef, r: ConfigRow, ents: EntityMap, adjusted?: Set<string>, level: Level = "shipto"): Preview {
   const changes = def.changes.filter(changeReady);
   const price = r.configured ? priceOf(r, ents) : null;
   /* EVERY RECORD SAYS WHAT IT HOLDS FOR EACH SETTING THE RULE TOUCHES —
      old → new, the same when nothing changes (Yash, 2026-11-19), so a
      skipped record still names the entity. */
   const asIs = uniq(changes.map((c) => c.setting as ChangeSetting)).map((s) => ({ label: settingLabel(s), before: settingText(s, r, ents), after: settingText(s, r, ents) }));
-  const base = { row: r, priceBefore: price, priceAfter: price, next: r, lines: asIs };
+  const base = { row: r, priceBefore: price, priceAfter: price, next: r, lines: asIs, level };
   if (!changes.length) return { ...base, outcome: "skipped", reason: "No change set" };
+  /* A CUSTOMER-LEVEL CHANGE reaches only the ship-tos that inherit it. */
+  if (level === "customer" && r.configured && r.applied !== "customer")
+    return { ...base, outcome: "skipped", reason: r.applied === "hub" ? "Priced from a hub" : "Has its own ship-to pricing" };
   /* AN ADJUSTMENT LANDS ONCE — running the rule again does not add +2% on
      top of +2% where an earlier run already did it. */
   if (adjusted?.has(r.id) && changes.some((c) => c.action === "adjustAmount" || c.action === "adjustPercent"))
@@ -557,7 +575,15 @@ export function previewRow(def: RuleDef, r: ConfigRow, ents: EntityMap, adjusted
   }));
   const priceAfter = priceOf(next, ents);
   const same = lines.every((l) => l.before === l.after) && priceAfter === price;
-  return same ? { ...base, outcome: "unchanged", reason: "Already at this price", lines } : { ...base, next, outcome: "updated", lines, priceAfter };
+  if (same) return { ...base, outcome: "unchanged", reason: "Already at this price", lines };
+  /* A SHIP-TO WRITE IS AN ASSIGNMENT (PRD §6, 2026-11-16) — an inherited or
+     hub ship-to gets its own pricing, and says so (Yash, 2026-11-20). */
+  const override = level === "shipto" && r.configured && r.applied !== "shipto" ? r.applied : undefined;
+  if (override) {
+    next = { ...next, applied: "shipto" };
+    lines.push({ label: "Applied pricing", before: APPLIED[r.applied], after: APPLIED.shipto });
+  }
+  return { ...base, next, outcome: "updated", lines, priceAfter, override };
 }
 
 /** The prices a rule's runs have already updated. */
@@ -592,7 +618,14 @@ export const comboLabel = (ks: number[]) => (ks.length === 1 ? `Combination ${ks
 
 export function previewRule(def: RuleDef, rows: ConfigRow[], ents: EntityMap, adjusted?: Set<string>) {
   const matched = matchRows(def, rows, ents);
-  const list = matched.map((r) => previewRow(def, r, ents, adjusted));
+  /* A RECORD ANY SHIP-TO-LEVEL COMBINATION REACHES is written at the ship-to. */
+  const atShipto = new Set(
+    groupsOf(def)
+      .map((g, i) => ({ g, i }))
+      .filter((x) => !groupEmpty(x.g) && levelOf(x.g) === "shipto")
+      .flatMap((x) => rows.filter((r) => groupHits(x.g, r, ents, matchOf(def, x.i))).map((r) => r.id))
+  );
+  const list = matched.map((r) => previewRow(def, r, ents, adjusted, atShipto.has(r.id) ? "shipto" : "customer"));
   const updated = list.filter((p) => p.outcome === "updated");
   const willUpdate = new Set(updated.map((p) => p.row.id));
   const kept = new Set(matched.map((r) => r.id));
@@ -668,6 +701,15 @@ export function previewRule(def: RuleDef, rows: ConfigRow[], ents: EntityMap, ad
     updated,
     /* NOT CHANGING — skipped, and already at this price — with why. */
     skipped: list.filter((p) => p.outcome !== "updated"),
+    /* WRITTEN TO CUSTOMER CONFIGURATION ONLY (Yash, 2026-11-20) — every
+       record at customer level and no base price (base is per product). The
+       screens then read customers, not ship-to × product records. */
+    customerMode: list.length > 0 && list.every((p) => p.level === "customer") && !def.changes.some((c) => changeReady(c) && c.setting === "base"),
+    /* SHIP-TOS THIS RUN GIVES THEIR OWN PRICING — out of the ship-tos it updates. */
+    overrides: {
+      customer: uniq(updated.filter((p) => p.override === "customer").map((p) => p.row.shiptoId)).length,
+      hub: uniq(updated.filter((p) => p.override === "hub").map((p) => p.row.shiptoId)).length,
+    },
     customers: uniq(updated.map((p) => p.row.customerId)),
     shiptos: uniq(updated.map((p) => p.row.shiptoId)),
     products: uniq(updated.map((p) => p.row.productId)),
@@ -732,22 +774,22 @@ function startRun(rule: Rule, rows: ConfigRow[], ents: EntityMap, at: number): {
 
 /* THE PROGRESS PLAYS OUT over a few seconds — an eighth of the prices a beat. */
 const timers = new Map<string, number>();
-function play(ruleId: string, runId: string) {
+function play(ruleId: string, runId: string, beat = 450, beats = 8) {
   if (timers.has(runId)) return;
   const tick = () => {
     const rule = state.rules.find((r) => r.id === ruleId);
     const run = rule?.runs.find((x) => x.id === runId);
     if (!rule || !run) return void timers.delete(runId);
-    const step = Math.max(1, Math.ceil(run.total / 8));
+    const step = Math.max(1, Math.ceil(run.total / beats));
     const progress = Math.min(run.total, run.progress + step);
     const done = progress >= run.total;
     updateRun(ruleId, runId, { progress, status: done ? "done" : "running" });
     if (done) {
       timers.delete(runId);
       onRunDone?.(rule, { ...run, progress, status: "done" });
-    } else timers.set(runId, window.setTimeout(tick, 450));
+    } else timers.set(runId, window.setTimeout(tick, beat));
   };
-  timers.set(runId, window.setTimeout(tick, 450));
+  timers.set(runId, window.setTimeout(tick, beat));
 }
 let onRunDone: ((rule: Rule, run: Run) => void) | null = null;
 /** The list's toast when a run finishes, wherever the reader is. */
@@ -829,7 +871,7 @@ const TPL: RuleDef[] = [
   def({ name: "Base increase 2%", changes: [ch("base", "adjustPercent", "2")] }),
 ];
 
-const RULES: (RuleDef & { daysAgo: number; runs: number; future?: number })[] = [
+const RULES: (RuleDef & { daysAgo: number; runs: number; future?: number; inProgress?: number })[] = [
   { ...TPL[0], name: "Houston missing diesel base", daysAgo: 6, runs: 1 },
   { ...TPL[1], name: "Contractor margin to $0.22", targets: cust("onsite", "bayou", "redriver"), daysAgo: 4, runs: 1 },
   { ...TPL[2], daysAgo: 0, runs: 0, future: 2 },
@@ -851,6 +893,9 @@ const RULES: (RuleDef & { daysAgo: number; runs: number; future?: number })[] = 
     runs: 1,
   },
   { ...def({ name: "Permian base +$0.03", targets: cust("permian", "mustang"), changes: [ch("base", "adjustAmount", "0.03")] }), daysAgo: 1, runs: 1 },
+  /* A RUN THAT TAKES TIME (Yash, 2026-11-20) — every price, started this
+     morning, about a third through; it keeps creeping while you watch. */
+  { ...TPL[3], name: "All markets base +1%", changes: [ch("base", "adjustPercent", "1")], daysAgo: 0, runs: 1, inProgress: 0.36 },
 ];
 
 function seed(rows: ConfigRow[], ents: EntityMap) {
@@ -861,14 +906,17 @@ function seed(rows: ConfigRow[], ents: EntityMap) {
   };
   const out: Rule[] = [];
   RULES.forEach((d, i) => {
-    const { daysAgo, runs, future, ...rest } = d;
-    const at = future ? startOfDay(NOW + future * DAY) + 6 * 3_600_000 : NOW - daysAgo * DAY - 3 * 3_600_000;
+    const { daysAgo, runs, future, inProgress, ...rest } = d;
+    const at = future ? startOfDay(NOW + future * DAY) + 6 * 3_600_000 : inProgress ? NOW - 40 * 60_000 : NOW - daysAgo * DAY - 3 * 3_600_000;
     let rule: Rule = { ...rest, id: `rule-${i + 1}`, at, timeSet: !!future, createdBy: i % 2 ? "Deepika Jain" : "Yash J", createdAt: at - DAY, runs: [] };
     if (future) rule.runs = [{ id: `run-${i}-1`, n: 1, at, by: rule.createdBy, status: "scheduled", total: 0, progress: 0, results: [] }];
     for (let k = 0; k < runs; k++) {
       const { run, overlay } = startRun(rule, rows, ents, at + k * 2 * DAY);
-      rule = { ...rule, runs: [...rule.runs, { ...run, by: rule.createdBy, status: "done", progress: run.total }] };
+      const going = inProgress && k === runs - 1;
+      rule = { ...rule, runs: [...rule.runs, { ...run, by: rule.createdBy, status: going ? "running" : "done", progress: going ? Math.floor(run.total * inProgress) : run.total }] };
       state = { ...state, overlay: { ...state.overlay, ...overlay } };
+      /* SLOW — a beat every 3 s, a hundredth of the prices each: minutes, not seconds. */
+      if (going) play(rule.id, run.id, 3000, 100);
     }
     out.unshift(rule);
   });
@@ -894,11 +942,12 @@ export function useBulkRules() {
 export const lastRun = (r: Rule) => r.runs[r.runs.length - 1] ?? null;
 export const countOf = (run: Run, o: RunResult["outcome"]) => run.results.filter((x) => x.outcome === o).length;
 
-/** "Scheduled" · "Running" · "Done" · "Partly failed". */
-export function ruleStatus(r: Rule): "Scheduled" | "Running" | "Done" | "Partly failed" {
+/** "Scheduled" · "In progress" · "Done" · "Partly failed". */
+export function ruleStatus(r: Rule): "Scheduled" | "In progress" | "Done" | "Partly failed" {
   const run = lastRun(r);
   if (!run || run.status === "scheduled") return "Scheduled";
-  if (run.status === "running") return "Running";
+  /* IN PROGRESS, NOT RUNNING (Yash, 2026-11-20) — a run takes time. */
+  if (run.status === "running") return "In progress";
   return countOf(run, "failed") ? "Partly failed" : "Done";
 }
 

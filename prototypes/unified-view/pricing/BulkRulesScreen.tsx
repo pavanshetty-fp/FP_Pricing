@@ -69,16 +69,22 @@ function useBulkSheet() {
 
 type RKey = "rule" | "change" | "amount" | "scope" | "status" | "lastRun" | "updated" | "runs" | "actions";
 const RULE_COLUMNS: ListColumn<RKey>[] = [
-  { key: "rule", label: "Rule", width: 240, sortable: true },
-  { key: "change", label: "Change", width: 200, sortable: true },
+  /* RULE · CHANGE · SCOPE · LAST RUN, NARROWER (Yash, 2026-11-20) — Last
+     run in sight without a sideways scroll. */
+  { key: "rule", label: "Rule", width: 220, sortable: true },
+  { key: "change", label: "Change", width: 170, sortable: true },
   /* NO VALUE COLUMN (Yash, 2026-11-19) — Change says what the rule does. */
   { key: "scope", label: "Scope", width: 220, sortable: true },
-  { key: "status", label: "Status", width: 140, sortable: true },
-  { key: "lastRun", label: "Last run", width: 200, sortable: true },
-  { key: "updated", label: "Records updated", width: 150, sortable: true },
-  { key: "runs", label: "Runs", width: 90, sortable: true },
+  { key: "lastRun", label: "Last run", width: 190, sortable: true },
+  { key: "status", label: "Status", width: 130, sortable: true },
+  { key: "updated", label: "Records updated", width: 140, sortable: true },
+  { key: "runs", label: "Runs", width: 80, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
+
+/* WIDTHS THAT FIT A 1440 SCREEN (Yash, 2026-11-20) — no sideways scroll;
+   longer text cuts off with "…", whole on hover. */
+const CAP: Partial<Record<RKey, number>> = { rule: 200, change: 160, scope: 200, lastRun: 205, status: 120, updated: 140, runs: 70 };
 
 export function BulkRulesScreen() {
   const bulk = useBulkRules();
@@ -113,21 +119,12 @@ export function BulkRulesScreen() {
         return "";
     }
   };
-  /* WHAT RAN WELL FIRST (Yash, 2026-11-18): running now, then done, then
-     partly failed — latest run on top — then scheduled, soonest first. */
-  const ordered = React.useMemo(() => {
-    const rank = { Running: 0, Done: 1, "Partly failed": 2, Scheduled: 3 } as const;
-    return [...bulk.rules].sort((a, b) => {
-      const d = rank[ruleStatus(a)] - rank[ruleStatus(b)];
-      if (d) return d;
-      const ta = lastRun(a)?.at ?? 0;
-      const tb = lastRun(b)?.at ?? 0;
-      return ruleStatus(a) === "Scheduled" ? ta - tb : tb - ta;
-    });
-  }, [bulk.rules]);
+  /* BY THE CLOCK (Yash, 2026-11-20) — the Last run column, latest first;
+     a scheduled run, still to come, sits above the ones that ran. */
+  const ordered = React.useMemo(() => [...bulk.rules].sort((a, b) => (lastRun(b)?.at ?? 0) - (lastRun(a)?.at ?? 0)), [bulk.rules]);
   /* THE SCOPE IN FULL, UP TO 360 — longer cuts off with "…", whole on hover (Yash, 2026-11-19). */
   const columns = React.useMemo(
-    () => fitColumns(RULE_COLUMNS, bulk.rules, (r, k) => [text(r, k)], ["status"]).map((c) => (c.key === "scope" ? { ...c, width: Math.min(c.width ?? 360, 360) } : c)),
+    () => fitColumns(RULE_COLUMNS, bulk.rules, (r, k) => [text(r, k)], ["status"]).map((c) => (CAP[c.key] ? { ...c, width: Math.min(c.width ?? CAP[c.key]!, CAP[c.key]!) } : c)),
     [bulk.rules] // eslint-disable-line react-hooks/exhaustive-deps
   );
   const facets: ListFacet[] = (["status", "change"] as const).map((key) => ({
@@ -147,13 +144,13 @@ export function BulkRulesScreen() {
         renderCell={(r, key) => {
           if (key === "status") return <StatusPill rule={r} />;
           const t = text(r, key);
-          if (key === "scope")
-            return (
-              <span className="block min-w-0 truncate" title={t}>
-                {t}
-              </span>
-            );
-          return t === "—" ? <span className="text-muted-foreground">—</span> : t;
+          if (t === "—") return <span className="text-muted-foreground">—</span>;
+          /* EVERY CELL CUTS TO ITS COLUMN, whole on hover — the narrower widths. */
+          return (
+            <span className="block min-w-0 truncate" title={t}>
+              {t}
+            </span>
+          );
         }}
         rowMenu={(r) => (
           <DropdownMenu>
@@ -184,7 +181,7 @@ export function BulkRulesScreen() {
         )}
         facets={facets}
         facetValues={(r, f) => [text(r, f as RKey)]}
-        storageKey="pricing-bulk-rules"
+        storageKey="pricing-bulk-rules-v2"
         noun="bulk rules"
         nounOne="bulk rule"
         searchPlaceholder="Search bulk rules…"

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Copy, MoreHorizontal, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Clock, FolderOpen, Gauge, Info, Plus, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Clock, Loader2, FolderOpen, Gauge, Info, Plus, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
@@ -31,6 +31,8 @@ import { ActivityCard, RailCard, SheetRail, type TimelineEntry } from "../SheetC
 import { NOW, customerOf, fmtWhen, money, plural, productOf, readSetting, shiptoOf, uniq, type ConfigRow, type EntityMap } from "./changeLog";
 import { CATEGORIES, CUSTOMERS, PRODUCTS, SHIPTOS } from "./seed";
 import { RecordViews, type ViewRow, type ViewTab } from "../masterdata/RecordViews";
+import { FIGURE_STRIP } from "../masterdata/sheetParts";
+import { InfoFigure } from "./ChangeSheet";
 import {
   BUSINESS_LINES,
   LOS,
@@ -109,7 +111,7 @@ export type BulkSheetTarget =
 
 const STATUS_KIND: Record<ReturnType<typeof ruleStatus>, PillKind> = {
   Scheduled: "info",
-  Running: "info",
+  "In progress": "info",
   Done: "success",
   "Partly failed": "caution",
 };
@@ -305,9 +307,11 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
     submit();
   };
   const createAside = creating && raised && pending.length > 0 ? <PendingStrip tone="caution" pending={pending} /> : undefined;
-  const status = (tone: "caution" | "ok", lead: string, rest?: string) => (
+  const status = (tone: "caution" | "ok" | "progress", lead: string, rest?: string) => (
     <span className={cn("flex items-center gap-2 text-sm", tone === "ok" ? "text-muted-foreground" : "text-foreground")}>
-      {tone === "ok" ? (
+      {tone === "progress" ? (
+        <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+      ) : tone === "ok" ? (
         <CircleCheck className="size-4 shrink-0 text-fp-banner-accent-success" />
       ) : (
         <CircleAlert className="size-4 shrink-0 text-fp-banner-accent-caution" />
@@ -318,15 +322,52 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
       </span>
     </span>
   );
+  /* THE REVIEW'S FIGURES, ON TOP OF ITS TABLE (Yash, 2026-11-20) — as the
+     Activity feed's: what the rule reaches, what the rerun or retry changes,
+     and the ship-tos it overrides (or, at customer level, the ship-tos that
+     inherit and those with their own pricing). */
+  const allNow = allOfPreview(preview);
+  const custNow = preview.customerMode ? customersOf(allNow) : null;
+  const needCust = custNow ? custNow.filter((c) => needRows.some((p) => p.row.customerId === c.customerId)) : null;
+  const needPrices: PriceRow[] = needRows.map((p) => ({ row: p.row, outcome: WILL, lines: p.lines, priceBefore: p.priceBefore, priceAfter: p.priceAfter }));
+  const OVER = [`applied:${OVERRIDE.customer}`, `applied:${OVERRIDE.hub}`];
+  const rerunFigures: Figure[] = needCust
+    ? (() => {
+        const inh = needCust.flatMap((c) => c.inheriting);
+        const own = needCust.flatMap((c) => c.own);
+        return [
+          { label: "Customers matched", info: "Customers this rule reaches now.", value: custNow!.length, note: plural(custNow!.reduce((n, c) => n + c.inheriting.length + c.own.length, 0), "ship-to") },
+          { label: "Will update", info: "Customers this rerun changes.", value: needCust.length, note: `of ${custNow!.length.toLocaleString()}`, picked: [] },
+          { label: "Ship-tos inheriting", info: "Ship-tos that take the change from their customer.", value: inh.length, note: `of ${(inh.length + own.length).toLocaleString()}` },
+          { label: "Ship-tos skipped", info: SHIPTO_PRICING_INFO, value: own.length, note: `of ${(inh.length + own.length).toLocaleString()}` },
+        ];
+      })()
+    : [
+        { label: "Records matched", info: "Records this rule reaches now.", value: preview.matched, note: plural(preview.byCustomer.length, "customer") },
+        { label: "Will update", info: "Records this rerun changes.", value: needRows.length, note: `of ${preview.matched.toLocaleString()}`, picked: [] },
+        { label: "Skipped", info: "Records already up to date, or that can't take the change.", value: preview.skipped.length, note: `of ${preview.matched.toLocaleString()}` },
+        { label: "Pricing overridden", info: OVERRIDDEN_INFO, value: overriddenIn(needPrices).length, note: `of ${plural(uniq(needRows.map((p) => p.row.shiptoId)).length, "ship-to")}`, picked: OVER },
+      ];
+  const failFigures: Figure[] = [
+    { label: "Records matched", info: "Records the last run reached.", value: run?.total ?? 0, note: plural(uniq(failedRows.map((p) => p.row.customerId)).length, "customer") },
+    { label: "Failed", info: "Records the last run could not update.", value: failedRows.length, note: `of ${(run?.total ?? 0).toLocaleString()}`, picked: [] },
+    { label: "Ship-tos", info: "Ship-tos with a failed record.", value: uniq(failedRows.map((p) => p.row.shiptoId)).length, note: plural(uniq(failedRows.map((p) => p.row.productId)).length, "product") },
+    { label: "Pricing overridden", info: OVERRIDDEN_INFO, value: overriddenIn(failedRows).length, note: `of ${plural(uniq(failedRows.map((p) => p.row.shiptoId)).length, "ship-to")}`, picked: OVER },
+  ];
+  const rerunNoun = needCust ? "customer" : "record";
+  const rerunN = needCust ? needCust.length : needRows.length;
   const footerAside =
     createAside ??
     (after === "failed"
       ? status("caution", "Run partially failed", `${failedRows.length.toLocaleString()} of ${plural(run!.total, "record")} failed`)
       : after === "rerun"
-        ? status("caution", "Rerun available", `${needRows.length.toLocaleString()} of ${plural(preview.matched, "record")} ${needRows.length === 1 ? "needs" : "need"} attention`)
+        ? status("caution", "Rerun available", `${rerunN.toLocaleString()} of ${plural(needCust ? custNow!.length : preview.matched, rerunNoun)} ${rerunN === 1 ? "needs" : "need"} attention`)
         : after === "none"
           ? status("ok", "No records need attention")
-          : undefined);
+          : running
+            ? /* IN PROGRESS, IN THE BAR TOO (Yash, 2026-11-20) — no act until it ends. */
+              status("progress", "In progress", `${run!.progress.toLocaleString()} of ${plural(run!.total, "record")} done`)
+            : undefined);
   const footerPrimary = rule ? (
     scheduled ? (
       <Button onClick={runNow}>Run now</Button>
@@ -380,17 +421,19 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
       {/* A RAN RULE'S PRICES SIT IN THE SAME PLACE, UNDER THE RECIPE — not on
           top of the rule (Yash, 2026-11-18). */}
       {rule && shown && (
-        <RunSection run={shown} runs={doneRuns} onPick={setRunId} rows={bulk.rows} ents={bulk.entityMap} apply={listApply} onOpenPrice={setPriceOpen} />
+        <RunSection run={shown} runs={doneRuns} onPick={setRunId} rows={bulk.rows} ents={bulk.entityMap} apply={listApply} onOpenPrice={setPriceOpen} customerMode={preview.customerMode} onNames={setList} />
       )}
-      {creating && !isTemplate && ready && (
-        <SheetSection title="Records to update" id={stepId("prices")} variant="plain">
-          <PricesView
-            resetKey="new"
-            rows={allOfPreview(preview)}
-            ents={bulk.entityMap}
-            apply={listApply}
-            onOpen={setPriceOpen}
-          />
+      {/* THE TABLE IS ALWAYS THERE (Yash, 2026-11-20) — empty until there are
+          conditions and a change, and says so in its body. */}
+      {creating && !isTemplate && (
+        <SheetSection title={preview.customerMode && ready ? "Customers to update" : "Records to update"} id={stepId("prices")} variant="plain">
+          {!ready || !preview.groups.some((g) => g.asked) ? (
+            <PricesView resetKey="empty" rows={[]} ents={bulk.entityMap} apply={null} onOpen={setPriceOpen} empty="Select conditions and changes to see records here." />
+          ) : preview.customerMode ? (
+            <CustomersView resetKey="new" rows={customersOf(allOfPreview(preview))} apply={listApply} onOpen={(c) => setList(custNames(c))} />
+          ) : (
+            <PricesView resetKey="new" rows={allOfPreview(preview)} ents={bulk.entityMap} apply={listApply} onOpen={setPriceOpen} empty="No records match these conditions." />
+          )}
         </SheetSection>
       )}
     </>
@@ -460,7 +503,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]">
           {body}
           <SheetRail className={!preview.groups.some((g) => g.asked) ? "lg:h-(--rail-max)" : undefined}>
-            <PreviewImpactCard d={d} preview={preview} ready={ready} ents={bulk.entityMap} />
+            <PreviewImpactCard d={d} preview={preview} ready={ready} ents={bulk.entityMap} onNames={setList} />
           </SheetRail>
         </div>
       ) : (
@@ -470,9 +513,17 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
           {/* THE EMPTY IMPACT CARD, ALONE, RUNS THE COLUMN — as a lone card does (IX-100). */}
           <SheetRail className={!rule && !preview.groups.some((g) => g.asked) ? "lg:h-(--rail-max)" : undefined}>
             {rule && run && !scheduled ? (
-              <RunImpactCard rule={rule} run={shown ?? run} before={asRan} ents={bulk.entityMap} onFilter={focusPrices} />
+              <RunImpactCard
+                rule={rule}
+                run={shown ?? run}
+                before={asRan}
+                ents={bulk.entityMap}
+                onFilter={focusPrices}
+                cs={preview.customerMode ? customersOf(runRowsOf(shown ?? run, bulk.rows, bulk.entityMap)) : null}
+                onNames={setList}
+              />
             ) : (
-              <PreviewImpactCard d={d} preview={preview} ready={ready} ents={bulk.entityMap} onFilter={focusPrices} />
+              <PreviewImpactCard d={d} preview={preview} ready={ready} ents={bulk.entityMap} onFilter={focusPrices} onNames={setList} />
             )}
             {rule && <ActivityCard title="History" entries={entries} />}
           </SheetRail>
@@ -484,9 +535,12 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
       {review === "rerun" && (
         <ReviewRunSheet
           title="Review rerun"
-          action={`Rerun ${plural(needRows.length, "record")}`}
+          action={`Rerun ${plural(rerunN, rerunNoun)}`}
           kind="change"
-          rows={needRows.map((p) => ({ row: p.row, lines: p.lines, priceBefore: p.priceBefore, priceAfter: p.priceAfter }))}
+          rows={needPrices}
+          customers={needCust ? needCust.map((c) => ({ ...c, outcome: WILL })) : null}
+          onNames={setList}
+          figures={rerunFigures}
           ents={bulk.entityMap}
           onConfirm={() => rerun("Rerunning", needRows.length)}
           onClose={() => setReview(null)}
@@ -498,6 +552,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
           action={`Retry ${plural(failedRows.length, "record")}`}
           kind="why"
           rows={failedRows}
+          figures={failFigures}
           ents={bulk.entityMap}
           onConfirm={() => rerun("Retrying", failedRows.length)}
           onClose={() => setReview(null)}
@@ -1479,8 +1534,13 @@ const ROW = "flex items-baseline justify-between gap-3 px-4 py-1.5";
 
 /** WHO — the customers, then each one with its ship-tos (and, with several
  *  groups, the groups that reach it); three at a time (Yash, 2026-11-19). */
-function Who({ preview }: { preview: ReturnType<typeof previewRule> }) {
-  const custs = preview.byCustomer;
+function Who({ preview, cs }: { preview: ReturnType<typeof previewRule>; cs?: CustRow[] }) {
+  /* A CUSTOMER-LEVEL RULE says "28 of 48 ship-tos" — the ship-tos that inherit it. */
+  const inhOf = new Map((cs ?? []).map((c) => [c.customerId, c]));
+  const custs = preview.byCustomer.map((c) => {
+    const x = inhOf.get(c.customerId);
+    return x ? { ...c, shiptos: x.inheriting.length + x.own.length, note: `${x.inheriting.length} of ${plural(x.inheriting.length + x.own.length, "ship-to")}` } : { ...c, note: plural(c.shiptos, "ship-to") };
+  });
   const shiptos = custs.reduce((n, c) => n + c.shiptos, 0);
   const [all, setAll] = React.useState(false);
   const shown = all ? custs : custs.slice(0, 3);
@@ -1494,7 +1554,7 @@ function Who({ preview }: { preview: ReturnType<typeof previewRule> }) {
         <div key={c.customerId} className={cn(ROW, "py-0.5")}>
           <span className="min-w-0 truncate text-sm text-foreground">{customerOf(c.customerId).name}</span>
           <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-            {plural(c.shiptos, "ship-to")}
+            {c.note}
           </span>
         </div>
       ))}
@@ -1504,6 +1564,42 @@ function Who({ preview }: { preview: ReturnType<typeof previewRule> }) {
         </button>
       )}
     </div>
+  );
+}
+
+/** WHY A SHIP-TO IS FLAGGED — behind an ⓘ (UX-96). */
+function OverrideInfo() {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" aria-label="What pricing overridden means" className="rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
+          <Info className="size-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 text-sm text-muted-foreground">
+        <p>These ship-tos will have their own pricing and no longer inherit future changes from the customer or hub.</p>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** OVERRIDES, BEFORE THE RUN, IN ONE LINE (Yash · PM, 2026-11-20) —
+ *  inherited and hub ship-tos together; the count opens their records. */
+function Overrides({ preview, onFilter }: { preview: ReturnType<typeof previewRule>; onFilter?: (picked: string[]) => void }) {
+  const n = preview.overrides.customer + preview.overrides.hub;
+  if (!n) return null;
+  return (
+    <dl className="flex flex-col border-b border-border py-2">
+      <div className={ROW}>
+        <dt className="flex items-center gap-1 text-sm text-muted-foreground">
+          Pricing overridden <OverrideInfo />
+        </dt>
+        <dd className="text-base font-medium tabular-nums text-fp-banner-accent-caution">
+          <Count onOpen={onFilter && (() => onFilter([`applied:${OVERRIDE.customer}`, `applied:${OVERRIDE.hub}`]))}>{n.toLocaleString()}</Count>
+          <span className="text-sm font-normal text-muted-foreground"> of {plural(preview.shiptos.length, "ship-to")}</span>
+        </dd>
+      </div>
+    </dl>
   );
 }
 
@@ -1585,6 +1681,7 @@ function PreviewImpactCard({
   ready,
   ents,
   onFilter,
+  onNames,
 }: {
   d: RuleDef;
   preview: ReturnType<typeof previewRule>;
@@ -1592,8 +1689,10 @@ function PreviewImpactCard({
   ents: EntityMap;
   /** Opens the records list below — none on a template. */
   onFilter?: (picked: string[]) => void;
+  onNames?: (l: PriceList) => void;
 }) {
   const Z = preview.matched;
+  const cs = ready && preview.customerMode ? customersOf(allOfPreview(preview)) : null;
   /* NOTHING ASKED YET — an empty set, not every record (Yash, 2026-11-19). */
   const asked = preview.groups.some((g) => g.asked);
   return (
@@ -1607,7 +1706,10 @@ function PreviewImpactCard({
         </>
       ) : (
         <>
-          <Who preview={preview} />
+          <Who preview={preview} cs={cs ?? undefined} />
+          {cs ? (
+            <CustomerCounts cs={cs} done={WILL} onFilter={onFilter} onNames={onNames} />
+          ) : (
           <dl className="flex flex-col border-b border-border py-2">
             <Matched n={Z} />
             {ready && (
@@ -1617,6 +1719,8 @@ function PreviewImpactCard({
               </>
             )}
           </dl>
+          )}
+          {ready && !cs && <Overrides preview={preview} onFilter={onFilter} />}
         </>
       )}
       {asked && <Settings changes={d.changes} ents={ents} />}
@@ -1633,12 +1737,17 @@ function RunImpactCard({
   before,
   ents,
   onFilter,
+  cs,
+  onNames,
 }: {
   rule: Rule;
   run: Run;
   before: ReturnType<typeof previewRule>;
   ents: EntityMap;
   onFilter: (picked: string[]) => void;
+  /** A customer-level rule's customers, as the run left them. */
+  cs?: CustRow[] | null;
+  onNames?: (l: PriceList) => void;
 }) {
   const running = run.status === "running";
   const through = run.results.slice(0, run.progress);
@@ -1650,21 +1759,25 @@ function RunImpactCard({
       {running && (
         <div className="flex flex-col gap-2 border-b border-border bg-accent-violet-soft px-4 py-3">
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-base font-medium text-foreground">Running…</span>
+            <span className="text-base font-medium text-foreground">In progress</span>
             <span className="text-sm tabular-nums text-muted-foreground">
               {run.progress.toLocaleString()} of {plural(run.total, "record")}
             </span>
           </div>
-          <Progress value={run.total ? (run.progress / run.total) * 100 : 0} aria-label="Running" />
+          <Progress value={run.total ? (run.progress / run.total) * 100 : 0} aria-label="In progress" />
         </div>
       )}
-      <Who preview={before} />
-      <dl className="flex flex-col border-b border-border py-2">
-        <Matched n={run.total} />
-        <OutOf label="Updated" n={of("updated").length} of={run.total} onOpen={go("updated")} />
-        <OutOf label="Skipped" n={of("unchanged").length + of("skipped").length} of={run.total} onOpen={go("skipped")} hideZero />
-        <OutOf label="Failed" n={of("failed").length} of={run.total} onOpen={go("failed")} tone="caution" hideZero />
-      </dl>
+      <Who preview={before} cs={cs && !running ? cs : undefined} />
+      {cs && !running ? (
+        <CustomerCounts cs={cs} done="Updated" onFilter={onFilter} onNames={onNames} />
+      ) : (
+        <dl className="flex flex-col border-b border-border py-2">
+          <Matched n={run.total} />
+          <OutOf label="Updated" n={of("updated").length} of={run.total} onOpen={go("updated")} />
+          <OutOf label="Skipped" n={of("unchanged").length + of("skipped").length} of={run.total} onOpen={go("skipped")} hideZero />
+          <OutOf label="Failed" n={of("failed").length} of={run.total} onOpen={go("failed")} tone="caution" hideZero />
+        </dl>
+      )}
       <Settings changes={rule.changes} ents={ents} />
     </RailCard>
   );
@@ -1683,6 +1796,8 @@ function RunSection({
   ents,
   apply,
   onOpenPrice,
+  customerMode,
+  onNames,
 }: {
   run: Run;
   runs: Run[];
@@ -1691,6 +1806,9 @@ function RunSection({
   ents: EntityMap;
   apply: { tab: string; picked: string[]; n: number } | null;
   onOpenPrice: (p: PriceRow) => void;
+  /** A customer-level rule reads customers; a row opens its ship-tos. */
+  customerMode?: boolean;
+  onNames?: (l: PriceList) => void;
 }) {
   if (run.status === "scheduled")
     return (
@@ -1699,20 +1817,34 @@ function RunSection({
       </SheetSection>
     );
   const running = run.status === "running";
-  const rowOf = new Map(rows.map((r) => [r.id, r]));
-  const all: PriceRow[] = run.results
-    .map((x) => {
-      const row = x.before ?? rowOf.get(x.rowId)!;
-      /* A PRICE THE RUN DID NOT CHANGE reads at what it is. */
-      const now = row && row.configured ? priceOf(row, ents) : null;
-      return { row, outcome: OUTCOME[x.outcome], reason: x.reason, lines: x.lines, priceBefore: x.priceBefore ?? now, priceAfter: x.priceAfter ?? null };
-    })
-    .filter((x) => x.row);
+  /* A PRICE THE RUN DID NOT CHANGE reads at what it is. */
+  const all = runRowsOf(run, rows, ents);
+  const picker =
+    runs.length > 1 ? (
+      <Select value={run.id} onValueChange={onPick}>
+        <SelectTrigger className="w-64" aria-label="Run shown">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {[...runs].reverse().map((x) => (
+            <SelectItem key={x.id} value={x.id}>
+              {`Run ${x.n} · ${fmtWhen(x.at)}`}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    ) : undefined;
+  if (customerMode && !running)
+    return (
+      <SheetSection title="Customers updated" id={stepId("prices")} variant="plain">
+        <CustomersView resetKey={run.id} rows={customersOf(all)} apply={apply} beforeSearch={picker} onOpen={(c) => onNames?.(custNames(c))} />
+      </SheetSection>
+    );
   return (
     <SheetSection title="Records updated" id={stepId("prices")} variant="plain">
       {running ? (
         <div className="flex flex-col gap-2">
-          <span className="text-sm text-foreground">{`${run.progress.toLocaleString()} of ${plural(run.total, "price")} updating…`}</span>
+          <span className="text-sm text-foreground">{`${run.progress.toLocaleString()} of ${plural(run.total, "record")} done`}</span>
           <Progress value={run.total ? (run.progress / run.total) * 100 : 100} aria-label="Run progress" />
         </div>
       ) : (
@@ -1724,22 +1856,7 @@ function RunSection({
           onOpen={onOpenPrice}
           /* THE RUN PICKER FIRST, THEN SEARCH, THEN FILTERS (Yash, 2026-11-18)
              — which run is the set being searched. */
-          beforeSearch={
-            runs.length > 1 ? (
-              <Select value={run.id} onValueChange={onPick}>
-                <SelectTrigger className="w-64" aria-label="Run shown">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[...runs].reverse().map((x) => (
-                    <SelectItem key={x.id} value={x.id}>
-                      {`Run ${x.n} · ${fmtWhen(x.at)}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : undefined
-          }
+          beforeSearch={picker}
         />
       )}
     </SheetSection>
@@ -1752,6 +1869,12 @@ function RunSection({
    already holding the change and one that cannot take it are both Skipped. */
 const WILL = "Will update";
 const NOT = "Skipped";
+/** An inherited or hub ship-to the rule gives its own pricing, as the list reads it. */
+const OVERRIDE = { customer: "Customer → Ship-to", hub: "Hub → Ship-to" } as const;
+const appliedOf = (p: PriceRow) => {
+  const l = (p.lines ?? []).find((x) => x.label === "Applied pricing");
+  return l && l.before !== l.after ? `${l.before} → ${l.after}` : APPLIED[p.row.applied];
+};
 const OUTCOME: Record<RunResult["outcome"], string> = { updated: "Updated", unchanged: "Skipped", skipped: "Skipped", failed: "Failed" };
 
 /** Every price a new rule reaches: the ones that change, then the rest with why. */
@@ -1766,6 +1889,201 @@ const allOfPreview = (preview: ReturnType<typeof previewRule>): PriceRow[] =>
     combos: preview.combos[p.row.id],
   }));
 
+/** A CUSTOMER-LEVEL RULE, BY CUSTOMER (Yash, 2026-11-20) — the change is
+ *  written to the customer's configuration, so it reads one row per
+ *  customer: the change, the ship-tos that inherit it, the ship-tos with
+ *  their own pricing it does not reach. No ship-to × product breakdown. */
+type CustRow = { customerId: string; inheriting: string[]; own: string[]; outcome: string; lines: { label: string; before: string; after: string }[] };
+function customersOf(prs: PriceRow[]): CustRow[] {
+  const by = new Map<string, PriceRow[]>();
+  prs.forEach((p) => by.set(p.row.customerId, [...(by.get(p.row.customerId) ?? []), p]));
+  return [...by].map(([customerId, ps]) => {
+    /* OUT OF EVERY SHIP-TO MATCHED (Yash, 2026-11-20) — inheriting plus
+       skipped is the whole: own or hub pricing, or not set up. */
+    const inheriting = uniq(ps.filter((p) => p.row.configured && p.row.applied === "customer").map((p) => p.row.shiptoId));
+    const own = uniq(ps.map((p) => p.row.shiptoId)).filter((id) => !inheriting.includes(id));
+    const outcome = [WILL, "Updated", "Failed"].find((o) => ps.some((p) => p.outcome === o)) ?? ps[0].outcome ?? NOT;
+    const lead = ps.find((p) => p.outcome === outcome && (p.lines ?? []).length) ?? ps.find((p) => (p.lines ?? []).length);
+    return { customerId, inheriting, own, outcome, lines: (lead?.lines ?? []).filter((l) => l.label !== "Applied pricing") };
+  });
+}
+const SHIPTO_PRICING_INFO = "These ship-tos have their own pricing and won’t inherit changes from the customer or hub.";
+const OVERRIDDEN_INFO = "These ship-tos will have their own pricing and no longer inherit future changes from the customer or hub.";
+/** Ship-tos a list of records gives their own pricing. */
+const overriddenIn = (rs: PriceRow[]) =>
+  uniq(rs.filter((p) => (p.lines ?? []).some((l) => l.label === "Applied pricing" && l.before !== l.after)).map((p) => p.row.shiptoId));
+/** Ship-tos by name, for a count that opens them. */
+const shiptoNames = (title: string, ids: string[], note: string): PriceList => ({
+  title,
+  kind: "names",
+  head: ["Ship-to", "Customer"],
+  names: ids.map((id) => ({ name: shiptoOf(id).name, note: customerOf(shiptoOf(id).customerId).name || note })),
+});
+/** A ran rule's records, as they stood. */
+function runRowsOf(run: Run, rows: ConfigRow[], ents: EntityMap): PriceRow[] {
+  const rowOf = new Map(rows.map((r) => [r.id, r]));
+  return run.results
+    .map((x) => {
+      const row = x.before ?? rowOf.get(x.rowId)!;
+      const now = row && row.configured ? priceOf(row, ents) : null;
+      return { row, outcome: OUTCOME[x.outcome], reason: x.reason, lines: x.lines, priceBefore: x.priceBefore ?? now, priceAfter: x.priceAfter ?? null };
+    })
+    .filter((x) => x.row);
+}
+
+/** THE CUSTOMERS, AS A LIST — a customer-level rule's records. A row opens
+ *  its ship-tos by name. */
+function CustomersView({
+  resetKey,
+  rows,
+  apply,
+  beforeSearch,
+  onOpen,
+}: {
+  resetKey: string;
+  rows: CustRow[];
+  apply: { tab: string; picked: string[]; n: number } | null;
+  beforeSearch?: React.ReactNode;
+  onOpen: (c: CustRow) => void;
+}) {
+  const tabs = React.useMemo<ViewTab[]>(
+    () => [
+      {
+        key: "prices",
+        label: "Customers",
+        noun: "customers",
+        one: "customer",
+        columns: [
+          { key: "customer", label: "Customer", width: 240, sortable: true },
+          { key: "change", label: "Change", width: 280, sortable: true },
+          { key: "inheriting", label: "Ship-tos inheriting", width: 170, sortable: true },
+          { key: "own", label: "Ship-tos skipped", width: 150, sortable: true },
+        ],
+        rows: rows.map(
+          (c, i): ViewRow => ({
+            id: String(i),
+            text: {
+              customer: customerOf(c.customerId).name,
+              change: c.lines.map((l) => `${l.label} ${l.before} → ${l.after}`).join(" · ") || "—",
+              inheriting: `${c.inheriting.length} of ${c.inheriting.length + c.own.length}`,
+              own: String(c.own.length),
+            },
+            sort: { inheriting: c.inheriting.length, own: c.own.length },
+            status: c.outcome,
+            values: { customer: customerOf(c.customerId).name },
+          })
+        ),
+        facets: [
+          { key: "status", label: "Outcome", order: uniq([WILL, NOT, ...Object.values(OUTCOME)]) },
+          { key: "customer", label: "Customer", searchable: true },
+        ],
+        nameOf: (r) => r.text.customer,
+        onOpen: (r) => onOpen(rows[Number(r.id)]),
+        renderCell: (r, key) => {
+          const c = rows[Number(r.id)];
+          if (key === "customer")
+            return (
+              <span className="block truncate" title={r.text.customer}>
+                {r.text.customer}
+              </span>
+            );
+          if (key === "change")
+            return c.lines.length ? (
+              <span className="flex min-w-0 flex-col">
+                {c.lines.map((l) => (
+                  <span key={l.label} className="truncate tabular-nums">
+                    <span className="text-muted-foreground">
+                      {l.label} {l.before} →
+                    </span>{" "}
+                    <span className="font-medium text-foreground">{l.after}</span>
+                  </span>
+                ))}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            );
+          return undefined;
+        },
+      },
+    ],
+    [rows, onOpen]
+  );
+  return (
+    <div className="grid h-[560px] min-h-0 grid-rows-1">
+      <RecordViews resetKey={resetKey} tabs={tabs} hideSingleTab searchPlaceholder="Search customers" historyKey="pricing-bulk-customers" apply={apply} quickFilters={beforeSearch} />
+    </div>
+  );
+}
+
+/** A customer's ship-tos by name — what a customer row opens. */
+const custNames = (c: CustRow): PriceList => ({
+  title: customerOf(c.customerId).name,
+  kind: "names",
+  head: ["Ship-to", "Pricing"],
+  names: [
+    ...c.inheriting.map((id) => ({ name: shiptoOf(id).name, note: "Inherits from the customer" })),
+    ...c.own.map((id) => ({ name: shiptoOf(id).name, note: "Skipped" })),
+  ],
+});
+
+/** THE CUSTOMER-LEVEL COUNTS — the Impact card's rows for a customer-level
+ *  rule: customers, those to update, the ship-tos that inherit, and the
+ *  ship-tos with their own pricing it does not reach. */
+function CustomerCounts({
+  cs,
+  done,
+  onFilter,
+  onNames,
+}: {
+  cs: CustRow[];
+  /** The outcome the card counts — Will update before a run, Updated after. */
+  done: string;
+  onFilter?: (picked: string[]) => void;
+  onNames?: (l: PriceList) => void;
+}) {
+  const inh = cs.flatMap((c) => c.inheriting);
+  const own = cs.flatMap((c) => c.own);
+  const T = inh.length + own.length;
+  const n = cs.filter((c) => c.outcome === done).length;
+  return (
+    <dl className="flex flex-col border-b border-border py-2">
+      <div className={ROW}>
+        <dt className="text-sm text-muted-foreground">Customers matched</dt>
+        <dd className="text-base font-medium tabular-nums text-foreground">{cs.length.toLocaleString()}</dd>
+      </div>
+      <OutOf label={done} n={n} of={cs.length} onOpen={onFilter && (() => onFilter([`status:${done}`]))} />
+      <OutOf label="Ship-tos inheriting" n={inh.length} of={T} onOpen={onNames && (() => onNames(shiptoNames("Ship-tos inheriting", inh, "")))} />
+      {own.length > 0 && (
+        <div className={ROW}>
+          <dt className="flex items-center gap-1 text-sm text-muted-foreground">
+            Ship-tos skipped <InfoPop label="Why ship-tos are skipped" text={SHIPTO_PRICING_INFO} />
+          </dt>
+          <dd className="text-base font-medium tabular-nums text-foreground">
+            <Count onOpen={onNames && (() => onNames(shiptoNames("Ship-tos skipped", own, "")))}>{own.length.toLocaleString()}</Count>
+            <span className="text-sm font-normal text-muted-foreground"> of {T.toLocaleString()}</span>
+          </dd>
+        </div>
+      )}
+    </dl>
+  );
+}
+
+/** An ⓘ with one line behind it (UX-96). */
+function InfoPop({ label, text }: { label: string; text: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" aria-label={label} className="rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
+          <Info className="size-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 text-sm text-muted-foreground">
+        <p>{text}</p>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** THE PRICES, AS A LIST (FPDS: a view people search or filter is a list —
  *  ListTable, even in a sheet). Search, Filters (outcome, product, ship-to,
  *  customer), pages; it opens on the prices that change, the chip clears it.
@@ -1778,6 +2096,7 @@ function PricesView({
   apply,
   onOpen,
   beforeSearch,
+  empty,
 }: {
   resetKey: string;
   rows: PriceRow[];
@@ -1787,6 +2106,8 @@ function PricesView({
   beforeSearch?: React.ReactNode;
   apply: { tab: string; picked: string[]; n: number } | null;
   onOpen: (p: PriceRow) => void;
+  /** Said in the table's body when it has no rows. */
+  empty?: string;
 }) {
   /* WHERE EACH RECORD CAME FROM (Yash, 2026-11-19) — a Combination column
      and filter once the rule has more than one combination. */
@@ -1838,6 +2159,7 @@ function PricesView({
               customer: customerOf(p.row.customerId).name,
               shipto: shiptoOf(p.row.shiptoId).name,
               product: productOf(p.row.productId).name,
+              applied: appliedOf(p),
             },
             /* MATCHED BY — each single combination the record meets; one in two
                shows under both (Yash, 2026-11-19). ENTITY — the settings the
@@ -1854,6 +2176,7 @@ function PricesView({
              read "Combination 2", like the second combination. */
           ...(combined ? [{ key: "combination", label: "Matched by" }] : []),
           { key: "setting", label: "Entity" },
+          { key: "applied", label: "Applied pricing", order: [OVERRIDE.customer, OVERRIDE.hub, ...Object.values(APPLIED)] },
           { key: "product", label: "Product", searchable: true },
           { key: "shipto", label: "Ship-to", searchable: true },
           { key: "customer", label: "Customer", searchable: true },
@@ -1910,7 +2233,10 @@ function PricesView({
   );
   void ents;
   return (
-    <div className="grid h-[560px] min-h-0 grid-rows-1">
+    <div className="relative grid h-[560px] min-h-0 grid-rows-1">
+      {rows.length === 0 && empty && (
+        <p className="pointer-events-none absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 px-6 text-center text-sm text-muted-foreground">{empty}</p>
+      )}
       <RecordViews
         resetKey={resetKey}
         tabs={tabs}
@@ -1961,7 +2287,7 @@ const PTH = "px-3 py-2.5 text-left text-sm font-medium";
 function PriceTable({ rows, ents, open, setOpen }: { rows: PriceRow[]; ents: EntityMap; open: string | null; setOpen: (id: string | null) => void }) {
   return (
     /* T2 — the table is its own unit in a plain section, not a box in a card. */
-    <div data-table-variant="T2" className="overflow-hidden rounded-md border border-border">
+    <div data-table-variant="T2" className="shrink-0 overflow-hidden rounded-md border border-border">
       <table className="w-full table-fixed border-collapse">
         <colgroup>
           <col className="w-[44px]" />
@@ -2080,23 +2406,32 @@ const WIDE_PRICES = [CELL.check, CELL.name, CELL.name, 360, CELL.number + 66];
 /** REVIEW BEFORE A RERUN OR A RETRY (Yash, 2026-11-20) — the records it
  *  would touch, over the rule: what changes on each, or why each failed;
  *  Cancel, or the act with its count. */
+type Figure = { label: string; info: string; value: number; note: string; picked?: string[] };
 function ReviewRunSheet({
   title,
   action,
   kind,
   rows,
+  customers,
+  figures,
   ents,
   onConfirm,
   onClose,
+  onNames,
 }: {
   title: string;
   action: string;
   kind: "change" | "why";
   rows: PriceRow[];
+  /** A customer-level rerun lists customers, not records. */
+  customers?: CustRow[] | null;
+  figures: Figure[];
   ents: EntityMap;
   onConfirm: () => void;
   onClose: () => void;
+  onNames?: (l: PriceList) => void;
 }) {
+  const [apply, setApply] = React.useState<{ tab: string; picked: string[]; n: number } | null>(null);
   /* THE SAME LIST AS RECORDS UPDATED (Yash, 2026-11-20) — search, Filters,
      Ship-to · Customer · Product · Change · Price; a row opens its make-up. */
   const [price, setPrice] = React.useState<PriceRow | null>(null);
@@ -2115,7 +2450,25 @@ function ReviewRunSheet({
       showCancel={false}
       onSubmit={onConfirm}
     >
-      <PricesView resetKey={title} rows={rows} ents={ents} apply={null} onOpen={setPrice} />
+      {/* FIGURES ON TOP, AS THE ACTIVITY FEED'S — a figure with a filter narrows the table. */}
+      <div className={FIGURE_STRIP}>
+        {figures.map((f) => (
+          <InfoFigure
+            key={f.label}
+            label={f.label}
+            info={<p>{f.info}</p>}
+            value={f.value.toLocaleString()}
+            note={f.note}
+            onOpen={f.picked && f.value > 0 ? () => setApply({ tab: "prices", picked: f.picked!, n: Date.now() }) : undefined}
+            openLabel="show in the table"
+          />
+        ))}
+      </div>
+      {customers ? (
+        <CustomersView resetKey={title} rows={customers} apply={apply} onOpen={(c) => onNames?.(custNames(c))} />
+      ) : (
+        <PricesView resetKey={title} rows={rows} ents={ents} apply={apply} onOpen={setPrice} />
+      )}
       {price && <PriceSheet price={price} ents={ents} onClose={() => setPrice(null)} />}
     </RecordSheet>
   );
@@ -2159,7 +2512,7 @@ function ListSheet({ list, ents, onClose }: { list: PriceList; ents: EntityMap; 
 function NameTable({ head, names }: { head: [string, string]; names: { name: string; note: string }[] }) {
   return (
     /* T2 — the table is the sheet's whole body, its own unit. */
-    <div data-table-variant="T2" className="overflow-hidden rounded-md border border-border">
+    <div data-table-variant="T2" className="shrink-0 overflow-hidden rounded-md border border-border">
       <table className="w-full table-fixed border-collapse">
         <thead>
           <tr className="border-b border-border bg-fp-table-header">
@@ -2183,7 +2536,7 @@ function NameTable({ head, names }: { head: [string, string]; names: { name: str
 function WhyTable({ rows }: { rows: PriceRow[] }) {
   return (
     /* T2 — the table is the sheet's whole body, its own unit. */
-    <div data-table-variant="T2" className="overflow-hidden rounded-md border border-border">
+    <div data-table-variant="T2" className="shrink-0 overflow-hidden rounded-md border border-border">
       <table className="w-full table-fixed border-collapse">
         <thead>
           <tr className="border-b border-border bg-fp-table-header">

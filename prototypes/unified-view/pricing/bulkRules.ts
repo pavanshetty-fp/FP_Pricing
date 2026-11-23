@@ -224,8 +224,7 @@ export const COND_FIELDS: { key: CondField; label: string; one?: boolean }[] = [
   /* THE PRICING SOURCE IS A CONDITION (Yash, 2026-11-19) — not a field of
      its own; left out, a rule reaches first party and 3PL alike. */
   { key: "source", label: "Pricing source", one: true },
-  { key: "businessLine", label: "Business line" },
-  { key: "los", label: "LOS" },
+  /* NO BUSINESS LINE OR LOS (Yash, 2026-11-23) — out of the flow. */
   /* MORE OF WHAT A PRICE CARRIES (Yash, 2026-11-18: "more conditions"). */
   { key: "category", label: "Product category" },
 ];
@@ -349,7 +348,14 @@ export const blankDef = (): RuleDef => ({
   changes: [blankChange()],
   exclude: [],
 });
-export const blankDefV2 = (): RuleDef => ({ ...blankDef(), conditions: [blankCondition()] });
+/* A NEW RULE STARTS WITH CUSTOMER AND SHIP-TO (Yash, 2026-11-23) — both at
+   All, to change or remove; a combination added later starts empty. */
+export const blankDefV2 = (): RuleDef => ({
+  ...blankDef(),
+  conditions: [blankCondition()],
+  groups: [[{ field: "customer", values: [ALL_VALUES] }, { field: "shipto", values: [ALL_VALUES] }]],
+  matches: ["all"],
+});
 /** A version 1 definition read as version 2 conditions — a v1 template
  *  loaded into a v2 rule keeps what it says. */
 export function toConditions(d: RuleDef): Condition[] {
@@ -360,8 +366,6 @@ export function toConditions(d: RuleDef): Condition[] {
   const regions = uniq(d.where.map((w) => w.region).filter(Boolean));
   if (regions.length) out.push({ field: "region", values: regions });
   if (all("markets").length) out.push({ field: "market", values: all("markets") });
-  if (all("businessLines").length) out.push({ field: "businessLine", values: all("businessLines") });
-  if (all("los").length) out.push({ field: "los", values: all("los") });
   const customers = d.targets.map((t) => t.customerId).filter(Boolean);
   if (customers.length) out.push({ field: "customer", values: customers });
   const shiptos = d.targets.flatMap((t) => t.shiptoIds);
@@ -416,7 +420,9 @@ export const groupHits = (g: Condition[], r: ConfigRow, ents: EntityMap, match: 
    the rest only narrow who is affected. */
 export type Level = "customer" | "shipto";
 const SHIPTO_LEVEL = new Set<CondField>(["shipto", "product", "category"]);
-export const levelOf = (g: Condition[]): Level => (g.some((c) => c.field && SHIPTO_LEVEL.has(c.field) && c.values.length) ? "shipto" : "customer");
+/* "All ship-tos" / "All products" narrow nothing — only a picked ship-to or product sends the change down. */
+export const levelOf = (g: Condition[]): Level =>
+  g.some((c) => c.field && SHIPTO_LEVEL.has(c.field) && c.values.length && !c.values.includes(ALL_VALUES)) ? "shipto" : "customer";
 
 /** How a rule's combinations match and join. */
 export const matchOf = (d: RuleDef, i: number) => d.matches?.[i] ?? "all";
@@ -867,7 +873,7 @@ const TPL: RuleDef[] = [
     changes: [ch("rateType", "set", ["r-opis-rack-avg"]), ch("base", "set", "2.85"), ch("margin", "add", ["m-standard-rack-margin"])],
   }),
   def({ name: "Contractor margin", targets: cust("onsite", "bayou"), changes: [ch("margin", "set", "0.22")] }),
-  def({ name: "Propane delivery fee", where: [{ ...blankWhere(), los: ["Propane"] }], changes: [ch("fee", "add", ["f-delivery-fee"])] }),
+  def({ name: "Propane delivery fee", targets: [{ ...blankTarget(), productIds: ["lpg"] }], changes: [ch("fee", "add", ["f-delivery-fee"])] }),
   def({ name: "Base increase 2%", changes: [ch("base", "adjustPercent", "2")] }),
 ];
 
@@ -885,8 +891,8 @@ const RULES: (RuleDef & { daysAgo: number; runs: number; future?: number; inProg
   },
   {
     ...def({
-      name: "Tank wagon surcharge and margin",
-      where: [{ ...blankWhere(), businessLines: ["Fuel"], los: ["Tank Wagon"], region: "Louisiana" }],
+      name: "Louisiana surcharge and margin",
+      where: [{ ...blankWhere(), region: "Louisiana" }],
       changes: [ch("fee", "add", ["f-fuel-surcharge"]), ch("margin", "set", "0.19")],
     }),
     daysAgo: 2,

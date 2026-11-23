@@ -13,8 +13,8 @@ Read top to bottom; the first row that fits decides where the change goes.
 | **Customer**, no Ship-to, no Product | **Customer configuration** | Customer only, or Customer + Market → that customer's configuration |
 | **None of the three** | **To confirm** (questions 1 and 2 below) | Region only; Region + Market |
 
-Other conditions (Region, Market, Rate type, Pricing source, LOS, Business
-line, Applied pricing, Configuration) only **narrow** the set; they don't
+Other conditions (Region, Market, Rate type, Pricing source, Applied
+pricing, Configuration) only **narrow** the set; they don't
 change the level. *Customer + Region* stays at customer, and *Region +
 Product* goes to ship-to.
 
@@ -28,8 +28,6 @@ Product* goes to ship-to.
 | Market | Customer configuration of every customer in the market | ? |
 | Rate type | Customer configuration of every customer on that rate type | ? |
 | Pricing source | Customer configuration of every first-party / 3PL customer | ? |
-| LOS | Customer configuration of every customer with that LOS | ? |
-| Business line | Customer configuration, if it is a customer setting; ship-to (like Product) if it comes from the product | ? |
 | Applied pricing | It describes how a **ship-to** is priced, so *Ship-to* or *Hub* points at ship-tos, not customers | ? |
 | Configuration (Configured / Unconfigured) | Customer configuration that is set up / not set up yet. Should *Unconfigured* create it? | ? |
 
@@ -42,10 +40,8 @@ customers match.
 |---|---|---|
 | Region + Market | Customer configuration of customers in that region **and** market | ? |
 | Region + Rate type | Customer configuration of customers in the region on that rate type | ? |
-| Market + LOS | Customer configuration of customers in the market with that LOS | ? |
 | Region + Pricing source | Customer configuration of first-party / 3PL customers in the region | ? |
 | Region + Configuration (Unconfigured) | Customers in the region with no customer configuration yet. Create it? | ? |
-| Region + Business line | Follows the answer for Business line in 1: customer, or ship-to if it comes from the product | ? |
 | Region + Applied pricing (Ship-to / Hub) | Follows the answer for Applied pricing in 1: likely the ship-tos in the region that price on their own / from a hub | ? |
 
 **3. Applied pricing tag: decided, it changes.** When a bulk change writes

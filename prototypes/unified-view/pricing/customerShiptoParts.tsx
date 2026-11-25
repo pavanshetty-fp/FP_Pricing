@@ -9,6 +9,8 @@ import { SummaryCard } from "../SheetCards";
 import { STATUS_LABEL, customerOf, plural, shiptoOf, uniq, type ChangeRecord, type EntityMap, type ImpactLine } from "./changeLog";
 import { ChangeText } from "./ChangeText";
 import { RecordSheet } from "../RecordSheet";
+import { ListFilters, type ListFacet } from "../ListFilters";
+import { FilterChips } from "../ListToolbar";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -252,7 +254,11 @@ export function ShiptoCount({
   level = 1,
   title,
   subtitle,
+  hubOf,
 }: {
+  /** With it, the list is a table: Ship-to · Customer · Hub (fee sheets,
+   *  Yash 2026-11-24). */
+  hubOf?: (shiptoId: string) => string;
   /** A change's lines: the ship-tos it reached. */
   lines?: ImpactLine[];
   /** Or ship-tos by id. */
@@ -293,6 +299,7 @@ export function ShiptoCount({
           level={level}
           title={title ?? (kind === "customers" ? "Customers affected" : "Ship-tos affected")}
           subtitle={subtitle}
+          hubOf={hubOf}
           onClose={() => setOpen(false)}
         />
       )}
@@ -322,8 +329,10 @@ export function AffectedSheet({
   title,
   subtitle,
   level = 1,
+  hubOf,
   onClose,
 }: {
+  hubOf?: (shiptoId: string) => string;
   items: AffectedShipto[];
   kind?: AffectedKind;
   title: string;
@@ -344,6 +353,22 @@ export function AffectedSheet({
      scroll: a search, then each name with its line under it. */
   const [q, setQ] = React.useState("");
   React.useEffect(() => setQ(""), [drill]);
+  /* FILTERS ON THE SHIP-TO TABLE (Yash, 2026-11-25) — Customer and Hub, the
+     export sheet's filter icon beside the search, chips under it. */
+  const filtering = !!hubOf && listing === "shiptos";
+  const [sel, setSel] = React.useState<ReadonlySet<string>>(new Set());
+  const facets: ListFacet[] = filtering
+    ? [
+        { key: "customer", label: "Customer", options: uniq(shown.map((x) => customerOf(x.customerId).name)).sort() },
+        { key: "hub", label: "Hub", options: uniq(shown.map((x) => hubOf!(x.shiptoId))).sort() },
+      ]
+    : [];
+  const passes = (shiptoId: string, f: ReadonlySet<string> = sel) => {
+    const of = (key: string) => [...f].filter((id) => id.startsWith(`${key}:`)).map((id) => id.slice(key.length + 1));
+    const cs = of("customer");
+    const hs = of("hub");
+    return (!cs.length || cs.includes(customerOf(shiptoOf(shiptoId).customerId).name)) && (!hs.length || hs.includes(hubOf?.(shiptoId) ?? ""));
+  };
   const has = (...t: string[]) => !q.trim() || t.some((x) => x.toLowerCase().includes(q.trim().toLowerCase()));
   const rows =
     listing === "customers"
@@ -354,13 +379,14 @@ export function AffectedSheet({
           .map((x) => ({
             id: x.shiptoId,
             top: shiptoOf(x.shiptoId).name,
-            below: oneCustomer ? shiptoOf(x.shiptoId).address : `${shiptoOf(x.shiptoId).address} · ${customerOf(x.customerId).name}`,
+            below: oneCustomer || hubOf ? shiptoOf(x.shiptoId).address : `${shiptoOf(x.shiptoId).address} · ${customerOf(x.customerId).name}`,
             n: 0,
           }))
-          .filter((r) => has(r.top, r.below));
+          .filter((r) => has(r.top, r.below, customerOf(shiptoOf(r.id).customerId).name, hubOf?.(r.id) ?? "") && (!filtering || passes(r.id)));
   return (
     <RecordSheet
-      size="form"
+      size={hubOf ? "data" : "form"}
+      fit={hubOf ? { tables: [[280, 220, 180]] } : undefined}
       presentation="sheet"
       level={level}
       open
@@ -397,21 +423,65 @@ export function AffectedSheet({
     >
       <div className="flex min-h-0 flex-col gap-3">
         {/* The search runs the sheet's full width (Yash, 2026-11-17). */}
-        <div className="relative w-full">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={listing === "customers" ? "Search customers" : "Search ship-tos"}
-            aria-label={listing === "customers" ? "Search customers" : "Search ship-tos"}
-            className="h-8 pl-8"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative w-full">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={listing === "customers" ? "Search customers" : "Search ship-tos"}
+              aria-label={listing === "customers" ? "Search customers" : "Search ship-tos"}
+              className="h-8 pl-8"
+            />
+          </div>
+          {filtering && (
+            <ListFilters
+              fullWidth
+              historyKey="fee-shiptos"
+              facets={facets}
+              value={sel}
+              onApply={setSel}
+              countFor={(f) => shown.filter((x) => passes(x.shiptoId, f)).length}
+            />
+          )}
         </div>
+        {filtering && <FilterChips className="mt-0" facets={facets} selected={sel} onChange={setSel} />}
         {rows.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">No matches.</p>
+        ) : hubOf && listing === "shiptos" ? (
+          /* SHIP-TO · CUSTOMER · HUB (Yash, 2026-11-24) — where each sits. */
+          /* SHRINK-0 (Yash, 2026-11-25 — it didn't scroll): the sheet body
+              scrolls; the table no longer squeezes and clips its rows. */
+          <div data-table-variant="T2" className="shrink-0 overflow-hidden rounded-lg border border-border">
+            <table className="w-full table-fixed border-collapse text-sm">
+              <colgroup>
+                <col />
+                <col className="w-[34%]" />
+                <col className="w-[26%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-border bg-fp-table-header">
+                  <th className="px-3 py-2.5 text-left font-medium">Ship-to</th>
+                  <th className="px-3 py-2.5 text-left font-medium">Customer</th>
+                  <th className="px-3 py-2.5 text-left font-medium">Hub</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="h-12 border-b border-border last:border-b-0">
+                    <td className="px-3 py-2">
+                      <TwoLines top={r.top} below={r.below} />
+                    </td>
+                    <td className="truncate px-3">{customerOf(shiptoOf(r.id).customerId).name}</td>
+                    <td className="truncate px-3">{hubOf(r.id)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+          <ul className="flex shrink-0 flex-col divide-y divide-border rounded-lg border border-border">
             {rows.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-4 px-4 py-2.5">
                 <TwoLines top={r.top} below={r.below} />

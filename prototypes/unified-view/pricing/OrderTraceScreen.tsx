@@ -23,7 +23,8 @@ import { dateKeyOf, startOfDay } from "../data";
 import { DAY, NOW, fmtDate, fmtWhen, plural, shiptoOf, uniq } from "./changeLog";
 import { useChangeLog } from "./changeLogStore";
 import { fitColumns } from "./fitColumns";
-import { ORDER_STATUS_KIND, buildOrders, money2, money3, orderLabel, type PricedOrder } from "./orderTrace";
+import { ORDER_STATUS_KIND, buildOrders, money2, money3, orderLabel, type FeeComponents, type PricedOrder } from "./orderTrace";
+import { feesOnOrder, rateText, syncOwn, useFees, useHubMap } from "./fees";
 import { OrderTraceSheet } from "./OrderTraceSheet";
 
 /*
@@ -69,7 +70,7 @@ const GROUP_DIMS: GroupDim<PricedOrder>[] = [
   { key: "shipto", label: "Ship-to", hides: "shipto", valuesOf: VALUES.shipto },
   { key: "product", label: "Product", hides: "product", valuesOf: VALUES.product },
   { key: "day", label: "Delivery day", valuesOf: (o) => [fmtDate(o.deliveredAt)] },
-  { key: "status", label: "Status", hides: "status", order: ["Delivered", "Invoiced"], valuesOf: VALUES.status },
+  { key: "status", label: "Status", hides: "status", order: ["Scheduled", "Delivered", "Invoiced"], valuesOf: VALUES.status },
 ];
 
 interface ViewState {
@@ -94,7 +95,27 @@ const inWindow = (t: number, r: DateRange) => t >= r.from.getTime() && t < r.to.
 
 export function OrderTraceScreen() {
   const log = useChangeLog();
-  const orders = React.useMemo(() => buildOrders(log.changes, log.rows, log.entityMap), [log.changes, log.rows, log.entityMap]);
+  /* FEES PRICED BY THE FEE RULE ENGINE (Yash, 2026-11-24) — charged fees and
+     review fees someone applied; the rest wait on the order sheet. */
+  syncOwn(log.rows);
+  const feeStore = useFees();
+  const hub = useHubMap(log.rows, log.entityMap);
+  const feesFor = React.useCallback<FeeComponents>(
+    (id, row, facts) =>
+      feesOnOrder(id, row, hub(row.shiptoId), facts, feeStore)
+        .filter((x) => (x.state === "charged" || x.state === "applied") && x.amount !== null)
+        .map((x) => ({
+          key: `fee-${x.fee.id}`,
+          group: "Fee" as const,
+          name: x.fee.name,
+          how: `${x.state === "applied" ? "Applied on review" : x.why} · ${rateText(x.fee.amount)}`,
+          perGal: (x.amount ?? 0) / Math.max(1, facts.deliveredGallons ?? facts.orderedGallons),
+          amount: x.amount ?? 0,
+          history: [],
+        })),
+    [feeStore, hub]
+  );
+  const orders = React.useMemo(() => buildOrders(log.changes, log.rows, log.entityMap, feesFor), [log.changes, log.rows, log.entityMap, feesFor]);
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [range, setRange] = React.useState<DateRange>(lastMonth);
   const [search, setSearch] = React.useState("");
@@ -194,7 +215,7 @@ export function OrderTraceScreen() {
       { key: "customer", label: "Customer", options: opts("customer"), searchable: true },
       { key: "shipto", label: "Ship-to", options: opts("shipto"), searchable: true },
       { key: "product", label: "Product", options: opts("product"), searchable: true },
-      { key: "status", label: "Status", options: ["Delivered", "Invoiced"] },
+      { key: "status", label: "Status", options: ["Scheduled", "Delivered", "Invoiced"] },
       { key: "after", label: "Changed after order", options: ["Yes", "No"] },
       { key: "rateType", label: "Rate type", options: opts("rateType") },
       { key: "market", label: "Market", options: opts("market"), searchable: true },

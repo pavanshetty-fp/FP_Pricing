@@ -12,6 +12,8 @@ import { attend } from "../PendingStrip";
 import { fmtDateTime, plural, productOf, shiptoOf } from "./changeLog";
 import { ChangeSheet } from "./ChangeSheet";
 import { ORDER_STATUS_KIND, PHASE_LABEL, money2, money3, orderLabel, type Phase, type PricedOrder } from "./orderTrace";
+import { Button } from "@/components/ui/button";
+import { OrderDetailsSheet } from "./OrderDetails";
 
 /*
   AN ORDER'S PRICE, TRACED (Yash, 2026-11-16) — the prototype's trace on the
@@ -48,6 +50,8 @@ export function Linked({ label, value, detail }: { label: string; value: string;
 export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | null; onClose: () => void }) {
   const [open, setOpen] = React.useState<Set<string>>(new Set());
   const [changeId, setChangeId] = React.useState<string | null>(null);
+  /* ORDER DETAILS (Yash, 2026-11-24) — the order itself, with its fees to review. */
+  const [details, setDetails] = React.useState(false);
   React.useEffect(() => setOpen(new Set()), [o?.id]);
   if (!o) return null;
   const n = orderLabel(o);
@@ -83,6 +87,9 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
         noFooter
         headerAside={
           <span className="flex items-center gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => setDetails(true)}>
+              Order details
+            </Button>
             <StatusChip tone={kindTone(ORDER_STATUS_KIND[o.status])} variant="soft">
               {o.status}
             </StatusChip>
@@ -103,7 +110,7 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
             per gallon taken apart: the market's base, the margin on top, the
             fees and taxes. Read-only (Yash, 2026-11-16). */}
         <div className={FIGURE_STRIP}>
-          <Figure label="Total" value={money2(o.total)} note={`${o.gallons.toLocaleString()} gal · ${money3(o.perGal)}/gal`} />
+          <Figure label="Total" value={money2(o.total)} note={`${o.gallons.toLocaleString()} gal${o.status === "Scheduled" ? " ordered" : ""} · ${money3(o.perGal)}/gal`} />
           <Figure
             label="Base price ($/gal)"
             value={money3(part("Base price"))}
@@ -122,6 +129,7 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]">
+          <div className="flex min-w-0 flex-col gap-10">
           <section id="trace-price" className="min-w-0 scroll-mt-4 overflow-hidden rounded-lg border border-border">
             {/* FIXED COLUMNS (Yash, 2026-11-16) — the widths are set once, so
                 opening a component's history never moves a column. What was
@@ -217,6 +225,7 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
               </TableBody>
             </Table>
           </section>
+          </div>
 
           {/* THE RIGHT COLUMN, AS EVERY RECORD SHEET HAS IT (Yash, 2026-11-16):
               a card per subject, each titled with its icon. The order's own
@@ -236,7 +245,7 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
             <RailCard title="Record" icon={<History />}>
               <dl className="flex flex-col py-1">
                 <RailRow label="Ordered" value={fmtDateTime(o.placedAt)} />
-                <RailRow label="Delivered" value={fmtDateTime(o.deliveredAt)} />
+                <RailRow label={o.status === "Scheduled" ? "Planned" : "Delivered"} value={fmtDateTime(o.deliveredAt)} />
                 <RailRow label="Invoiced" value={o.invoicedAt ? fmtDateTime(o.invoicedAt) : "—"} />
                 <RailRow label="Priced at" value="Delivery" />
               </dl>
@@ -245,13 +254,16 @@ export function OrderTraceSheet({ order: o, onClose }: { order: PricedOrder | nu
               <dl className="flex flex-col py-1">
                 <RailRow label="Rate type" value={o.rateType} />
                 <RailRow label="Market" value={o.market} />
-                <RailRow label="Gallons" value={o.gallons.toLocaleString()} />
+                <RailRow label={o.status === "Scheduled" ? "Gallons ordered" : "Gallons"} value={o.gallons.toLocaleString()} />
+                <RailRow label="Order type" value={o.orderType} />
               </dl>
             </RailCard>
           </div>
         </div>
       </RecordSheet>
       <ChangeSheet id={changeId} onClose={() => setChangeId(null)} onOpen={setChangeId} level={2} />
+      {details && <OrderDetailsSheet order={o} onClose={() => setDetails(false)} />}
     </>
   );
 }
+

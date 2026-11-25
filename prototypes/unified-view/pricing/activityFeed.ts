@@ -67,12 +67,12 @@ export type FeedColumnKey =
 export const FEED_COLUMNS: ListColumn<FeedColumnKey>[] = [
   { key: "when", label: "Date & time", width: 180, sortable: true },
   /* NO CHANGE ID COLUMN (Yash, 2026-11-18) — the opened change carries it. */
-  { key: "entity", label: "Entity", width: 140, sortable: true },
+  { key: "entity", label: "Artifact", width: 140, sortable: true },
   { key: "action", label: "Action", width: 120, sortable: true },
   /* ENTITY → ACTION → CHANGE, the order it is said in (Yash, 2026-11-17). */
   { key: "change", label: "Change", width: 360, sortable: true },
-  { key: "by", label: "Made by", width: 150, sortable: true },
-  { key: "source", label: "Made via", width: 200, sortable: true },
+  { key: "by", label: "Change by", width: 150, sortable: true },
+  { key: "source", label: "Change via", width: 200, sortable: true },
   /* ASSIGNED OR INHERITED, beside how it was made (Yash, 2026-11-18). */
   { key: "assignment", label: "Assignment", width: 130, sortable: true },
   { key: "customers", label: "Customers", width: 250, sortable: true },
@@ -87,8 +87,8 @@ export const FEED_COLUMNS: ListColumn<FeedColumnKey>[] = [
 export const FEED_GROUP_DIMS: GroupDim<ChangeRecord>[] = [
   { key: "day", label: "Day", valuesOf: (c) => [fmtDate(c.effectiveAt)] },
   { key: "action", label: "Action", hides: "action", valuesOf: (c) => [actionOf(c)] },
-  { key: "entity", label: "Entity", multi: true, valuesOf: entitiesOf },
-  { key: "source", label: "Made via", hides: "source", valuesOf: (c) => [SOURCE_LABEL[c.source]] },
+  { key: "entity", label: "Artifact", multi: true, valuesOf: entitiesOf },
+  { key: "source", label: "Change via", hides: "source", valuesOf: (c) => [SOURCE_LABEL[c.source]] },
   { key: "assignment", label: "Assignment", hides: "assignment", order: ["Assigned", "Inherited"], valuesOf: (c) => [assignmentOf(c)] },
   {
     key: "status",
@@ -97,7 +97,7 @@ export const FEED_GROUP_DIMS: GroupDim<ChangeRecord>[] = [
     order: Object.values(STATUS_LABEL),
     valuesOf: (c) => [STATUS_LABEL[c.status]],
   },
-  { key: "by", label: "Made by", hides: "by", valuesOf: (c) => [c.by] },
+  { key: "by", label: "Change by", hides: "by", valuesOf: (c) => [c.by] },
   { key: "customer", label: "Customer", multi: true, valuesOf: customersOf },
   { key: "shipto", label: "Ship-to", multi: true, valuesOf: shiptosOf },
 ];

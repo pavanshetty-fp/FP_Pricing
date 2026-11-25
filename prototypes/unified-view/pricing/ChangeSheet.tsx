@@ -53,6 +53,7 @@ import {
   shiptoOf,
   uniq,
   FIELD_LABEL,
+  NOT_SET,
   IS_LIST,
   type ChangeRecord,
   type Edit,
@@ -296,7 +297,7 @@ function ChangeSheetBody({
           { key: "shipto", label: "Ship-to", width: 170, sortable: true },
           { key: "customer", label: "Customer", width: 250, sortable: true },
           { key: "product", label: "Product", width: 170, sortable: true },
-          { key: "setting", label: "Entity", width: 110, sortable: true },
+          { key: "setting", label: "Artifact", width: 110, sortable: true },
           { key: "action", label: "Action", width: 130, sortable: true },
           /* THE CHANGE, AS THE FEED SAYS IT (Yash, 2026-11-17) — not the
              whole list before and after; what came off muted. */
@@ -313,14 +314,14 @@ function ChangeSheetBody({
               address: shiptoOf(l.shiptoId).address,
               product: productOf(l.productId).name,
               setting: SETTING_LABEL[l.setting],
-              action: lineAction(l),
+              action: c.configures ? "Configured" : lineAction(l),
               change: lineParts(l, ents).map((p) => p.t).join(" "),
               delta: cents(l.delta),
               error: l.error ?? "",
             },
             sort: { delta: l.delta },
             status: LINE_OUTCOME[l.outcome],
-            values: { customer: customerOf(l.customerId).name, shipto: shiptoOf(l.shiptoId).name, product: productOf(l.productId).name, outcome: LINE_OUTCOME[l.outcome], setting: SETTING_LABEL[l.setting], action: lineAction(l) },
+            values: { customer: customerOf(l.customerId).name, shipto: shiptoOf(l.shiptoId).name, product: productOf(l.productId).name, outcome: LINE_OUTCOME[l.outcome], setting: SETTING_LABEL[l.setting], action: c.configures ? "Configured" : lineAction(l) },
           })
         ),
         nameOf: (r) => `${r.text.shipto} · ${r.text.product}`,
@@ -332,7 +333,7 @@ function ChangeSheetBody({
           { key: "product", label: "Product", searchable: true },
           { key: "shipto", label: "Ship-to", searchable: true },
           { key: "customer", label: "Customer", searchable: true },
-          { key: "setting", label: "Entity" },
+          { key: "setting", label: "Artifact" },
           { key: "action", label: "Action" },
         ],
         renderCell: (r, key) =>
@@ -494,33 +495,60 @@ function ChangeSheetBody({
           moved. Pressing one shows those prices. */}
       <section className="flex shrink-0 flex-col gap-2">
         <h3 className="text-sm font-medium text-foreground">What changed</h3>
-        <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        {/* A HEADER ROW, and each row's records a link to them (Yash, 2026-11-25). */}
+        <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+          <div className={cn(WC_GRID, "bg-fp-table-header py-2 text-sm font-medium text-muted-foreground")}>
+            <span>Artifact</span>
+            <span>Action</span>
+            <span>Change</span>
+            <span className="text-right">Records affected</span>
+          </div>
           {c.edits.length && !c.undoOf && !c.resets ? (
             c.edits.map((e, i) => {
               const n = c.lines.filter((l) => l.setting === e.setting).length;
               return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => openRows([`setting:${SETTING_LABEL[e.setting]}`])}
-                  className="grid grid-cols-[140px_110px_minmax(0,1fr)_auto] items-center gap-4 px-4 py-2.5 text-left text-sm outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/50"
-                >
+                <div key={i} className={cn(WC_GRID, "py-2.5 text-sm")}>
                   <span className="text-foreground">{SETTING_LABEL[e.setting]}</span>
                   <span>
-                    <Pill>{c.configures ? "Added" : editAction(e)}</Pill>
+                    <Pill>{editAction(e)}</Pill>
                   </span>
                   <EditChange e={e} lines={c.lines} ents={ents} />
-                  <span className="text-muted-foreground">{plural(n, "price")}</span>
-                </button>
+                  <span className="text-right">
+                    {n > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => openRows([`setting:${SETTING_LABEL[e.setting]}`])}
+                        className="rounded-sm text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 outline-none hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring/50"
+                      >
+                        {plural(n, "record")}
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </span>
+                </div>
               );
             })
           ) : (
-            <div className="grid grid-cols-[140px_110px_minmax(0,1fr)] items-center gap-4 px-4 py-2.5 text-sm">
+            <div className={cn(WC_GRID, "py-2.5 text-sm")}>
               <span className="text-foreground">Pricing</span>
               <span>
                 <Pill>{action}</Pill>
               </span>
               <span className="truncate text-foreground">{summary}</span>
+              <span className="text-right">
+                {c.lines.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => openRows([])}
+                    className="rounded-sm text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 outline-none hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring/50"
+                  >
+                    {plural(c.lines.length, "record")}
+                  </button>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </span>
             </div>
           )}
         </div>
@@ -638,7 +666,7 @@ function lineParts(l: ImpactLine, ents: EntityMap): LinePart[] {
   if (l.field === "desc") return [{ t: "Description updated" }];
   if (l.field) {
     const lead = l.field === "name" || l.field === "active" ? [] : [{ t: `${FIELD_LABEL[l.field]}:` }];
-    return [...lead, { t: l.before || "none", old: true }, { t: "→", old: true }, { t: l.after || "none" }];
+    return [...lead, { t: l.before || NOT_SET, old: true }, { t: "→", old: true }, { t: l.after || NOT_SET }];
   }
   const nm = (id: string) => ents.get(id)?.name ?? id;
   const val = (id: string) => {
@@ -649,15 +677,15 @@ function lineParts(l: ImpactLine, ents: EntityMap): LinePart[] {
     const [n, was] = l.before.split(" · ");
     return [{ t: `${n}:` }, { t: was, old: true }, { t: "→", old: true }, { t: l.after.split(" · ")[1] ?? l.after }];
   }
-  if (!IS_LIST[l.setting]) return [{ t: l.before || "—", old: true }, { t: "→", old: true }, { t: l.after || "—" }];
+  const blank = (t: string) => (!t || t === "None" ? NOT_SET : t);
+  if (!IS_LIST[l.setting]) return [{ t: blank(l.before), old: true }, { t: "→", old: true }, { t: blank(l.after) }];
   const added = l.afterIds.filter((id) => !l.beforeIds.includes(id));
   const removed = l.beforeIds.filter((id) => !l.afterIds.includes(id));
-  const both = added.length > 0 && removed.length > 0;
-  const out: LinePart[] = [];
-  if (removed.length) out.push(...(both ? [{ t: "Deleted", old: true }] : []), { t: removed.map(val).join(", "), old: true });
-  if (both) out.push({ t: "·", old: true }, { t: "Added", old: true });
-  if (added.length) out.push({ t: added.map(val).join(", ") });
-  return out.length ? out : [{ t: l.after || "—" }];
+  /* Assigned: the names; unassigned: the names, muted; both: before → after. */
+  if (added.length && removed.length) return [{ t: removed.map(val).join(", "), old: true }, { t: "→", old: true }, { t: added.map(val).join(", ") }];
+  if (removed.length) return [{ t: removed.map(val).join(", "), old: true }];
+  if (added.length) return [{ t: added.map(val).join(", ") }];
+  return [{ t: blank(l.after) }];
 }
 
 function LineChange({ l, ents }: { l: ImpactLine | undefined; ents: EntityMap }) {
@@ -685,6 +713,9 @@ function Old({ text }: { text: string }) {
 
 /** One edit's change: what came off muted, what went on plain; an added
  *  setting shows its value too (Yash, 2026-11-17). */
+/** What changed's columns: Artifact · Action · Change · Records affected. */
+const WC_GRID = "grid grid-cols-[140px_110px_minmax(0,1fr)_auto] items-center gap-4 px-4";
+
 function EditChange({ e, lines, ents }: { e: Edit; lines: ImpactLine[]; ents: EntityMap }) {
   const name = (id: string) => {
     const ent = ents.get(id);
@@ -702,44 +733,31 @@ function EditChange({ e, lines, ents }: { e: Edit; lines: ImpactLine[]; ents: En
     return row(
       <>
         <span className="shrink-0 text-foreground">{e.field === "name" ? "Name:" : `${name(e.entityIds[0])} · ${FIELD_LABEL[e.field]}:`}</span>
-        <span className="truncate text-muted-foreground">{e.from || "none"}</span>
+        <span className="truncate text-muted-foreground">{e.from || NOT_SET}</span>
         <Arrow />
-        <span className="truncate text-foreground">{e.to || "none"}</span>
+        <span className="truncate text-foreground">{e.to || NOT_SET}</span>
       </>
     );
-  if (e.operation === "add" || e.operation === "create") return row(<span className="truncate text-foreground">{e.entityIds.map(withValue).join(", ")}</span>);
+  if (e.operation === "add" || e.operation === "create" || e.configure) return row(<span className="truncate text-foreground">{e.entityIds.map(withValue).join(", ")}</span>);
   if (e.operation === "remove") return row(<span className="truncate text-muted-foreground">{e.entityIds.map(withValue).join(", ")}</span>);
   if (e.operation === "edit") {
     const was = mine.find((l) => l.beforeIds.includes(e.entityIds[0]))?.before.split(" · ")[1];
     return row(
       <>
         <span className="shrink-0 text-foreground">{name(e.entityIds[0])}:</span>
-        {was && (
-          <>
-            <span className="shrink-0 text-muted-foreground">{was}</span>
-            <Arrow />
-          </>
-        )}
+        <span className="shrink-0 text-muted-foreground">{was ?? NOT_SET}</span>
+        <Arrow />
         <span className="shrink-0 text-foreground">{money(e.amount ?? 0)}</span>
       </>
     );
   }
-  if (!off.length) return row(<span className="truncate text-foreground">{e.entityIds.map(withValue).join(", ")}</span>);
-  if (IS_LIST[e.setting])
-    return row(
-      <>
-        <span className="text-muted-foreground">Deleted</span>
-        <span className="truncate text-muted-foreground">{off.map(withValue).join(", ")}</span>
-        <span className="text-muted-foreground">·</span>
-        <span className="text-muted-foreground">Added</span>
-        <span className="truncate text-foreground">{e.entityIds.map(withValue).join(", ")}</span>
-      </>
-    );
+  /* REPLACED: BEFORE → AFTER, "Not set" when there was none (Yash, 2026-11-25). */
+  const show = IS_LIST[e.setting] ? withValue : name;
   return row(
     <>
-      <span className="truncate text-muted-foreground">{off.map(name).join(", ")}</span>
+      <span className="truncate text-muted-foreground">{off.length ? off.map(show).join(", ") : NOT_SET}</span>
       <Arrow />
-      <span className="truncate text-foreground">{e.entityIds.map(name).join(", ")}</span>
+      <span className="truncate text-foreground">{e.entityIds.map(show).join(", ")}</span>
     </>
   );
 }

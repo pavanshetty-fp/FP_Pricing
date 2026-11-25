@@ -808,7 +808,7 @@ function SetupActivitySheet({ kind, id, onClose }: { kind: Kind; id: string; onC
     ),
     facets: [
       { key: "action", label: "Action" },
-      { key: "by", label: "Made by" },
+      { key: "by", label: "Change by" },
     ],
     renderCell: (r, key) =>
       key === "when" ? <TwoLineCell title={r.text.when} description={r.text.by} /> : key === "action" ? <Pill>{r.text.action}</Pill> : undefined,

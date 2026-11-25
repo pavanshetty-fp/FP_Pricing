@@ -275,12 +275,12 @@ export function ActivityFeedScreen() {
       { key: "customer", label: "Customer", options: opts("customer"), searchable: true },
       { key: "shipto", label: "Ship-to", options: opts("shipto"), searchable: true },
       { key: "product", label: "Product", options: opts("product"), searchable: true },
-      { key: "action", label: "Action", options: ACTIONS.filter((a) => a !== "Deactivated") },
-      { key: "entity", label: "Entity", options: SETTINGS.map((s) => SETTING_LABEL[s]) },
-      { key: "source", label: "Made via", options: Object.values(SOURCE_LABEL) },
+      { key: "action", label: "Action", options: ACTIONS },
+      { key: "entity", label: "Artifact", options: SETTINGS.map((s) => SETTING_LABEL[s]) },
+      { key: "source", label: "Change via", options: Object.values(SOURCE_LABEL) },
       { key: "assignment", label: "Assignment", options: ["Assigned", "Inherited"] },
       { key: "status", label: "Status", options: Object.values(STATUS_LABEL) },
-      { key: "by", label: "Made by", options: opts("by") },
+      { key: "by", label: "Change by", options: opts("by") },
     ];
   }, [log.changes]);
 

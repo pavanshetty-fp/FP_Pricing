@@ -45,13 +45,13 @@ export function timelineTab(scope: Scope, ents: EntityMap, onOpen: (id: string) 
     one: "change",
     columns: [
       { key: "when", label: "Date & time", width: 180, sortable: true },
-      { key: "setting", label: "Entity", width: 120, sortable: true },
+      { key: "setting", label: "Artifact", width: 120, sortable: true },
       { key: "action", label: "Action", width: 120, sortable: true },
       { key: "change", label: "Change", width: 300, sortable: true },
       { key: "kind", label: "Kind", width: 120, sortable: true },
       { key: "applies", label: "Applies to", width: 200, sortable: true },
-      { key: "by", label: "Made by", width: 140, sortable: true },
-      { key: "source", label: "Made via", width: 180, sortable: true },
+      { key: "by", label: "Change by", width: 140, sortable: true },
+      { key: "source", label: "Change via", width: 180, sortable: true },
       { key: "status", label: "Status", width: 120, sortable: true },
     ],
     rows: scope.changes.map(({ c, lines }): ViewRow => {
@@ -81,9 +81,9 @@ export function timelineTab(scope: Scope, ents: EntityMap, onOpen: (id: string) 
     }),
     facets: [
       { key: "kind", label: "Kind" },
-      { key: "setting", label: "Entity" },
+      { key: "setting", label: "Artifact" },
       { key: "action", label: "Action" },
-      { key: "by", label: "Made by" },
+      { key: "by", label: "Change by" },
       { key: "status", label: "Status" },
     ],
     renderCell: (r, key) =>
@@ -107,7 +107,7 @@ export function whereTab(where: { by: "shipto" | "entity"; rows: WhereRow[] }, o
     noun: ship ? "ship-tos" : "entities",
     one: ship ? "ship-to" : "entity",
     columns: [
-      { key: "name", label: ship ? "Ship-to" : "Entity", width: 220, sortable: true },
+      { key: "name", label: ship ? "Ship-to" : "Artifact", width: 220, sortable: true },
       ...(ship ? [{ key: "sub", label: "Customer", width: 200, sortable: true }] : []),
       { key: "changes", label: "Changes", width: 110, sortable: true },
       { key: "assignment", label: "Assignment", width: 120, sortable: true },
@@ -145,7 +145,7 @@ export function whoTab(who: WhoRow[]): ViewTab {
       { key: "name", label: "Person", width: 160, sortable: true },
       { key: "changes", label: "Changes", width: 110, sortable: true },
       { key: "mostly", label: "Mostly", width: 180, sortable: true },
-      { key: "via", label: "Made via", width: 260, sortable: true },
+      { key: "via", label: "Change via", width: 260, sortable: true },
       { key: "last", label: "Last change", width: 140, sortable: true },
     ],
     rows: who.map(

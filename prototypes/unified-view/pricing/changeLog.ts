@@ -230,11 +230,19 @@ export const OPERATION_LABEL: Record<Operation, string> = {
    replaced by three. Something went on (Added), came off (Deleted), or
    changed (Updated); Deactivated is a setup record switched off. A change
    that both adds and deletes reads as Updated. */
-export type Action = "Added" | "Deleted" | "Updated" | "Deactivated";
-export const ACTIONS: Action[] = ["Added", "Deleted", "Updated", "Deactivated"];
+/* THE TAGS, BY LEVEL (Yash, 2026-11-25). An artifact in Pricing setup is
+   Added (created), Activated, Deactivated or Updated (value, name,
+   description…; several at once). On a customer or ship-to, pricing is
+   Configured the first time; an artifact is then Assigned or Unassigned; a
+   replaced artifact or a changed single value is Updated, and so is a change
+   with several actions. Nothing is deleted — setup only deactivates. */
+export type Action = "Added" | "Activated" | "Deactivated" | "Updated" | "Configured" | "Assigned" | "Unassigned";
+export const ACTIONS: Action[] = ["Added", "Activated", "Deactivated", "Updated", "Configured", "Assigned", "Unassigned"];
+/** The before of a value that had none (UX-167: one word for it). */
+export const NOT_SET = "Not set";
 const OP_ACTION: Record<Operation, Action> = {
-  add: "Added",
-  remove: "Deleted",
+  add: "Assigned",
+  remove: "Unassigned",
   replace: "Updated",
   set: "Updated",
   edit: "Updated",
@@ -253,22 +261,32 @@ export const FIELD_LABEL: Record<SetupField, string> = {
   todays: "Today's pricing",
   active: "Status",
 };
-export const editAction = (e: { operation: Operation; field?: SetupField; to?: string }) =>
-  e.field === "active" && e.to === "Inactive" ? "Deactivated" : OP_ACTION[e.operation];
-export function recordAction(c: { edits: { operation: Operation; field?: SetupField; to?: string }[]; undoOf?: string; configures?: boolean; resets?: boolean; rollbackOf?: string }): Action {
-  if (c.configures) return "Added";
+export const editAction = (e: { operation: Operation; field?: SetupField; to?: string; configure?: boolean }): Action =>
+  e.field === "active" ? (e.to === "Inactive" ? "Deactivated" : "Activated") : e.field ? "Updated" : e.configure ? "Configured" : OP_ACTION[e.operation];
+export function recordAction(c: {
+  edits: { operation: Operation; field?: SetupField; to?: string; configure?: boolean }[];
+  undoOf?: string;
+  configures?: boolean;
+  resets?: boolean;
+  rollbackOf?: string;
+}): Action {
+  if (c.configures) return "Configured";
   if (c.resets || c.rollbackOf || c.undoOf) return "Updated";
   const a = [...new Set(c.edits.map(editAction))];
-  return a.length === 1 ? a[0] : "Updated";
+  if (a.length === 1) return a[0];
+  /* A STATUS CHANGE IS NOT HIDDEN BY THE EDITS BESIDE IT (2026-11-25). */
+  if (a.includes("Deactivated")) return "Deactivated";
+  if (a.includes("Activated")) return "Activated";
+  return "Updated";
 }
 /** One line's action: for a list, did things come off, go on, or both. */
 export function lineAction(l: ImpactLine): Action {
-  if (l.field) return l.field === "active" && l.after === "Inactive" ? "Deactivated" : "Updated";
+  if (l.field) return l.field === "active" ? (l.after === "Inactive" ? "Deactivated" : "Activated") : "Updated";
   if (!IS_LIST[l.setting]) return "Updated";
   if (l.before.includes(" · ")) return "Updated";
   const off = l.beforeIds.some((id) => !l.afterIds.includes(id));
   const on = l.afterIds.some((id) => !l.beforeIds.includes(id));
-  return off && on ? "Updated" : on ? "Added" : "Deleted";
+  return off && on ? "Updated" : on ? "Assigned" : "Unassigned";
 }
 
 /** One edit: what it does, to which rows. A submit carries one or more. */
@@ -498,7 +516,7 @@ export function project(rows: ConfigRow[], edits: Edit[], ents: EntityMap, befor
       if (!row) continue;
       // Unconfigured rows have no pricing to change — only a configure sets them up.
       if (!row.configured && !e.configure) continue;
-      const after = applyEdit(row, e);
+      const after = e.configure ? { ...applyEdit(row, e), configured: true } : applyEdit(row, e);
       const was = readSetting(row, e.setting, ents);
       const now = readSetting(after, e.setting, ents);
       if (was.text === now.text) {
@@ -570,13 +588,13 @@ export function editTitle(e: Edit, ents: EntityMap): string {
   if (e.field) return `${names}: ${FIELD_LABEL[e.field].toLowerCase()} updated`;
   switch (e.operation) {
     case "add":
-      return e.setting === "adder" ? `Adjustment ${names} added` : `${names} added`;
+      return `${names} assigned`;
     case "replace":
       return `${s} updated: ${names}`;
     case "set":
       return `${s} set to ${names}`;
     case "remove":
-      return `${names} deleted`;
+      return `${names} unassigned`;
     case "edit":
       return `${names} changed to ${money(e.amount ?? 0)}`;
     case "create":
@@ -786,8 +804,25 @@ function storyPlans(): Plan[] {
     { at: at(4, 13, 40), by: "Cody McLelland", source: "setup", edits: () => [{ setting: "market", operation: "edit", entityIds: ["k-lake-charles"], rowIds: [], field: "hubs", from: "Lake Charles hub", to: "Lake Charles hub, Sulphur hub" }] },
     { at: at(1, 16, 5), by: "Valarie Rogers", source: "setup", edits: () => [{ setting: "rateType", operation: "edit", entityIds: ["r-opis-rack-high"], rowIds: [], field: "active", from: "Active", to: "Inactive" }] },
     { at: at(8, 9, 20), by: "Yash J", source: "setup", edits: () => [{ setting: "margin", operation: "edit", entityIds: ["m-winter-fleet-margin"], rowIds: [], field: "desc", from: "Seasonal fleet accounts", to: "Seasonal fleet accounts, Nov–Feb" }] },
+    // Every tag has a sample (Yash, 2026-11-25): a record set up for the first
+    // time (Configured), and an artifact switched back on (Activated).
+    {
+      at: at(3, 11, 25),
+      by: "Priya Nair",
+      source: "shiptoInline",
+      edits: (r) => {
+        const ids = rowsOf(r, (x) => !x.configured).slice(0, 4);
+        return [
+          { setting: "rateType", operation: "set", entityIds: ["r-opis-rack-avg"], rowIds: ids, configure: true },
+          { setting: "market", operation: "set", entityIds: ["k-houston"], rowIds: ids, configure: true },
+          { setting: "margin", operation: "add", entityIds: ["m-standard-rack-margin"], rowIds: ids, configure: true },
+          { setting: "fee", operation: "add", entityIds: ["f-delivery-fee"], rowIds: ids, configure: true },
+        ];
+      },
+    },
+    { at: at(7, 15, 0), by: "Marcus Hale", source: "setup", edits: () => [{ setting: "adder", operation: "edit", entityIds: ["a-river-access-adder"], rowIds: [], field: "active", from: "Inactive", to: "Active" }] },
     // Pricing Setup: a new fee created (not on any row yet).
-    { at: at(2, 11, 20), by: "Yash J", source: "setup", edits: () => [{ setting: "fee", operation: "create", entityIds: ["f-weekend-delivery-fee"], rowIds: [] }] },
+    { at: at(27, 11, 20), by: "Yash J", source: "setup", edits: () => [{ setting: "fee", operation: "create", entityIds: ["f-weekend-delivery-fee"], rowIds: [] }] },
     // A change undone straight after.
     { at: at(3, 15, 10), by: "Valarie Rogers", source: "shiptoBulk", edits: one("market", "set", ["k-beaumont"], cust(["coastal", "gulf", "lonestar"])), undoAfter: 12 },
     // A schedule canceled before it ran.
@@ -906,6 +941,7 @@ export function buildSeed(): Seed {
       lines,
       orders: ordersFor(lines, new Map(rows.map((r) => [r.id, r])), eff, id),
       undoOf,
+      configures: edits.length > 0 && edits.every((e) => e.configure) ? true : undefined,
     };
     changes.push(rec);
     return rec;
@@ -916,7 +952,7 @@ export function buildSeed(): Seed {
       pending.push(p);
       continue;
     }
-    let edits = p.edits(rows, ents).filter((e) => e.operation === "edit" || e.rowIds.length);
+    let edits = p.edits(rows, ents).filter((e) => e.operation === "edit" || e.operation === "create" || e.rowIds.length);
     /* A SAMPLE EDIT THAT MOVES NOTHING IS LEFT OUT (Yash, 2026-11-17) — no
        "0 product prices" line in a bulk change. */
     if (edits.length > 1) {
@@ -1101,22 +1137,19 @@ export function editParts(e: Edit, lines: ImpactLine[], ents: EntityMap): Summar
   };
   const label = ({ margin: "margins", fee: "fees", tax: "taxes", rateType: "rate types", market: "markets", adder: "adders" } as const)[e.setting];
   const list = (ids: string[]): SummaryPart => ({ names: ids.map(name), label });
-  if (e.field === "name") return [`${e.from} → ${e.to}`];
+  if (e.field === "name") return [`Name: ${e.from || NOT_SET} → ${e.to || NOT_SET}`];
   if (e.field === "active") return [list(e.entityIds)];
   if (e.field === "desc") return [list(e.entityIds), ": description updated"];
-  if (e.field) return [list(e.entityIds), `: ${FIELD_LABEL[e.field].toLowerCase()} ${e.from || "none"} → ${e.to || "none"}`];
-  if (e.operation === "add" || e.operation === "remove" || e.operation === "create") return [list(e.entityIds)];
+  if (e.field) return [list(e.entityIds), `: ${FIELD_LABEL[e.field].toLowerCase()} ${e.from || NOT_SET} → ${e.to || NOT_SET}`];
+  if (e.operation === "add" || e.operation === "remove" || e.operation === "create" || e.configure) return [list(e.entityIds)];
   if (e.operation === "edit") {
     const was = lines.find((l) => l.setting === e.setting && l.beforeIds.includes(e.entityIds[0]))?.before.split(" · ")[1];
-    return [list(e.entityIds), was ? `: ${was} → ${money(e.amount ?? 0)}` : `: ${money(e.amount ?? 0)}`];
+    return [list(e.entityIds), `: ${was ?? NOT_SET} → ${money(e.amount ?? 0)}`];
   }
+  /* REPLACED: BEFORE → AFTER (Yash, 2026-11-25), "Not set" when there was none. */
   const mine = lines.filter((l) => l.setting === e.setting);
   const off = uniq(mine.flatMap((l) => l.beforeIds.filter((id) => !l.afterIds.includes(id))));
-  /* A LIST SWAP SAYS WHAT CAME OFF AND WHAT WENT ON — not "A → B, C, D",
-     which read as one tax turned into three. A single value (rate type,
-     market) still reads old → new. */
-  if (!off.length) return [list(e.entityIds)];
-  return IS_LIST[e.setting] ? ["Deleted ", list(off), " · Added ", list(e.entityIds)] : [list(off), " → ", list(e.entityIds)];
+  return off.length ? [list(off), " → ", list(e.entityIds)] : [`${NOT_SET} → `, list(e.entityIds)];
 }
 
 export const editSummary = (e: Edit, lines: ImpactLine[], ents: EntityMap) => partsText(editParts(e, lines, ents));
@@ -1126,11 +1159,20 @@ export function changeParts(c: ChangeRecord, ents: EntityMap): SummaryPart[] {
   if (c.undoOf) return ["Undo: ", ...changeParts({ ...c, undoOf: undefined }, ents)];
   if (c.resets) return ["Reset to customer pricing"];
   if (c.rollbackOf) return [`Rollback of ${c.rollbackOf}`];
+  /* CONFIGURED: what was assigned, by artifact (Yash, 2026-11-25). */
+  if (c.configures)
+    return c.edits.flatMap((e, i) => [...(i > 0 ? [" · "] : []), `${SETTING_LABEL[e.setting]} assigned: `, ...editParts({ ...e, operation: "add" }, c.lines, ents)]);
   return c.edits.flatMap((e, i) => [
     ...(i > 0 ? [" · "] : []),
-    /* SEVERAL EDITS SAY EACH ONE'S VERB (Yash, 2026-11-17): "Tax added:
-       LUST Fee · Fees deleted: Delivery Fee". */
-    ...(c.edits.length > 1 ? [`${SETTING_LABEL[e.setting]} ${editAction(e).toLowerCase()}: `] : []),
+    /* "{ARTIFACT}: names" for one edit; "{Artifact} {action}: …" for several,
+       so each says its verb (Yash, 2026-11-25): "Fees updated: A, B → C ·
+       Tax assigned: D · Margin unassigned: E". A setup record's own edit
+       names itself, so it takes no artifact prefix alone. */
+    ...(c.edits.length > 1
+      ? [`${SETTING_LABEL[e.setting]} ${editAction(e).toLowerCase()}: `]
+      : e.field || e.operation === "edit"
+        ? []
+        : [`${SETTING_LABEL[e.setting]}: `]),
     ...editParts(e, c.lines, ents),
   ]);
 }

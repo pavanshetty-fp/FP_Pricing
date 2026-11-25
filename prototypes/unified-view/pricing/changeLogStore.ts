@@ -454,10 +454,25 @@ export function metaOf(e: Entity, meta: Record<string, SetupMeta>): SetupMeta {
 export function createSetup(setting: Setting, name: string, desc: string | undefined, value: number | undefined, meta: SetupMeta): string {
   const id = addEntity(setting, name, value ?? 0, desc);
   const s = state;
-  set({
-    entities: s.entities.map((e) => (e.id === id && value === undefined ? { ...e, value: undefined } : e)),
-    meta: { ...s.meta, [id]: meta },
-  });
+  const entities = s.entities.map((e) => (e.id === id && value === undefined ? { ...e, value: undefined } : e));
+  /* A NEW ARTIFACT IS A CHANGE IN THE ACTIVITY FEED (Yash, 2026-11-25) —
+     Added, reaching no customer or ship-to until it is assigned. */
+  const t = nowOf(s) + 60_000;
+  const edits: Edit[] = [{ setting, operation: "create", entityIds: [id], rowIds: [] }];
+  const rec: ChangeRecord = {
+    id: nextId(s),
+    title: recordTitle(edits, new Map(entities.map((e) => [e.id, e]))),
+    edits,
+    source: "setup",
+    by: CURRENT_USER,
+    madeAt: t,
+    effectiveAt: t,
+    status: "applied",
+    noChange: 0,
+    lines: [],
+    orders: [],
+  };
+  set({ entities, meta: { ...s.meta, [id]: meta }, changes: [rec, ...s.changes], tick: s.tick + 1 });
   return id;
 }
 

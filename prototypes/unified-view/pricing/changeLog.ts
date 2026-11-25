@@ -262,7 +262,7 @@ export const FIELD_LABEL: Record<SetupField, string> = {
   active: "Status",
 };
 export const editAction = (e: { operation: Operation; field?: SetupField; to?: string; configure?: boolean }): Action =>
-  e.field === "active" ? (e.to === "Inactive" ? "Deactivated" : "Activated") : e.field ? "Updated" : e.configure ? "Configured" : OP_ACTION[e.operation];
+  e.field === "active" ? (e.to === "Inactive" ? "Deactivated" : "Activated") : e.field ? "Updated" : e.configure ? "Assigned" : OP_ACTION[e.operation];
 export function recordAction(c: {
   edits: { operation: Operation; field?: SetupField; to?: string; configure?: boolean }[];
   undoOf?: string;

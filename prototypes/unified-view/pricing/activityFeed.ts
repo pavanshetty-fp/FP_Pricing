@@ -74,7 +74,6 @@ export const FEED_COLUMNS: ListColumn<FeedColumnKey>[] = [
   { key: "by", label: "Change by", width: 150, sortable: true },
   { key: "source", label: "Change via", width: 200, sortable: true },
   /* ASSIGNED OR INHERITED, beside how it was made (Yash, 2026-11-18). */
-  { key: "assignment", label: "Assignment", width: 130, sortable: true },
   { key: "customers", label: "Customers", width: 250, sortable: true },
   { key: "shiptos", label: "Ship-tos", width: 110, sortable: true },
   { key: "orders", label: "Orders affected", width: 150, sortable: true },
@@ -89,7 +88,6 @@ export const FEED_GROUP_DIMS: GroupDim<ChangeRecord>[] = [
   { key: "action", label: "Action", hides: "action", valuesOf: (c) => [actionOf(c)] },
   { key: "entity", label: "Artifact", multi: true, valuesOf: entitiesOf },
   { key: "source", label: "Change via", hides: "source", valuesOf: (c) => [SOURCE_LABEL[c.source]] },
-  { key: "assignment", label: "Assignment", hides: "assignment", order: ["Assigned", "Inherited"], valuesOf: (c) => [assignmentOf(c)] },
   {
     key: "status",
     label: "Status",

@@ -284,9 +284,10 @@ function ChangeSheetBody({
         /* A PRICE IS ONE PRODUCT AT ONE SHIP-TO — said in the name (Yash,
            2026-11-17: "Ship-to × product" needed explaining out loud). */
         /* SHIP-TO × PRODUCT PRICES (Yash, 2026-11-18) — what one row is. */
-        label: "Ship-to × product prices",
-        noun: "ship-to × product prices",
-        one: "ship-to × product price",
+        /* RECORDS AFFECTED (Yash, 2026-11-25) — the same words as What changed. */
+        label: "Records affected",
+        noun: "records",
+        one: "record",
         /* PRODUCT, SHIP-TO, CUSTOMER — the price is the product's, at a
            ship-to, of a customer (Yash, 2026-11-17). Old and New, as the
            orders say "new price" and "kept old price"; the old one muted. */
@@ -314,14 +315,14 @@ function ChangeSheetBody({
               address: shiptoOf(l.shiptoId).address,
               product: productOf(l.productId).name,
               setting: SETTING_LABEL[l.setting],
-              action: c.configures ? "Configured" : lineAction(l),
+              action: c.configures ? "Assigned" : lineAction(l),
               change: lineParts(l, ents).map((p) => p.t).join(" "),
               delta: cents(l.delta),
               error: l.error ?? "",
             },
             sort: { delta: l.delta },
             status: LINE_OUTCOME[l.outcome],
-            values: { customer: customerOf(l.customerId).name, shipto: shiptoOf(l.shiptoId).name, product: productOf(l.productId).name, outcome: LINE_OUTCOME[l.outcome], setting: SETTING_LABEL[l.setting], action: c.configures ? "Configured" : lineAction(l) },
+            values: { customer: customerOf(l.customerId).name, shipto: shiptoOf(l.shiptoId).name, product: productOf(l.productId).name, outcome: LINE_OUTCOME[l.outcome], setting: SETTING_LABEL[l.setting], action: c.configures ? "Assigned" : lineAction(l) },
           })
         ),
         nameOf: (r) => `${r.text.shipto} · ${r.text.product}`,
@@ -418,7 +419,12 @@ function ChangeSheetBody({
   /* WHO IT REACHED, ON A SIDE SHEET — each ship-to with its customer and
      products (Yash, 2026-11-17), not a dropdown list. */
   const [affected, setAffected] = React.useState<AffectedKind | null>(null);
-  const openRows = (picked: string[]) => setApply({ tab: "lines", picked, n: Date.now() });
+  /* A COUNT OPENS ITS RECORDS AND TAKES YOU TO THEM (Yash, 2026-11-25). */
+  const openRows = (picked: string[]) => {
+    setApply({ tab: "lines", picked, n: Date.now() });
+    /* After the list has taken the filter — it re-renders and would undo an earlier scroll. */
+    window.setTimeout(() => document.getElementById("change-records")?.scrollIntoView({ block: "start" }), 250);
+  };
 
   /* THE TITLE SAYS WHAT HAPPENED, VERB AND ALL (Yash, 2026-11-17): "Tax
      added: LUST Fee · Fees deleted: Delivery Fee", not the names alone. */
@@ -575,7 +581,7 @@ function ChangeSheetBody({
         />
         {/* WHAT THEY MEAN, BEHIND AN ⓘ (UX-96). */}
         <InfoFigure
-          label="Ship-to × product prices"
+          label="Records affected"
           info={
             <>
               <p>One product's price at one ship-to.</p>
@@ -617,7 +623,7 @@ function ChangeSheetBody({
 
       {/* NO RECORD SUMMARY (Yash, 2026-11-17) — the header already says who,
           how and when; the table takes the width. */}
-      <div ref={work} className={WORK_AREA.replace("lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]", "")}>
+      <div ref={work} id="change-records" className={WORK_AREA.replace("lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]", "")}>
         <RecordViews
           resetKey={c.id}
           tabs={tabs}
@@ -671,7 +677,7 @@ function lineParts(l: ImpactLine, ents: EntityMap): LinePart[] {
   const nm = (id: string) => ents.get(id)?.name ?? id;
   const val = (id: string) => {
     const v = ents.get(id)?.value;
-    return typeof v === "number" && !ents.get(id)?.dynamic ? `${nm(id)} ${money(v)}` : nm(id);
+    return typeof v === "number" && !ents.get(id)?.dynamic ? `${nm(id)}: ${money(v)}` : nm(id);
   };
   if (l.beforeIds.length === 1 && l.afterIds.length === 1 && l.beforeIds[0] === l.afterIds[0] && l.before.includes(" · ")) {
     const [n, was] = l.before.split(" · ");
@@ -723,7 +729,7 @@ function EditChange({ e, lines, ents }: { e: Edit; lines: ImpactLine[]; ents: En
   };
   const withValue = (id: string) => {
     const v = ents.get(id)?.value;
-    return typeof v === "number" && !ents.get(id)?.dynamic ? `${name(id)} ${money(v)}` : name(id);
+    return typeof v === "number" && !ents.get(id)?.dynamic ? `${name(id)}: ${money(v)}` : name(id);
   };
   const mine = lines.filter((l) => l.setting === e.setting);
   const off = uniq(mine.flatMap((l) => l.beforeIds.filter((id) => !l.afterIds.includes(id))));
@@ -732,7 +738,7 @@ function EditChange({ e, lines, ents }: { e: Edit; lines: ImpactLine[]; ents: En
   if (e.field)
     return row(
       <>
-        <span className="shrink-0 text-foreground">{e.field === "name" ? "Name:" : `${name(e.entityIds[0])} · ${FIELD_LABEL[e.field]}:`}</span>
+        <span className="shrink-0 text-foreground">{e.field === "name" ? "Name:" : `${name(e.entityIds[0])}: ${FIELD_LABEL[e.field].toLowerCase()}`}</span>
         <span className="truncate text-muted-foreground">{e.from || NOT_SET}</span>
         <Arrow />
         <span className="truncate text-foreground">{e.to || NOT_SET}</span>

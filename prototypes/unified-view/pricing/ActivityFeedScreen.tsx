@@ -278,7 +278,6 @@ export function ActivityFeedScreen() {
       { key: "action", label: "Action", options: ACTIONS },
       { key: "entity", label: "Artifact", options: SETTINGS.map((s) => SETTING_LABEL[s]) },
       { key: "source", label: "Change via", options: Object.values(SOURCE_LABEL) },
-      { key: "assignment", label: "Assignment", options: ["Assigned", "Inherited"] },
       { key: "status", label: "Status", options: Object.values(STATUS_LABEL) },
       { key: "by", label: "Change by", options: opts("by") },
     ];
@@ -544,7 +543,7 @@ export function ActivityFeedScreen() {
             label="Change events"
             info={<p>The number of changes made during this period. A bulk update counts as one change event.</p>}
             value={summary.events.toLocaleString()}
-            note={`${(summary.events - summary.inheritedEvents).toLocaleString()} assigned · ${summary.inheritedEvents.toLocaleString()} inherited`}
+            note={`${(summary.events - summary.inheritedEvents).toLocaleString()} direct · ${summary.inheritedEvents.toLocaleString()} inherited`}
           />
           <InfoFigure
             label="Ship-to impacts"

@@ -47,6 +47,8 @@ import {
 /** A value that reads as one thing — a record number or code (no spaces),
     or a date ("Oct 23, 2026"). */
 const ONE_LINE = /^(\S+|[A-Z][a-z]{2} \d{1,2}, \d{4})$/;
+/** Grouped rows drawn per chunk as the list scrolls. */
+const GROUP_CHUNK = 200;
 
 export interface ListColumn<K extends string> {
   key: K;
@@ -241,6 +243,30 @@ export function ListTable<Row, K extends string>({
     const t = window.setTimeout(() => setEntering(false), 900);
     return () => window.clearTimeout(t);
   }, []);
+  /* A GROUPED LIST SCROLLS WHOLE (UX-29), BUT IS DRAWN AS IT SCROLLS. Grouping
+     suspends pagination, so a 13,000-row list handed every row to the DOM at
+     once and the tab hung. The list still reads as one scroll; rows are drawn
+     a chunk at a time, the next chunk as the reader nears the end. A new set
+     of rows (filter, sort, grouping) starts from the top again. */
+  const [drawn, setDrawn] = React.useState(GROUP_CHUNK);
+  React.useEffect(() => setDrawn(GROUP_CHUNK), [rows]);
+  const allNodes: GroupNode<Row>[] =
+    nodes ?? rows.map((row) => ({ kind: "row" as const, id: rowId(row), depth: 0, row }));
+  const shownNodes = nodes ? allNodes.slice(0, drawn) : allNodes;
+  const more = shownNodes.length < allNodes.length;
+  const tail = React.useRef<HTMLTableRowElement>(null);
+  React.useEffect(() => {
+    const el = tail.current;
+    if (!more || !el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setDrawn((n) => n + GROUP_CHUNK);
+      },
+      { root: frame.current, rootMargin: "0px 0px 800px 0px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [more, drawn]);
   const [frameWidth, setFrameWidth] = React.useState<number | undefined>();
   React.useEffect(() => {
     if (!frame.current) return;
@@ -488,14 +514,7 @@ export function ListTable<Row, K extends string>({
                   
                 </TableRow>
               ))
-            : (nodes ??
-            rows.map((row) => ({
-              kind: "row" as const,
-              id: rowId(row),
-              depth: 0,
-              row,
-            }))
-          ).map((node, rowIndex) =>
+            : shownNodes.map((node, rowIndex) =>
             node.kind === "group" ? (
               <GroupHeaderRow
                 key={node.id}
@@ -639,6 +658,11 @@ export function ListTable<Row, K extends string>({
             </React.Fragment>
               )
             )}
+          {!loading && more && (
+            <TableRow ref={tail} aria-hidden className="h-14 hover:bg-transparent">
+              <TableCell colSpan={span} />
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </div>

@@ -15,7 +15,7 @@ import {
 } from "./changeLog";
 import { useChangeLog } from "./changeLogStore";
 import { LINES_OF_SERVICE } from "../customers";
-import { categoryOf } from "./seed";
+import { PRODUCTS, categoryOf, registerVolume, type Customer, type ShipTo } from "./seed";
 
 /*
   BULK RULES (Yash, 2026-11-18) — read as IF / AND / THEN: IF a price matches
@@ -622,26 +622,16 @@ export interface GroupImpact {
  *  "Combination 1", or "Combinations 1, 2" (Yash, 2026-11-19). */
 export const comboLabel = (ks: number[]) => (ks.length === 1 ? `Combination ${ks[0]}` : `Combinations ${ks.join(", ")}`);
 
-export function previewRule(def: RuleDef, rows: ConfigRow[], ents: EntityMap, adjusted?: Set<string>) {
-  const matched = matchRows(def, rows, ents);
-  /* A RECORD ANY SHIP-TO-LEVEL COMBINATION REACHES is written at the ship-to. */
-  const atShipto = new Set(
-    groupsOf(def)
-      .map((g, i) => ({ g, i }))
-      .filter((x) => !groupEmpty(x.g) && levelOf(x.g) === "shipto")
-      .flatMap((x) => rows.filter((r) => groupHits(x.g, r, ents, matchOf(def, x.i))).map((r) => r.id))
-  );
-  const list = matched.map((r) => previewRow(def, r, ents, adjusted, atShipto.has(r.id) ? "shipto" : "customer"));
-  const updated = list.filter((p) => p.outcome === "updated");
-  const willUpdate = new Set(updated.map((p) => p.row.id));
-  const kept = new Set(matched.map((r) => r.id));
+/** EACH COMBINATION ON ITS OWN — what it matches by itself, after Exclude.
+ *  Cheap enough to run on every edit: it matches, it doesn't price. */
+export function combinationsOf(def: RuleDef, rows: ConfigRow[], ents: EntityMap, willUpdate: Set<string> = new Set()) {
   const groups = groupsOf(def);
-  /* EACH COMBINATION ON ITS OWN — what it matches by itself, after Exclude
-     (with AND between them, the rule takes only what all of them share). */
   const excl = def.exclude.filter(exceptSet);
   const pool = rows.filter((r) => !excl.some((t) => inTarget(t, r)));
   /* A combination with nothing picked matches nothing — no counts (Yash, 2026-11-19). */
   const sets = groups.map((g, i) => (groupEmpty(g) ? [] : pool.filter((r) => groupHits(g, r, ents, matchOf(def, i)))));
+  /* SETS, NOT ARRAYS — at 50K+ records an includes() per record never ends. */
+  const setIds = sets.map((st) => new Set(st.map((r) => r.id)));
   const groupImpacts: GroupImpact[] = groups.map((g, i) => {
     const mine = sets[i];
     const elsewhere = new Set(sets.filter((_, k) => k !== i).flatMap((s) => s.map((r) => r.id)));
@@ -660,12 +650,29 @@ export function previewRule(def: RuleDef, rows: ConfigRow[], ents: EntityMap, ad
       asked: !groupEmpty(g),
       unique: mine.filter((r) => !elsewhere.has(r.id)).length,
       repeated: mine.filter((r) => elsewhere.has(r.id)).length,
-      repeatedWith: sets
-        .map((st, k) => ({ with: k + 1, n: k === i ? 0 : mine.filter((r) => st.includes(r)).length }))
+      repeatedWith: setIds
+        .map((st, k) => ({ with: k + 1, n: k === i ? 0 : mine.filter((r) => st.has(r.id)).length }))
         .filter((x) => x.n > 0),
     };
   });
-  const askedSets = sets.filter((_, k) => !groupEmpty(groups[k]));
+  return { groups, sets, setIds, groupImpacts };
+}
+
+export function previewRule(def: RuleDef, rows: ConfigRow[], ents: EntityMap, adjusted?: Set<string>) {
+  const matched = matchRows(def, rows, ents);
+  /* A RECORD ANY SHIP-TO-LEVEL COMBINATION REACHES is written at the ship-to. */
+  const atShipto = new Set(
+    groupsOf(def)
+      .map((g, i) => ({ g, i }))
+      .filter((x) => !groupEmpty(x.g) && levelOf(x.g) === "shipto")
+      .flatMap((x) => rows.filter((r) => groupHits(x.g, r, ents, matchOf(def, x.i))).map((r) => r.id))
+  );
+  const list = matched.map((r) => previewRow(def, r, ents, adjusted, atShipto.has(r.id) ? "shipto" : "customer"));
+  const updated = list.filter((p) => p.outcome === "updated");
+  const willUpdate = new Set(updated.map((p) => p.row.id));
+  const kept = new Set(matched.map((r) => r.id));
+  const { groups, sets, setIds, groupImpacts } = combinationsOf(def, rows, ents, willUpdate);
+  const askedSets = setIds.filter((_, k) => !groupEmpty(groups[k]));
   /* EACH RECORD'S COMBINATIONS — and the outcomes split by them. */
   const combos: Record<string, number[]> = {};
   sets.forEach((st, k) => st.forEach((r) => (combos[r.id] = [...(combos[r.id] ?? []), k + 1])));
@@ -677,13 +684,20 @@ export function previewRule(def: RuleDef, rows: ConfigRow[], ents: EntityMap, ad
     });
     return [...by].map(([label, n]) => ({ label, n })).sort((a, b) => a.label.localeCompare(b.label));
   };
-  const inMany = matched.filter((r) => askedSets.filter((s) => s.includes(r)).length > 1).length;
+  const inMany = askedSets.length > 1 ? matched.filter((r) => askedSets.filter((s) => s.has(r.id)).length > 1).length : 0;
   /* WHY NOT CHANGING, IN WORDS — and how many each. */
   const reasons = uniq(list.filter((p) => p.outcome !== "updated").map((p) => p.reason ?? "Not changing")).map((reason) => ({
     reason,
     n: list.filter((p) => p.outcome !== "updated" && (p.reason ?? "Not changing") === reason).length,
   }));
   void kept;
+  const byCust = new Map<string, ConfigRow[]>();
+  for (const r of matched) {
+    const m = byCust.get(r.customerId);
+    if (m) m.push(r);
+    else byCust.set(r.customerId, [r]);
+  }
+  const custOfSet = sets.map((st) => new Set(st.map((r) => r.customerId)));
   return {
     groups: groupImpacts,
     combos,
@@ -691,15 +705,14 @@ export function previewRule(def: RuleDef, rows: ConfigRow[], ents: EntityMap, ad
     inMany,
     reasons,
     /* THE HIERARCHY — each customer, its ship-tos, its prices matched and to update. */
-    byCustomer: uniq(matched.map((r) => r.customerId)).map((customerId) => {
-      const mine = matched.filter((r) => r.customerId === customerId);
+    byCustomer: [...byCust].map(([customerId, mine]) => {
       return {
         customerId,
         shiptos: uniq(mine.map((r) => r.shiptoId)).length,
         matched: mine.length,
         update: mine.filter((r) => willUpdate.has(r.id)).length,
         /* WHICH GROUPS REACH THIS CUSTOMER (1-based) — the card says it beside the name. */
-        groups: sets.map((st, k) => (st.some((r) => r.customerId === customerId) ? k + 1 : 0)).filter(Boolean),
+        groups: custOfSet.map((cs, k) => (cs.has(customerId) ? k + 1 : 0)).filter(Boolean),
       };
     }),
     list,
@@ -780,13 +793,17 @@ function startRun(rule: Rule, rows: ConfigRow[], ents: EntityMap, at: number): {
 
 /* THE PROGRESS PLAYS OUT over a few seconds — an eighth of the prices a beat. */
 const timers = new Map<string, number>();
-function play(ruleId: string, runId: string, beat = 450, beats = 8) {
+/* A RUN TAKES TIME BY ITS SIZE (Yash, 2026-11-26) — about 80 records a
+   second, never under 30 s, so the one-run-at-a-time hold can be tried on
+   any rule; a beat a second. */
+const beatsFor = (total: number) => Math.min(180, Math.max(30, Math.ceil(total / 80)));
+function play(ruleId: string, runId: string, beat = 1000, beats?: number) {
   if (timers.has(runId)) return;
   const tick = () => {
     const rule = state.rules.find((r) => r.id === ruleId);
     const run = rule?.runs.find((x) => x.id === runId);
     if (!rule || !run) return void timers.delete(runId);
-    const step = Math.max(1, Math.ceil(run.total / beats));
+    const step = Math.max(1, Math.ceil(run.total / (beats ?? beatsFor(run.total))));
     const progress = Math.min(run.total, run.progress + step);
     const done = progress >= run.total;
     updateRun(ruleId, runId, { progress, status: done ? "done" : "running" });
@@ -853,6 +870,116 @@ export function updateTemplate(id: string, def: RuleDef) {
   set({ templates: state.templates.map((t) => (t.id === id ? { ...t, ...defOf(def), editedAt: NOW, editedBy: CURRENT_USER } : t)) });
 }
 
+/* ONE RUN AT A TIME (Yash, 2026-11-26) — while a rule runs, no other rule
+   runs and customer or ship-to configuration can't change; a preview can. */
+export const runningRule = (rules: Rule[]) => rules.find((r) => lastRun(r)?.status === "running") ?? null;
+export const lockMessage = (name: string) =>
+  `A bulk action "${name}" is currently in progress. Please wait for it to finish before making another change.`;
+/** The rule running now, for screens outside bulk rules (customer and ship-to pricing). */
+export function useBulkLock(): Rule | null {
+  const log = useChangeLog();
+  if (!state.seeded) seed(withVolume(log.rows), log.entityMap);
+  const s = React.useSyncExternalStore(subscribe, () => state);
+  return runningRule(s.rules);
+}
+
+/* OVER 50K RECORDS, SUPPORT RUNS IT (Yash, 2026-11-26) — a run that size
+   takes hours and holds every other change; the rule is kept as a draft. */
+export const SUPPORT_LIMIT = 50_000;
+/** The Impact card's warning over the limit, with the real count (Yash, 2026-11-26). */
+export const supportTitle = (n: number) => `Large update: ${n.toLocaleString()} records`;
+export const supportMessage = (n: number) =>
+  `This update affects ${n.toLocaleString()} records and may take time to process. While it runs, other actions may be temporarily unavailable. Support is required to process this update.`;
+export const SUPPORT_BAR = "This update affects 50K+ records and requires support to process.";
+
+/** A rule kept without running — over the limit, it waits for Support. */
+export function saveDraft(def: RuleDef, id: string | null): Rule {
+  const was = id ? state.rules.find((r) => r.id === id) : null;
+  if (was) {
+    const next = { ...was, ...defOf(def), name: def.name.trim() };
+    set({ rules: state.rules.map((r) => (r.id === was.id ? next : r)) });
+    return next;
+  }
+  const rule: Rule = { ...defOf(def), name: def.name.trim(), id: newId("rule"), at: NOW, timeSet: false, createdBy: CURRENT_USER, createdAt: NOW, runs: [] };
+  set({ rules: [rule, ...state.rules] });
+  return rule;
+}
+/** Run a draft for the first time — now, or at a later moment. */
+export function runDraft(ruleId: string, at: number, timeSet: boolean, rows: ConfigRow[], ents: EntityMap) {
+  if (at > NOW) {
+    set({ rules: state.rules.map((r) => (r.id === ruleId ? { ...r, at, timeSet, runs: [{ id: newId("run"), n: 1, at, by: CURRENT_USER, status: "scheduled", total: 0, progress: 0, results: [] }] } : r)) });
+    return;
+  }
+  updateRule(ruleId, { at: NOW, timeSet: false });
+  runAgain(ruleId, rows, ents);
+}
+
+/* SAMPLE VOLUME, INVENTED AND FLAGGED (Yash, 2026-11-26) — 480 more
+   customers in Central and West Texas, about 9,600 ship-tos and 96,000
+   records, so "All customers · All ship-tos" changes more than 50K. Bulk rules only:
+   the customer and ship-to screens keep the 12 sample customers. No propane,
+   no Houston, Louisiana, Mobile or Beaumont — the seeded rules don't reach them. */
+const VOL_A = ["Caprock", "Llano", "Brazos", "Pecos", "Big Spring", "Hill Country", "Comanche", "Lampasas", "Concho", "Edwards", "Balcones", "Colorado River", "San Saba", "Blanco", "Kerr", "Mesa", "Sandhills", "Guadalupe", "Burnet", "Pedernales", "Midway", "Red Bluff", "Stockton", "Wichita"];
+const VOL_B = ["Hauling", "Aggregates", "Ag Supply", "Well Service", "Paving", "Ready Mix", "Transport", "Rental", "Farms", "Oilfield Services", "Construction", "Utilities", "Fleet", "Materials", "Drilling", "Logistics", "Energy", "Services", "Supply Co.", "Partners"];
+const VOL_TOWNS: [string, "k-austin" | "k-midland"][] = [
+  ["Austin", "k-austin"], ["Round Rock", "k-austin"], ["San Marcos", "k-austin"], ["Georgetown", "k-austin"], ["Kyle", "k-austin"], ["Bastrop", "k-austin"],
+  ["Midland", "k-midland"], ["Odessa", "k-midland"], ["Andrews", "k-midland"], ["Big Spring", "k-midland"], ["Stanton", "k-midland"], ["Crane", "k-midland"],
+];
+const VOL_SITES = ["Yard", "Plant", "Pit", "Shop", "Terminal", "Site", "Depot", "Field Office"];
+let volume: ConfigRow[] | null = null;
+function volumeRows(): ConfigRow[] {
+  if (volume) return volume;
+  const products = PRODUCTS.filter((p) => p.id !== "lpg");
+  const customers: Customer[] = [];
+  const shiptos: ShipTo[] = [];
+  const rows: ConfigRow[] = [];
+  const share = {
+    margins: [["m-standard-rack-margin"], ["m-standard-rack-margin", "m-freight-recovery-margin"]],
+    fees: [["f-environmental-fee"], ["f-environmental-fee", "f-delivery-fee"]],
+    taxes: ["t-federal-excise", "t-tx-state-excise"],
+    rates: ["r-opis-rack-avg", "r-opis-rack-low", "r-opis-rack-high", "r-contract-rack"],
+  };
+  for (let i = 0; i < VOL_A.length * VOL_B.length; i++) {
+    const id = `vol-${i + 1}`;
+    customers.push({ id, name: `${VOL_A[i % VOL_A.length]} ${VOL_B[Math.floor(i / VOL_A.length)]}`, account: String(9880000 + i * 7), salesperson: { name: "George Leiato", email: "george.leiato@gulfstatesfuel.com", phone: "(318) 555-0142" } });
+    const sites = 14 + Math.floor(hash(`vs${id}`) * 13);
+    for (let k = 0; k < sites; k++) {
+      const [town, market] = VOL_TOWNS[Math.floor(hash(`vt${id}${k}`) * VOL_TOWNS.length)];
+      const sid = `${id}-${k + 1}`;
+      shiptos.push({ id: sid, customerId: id, name: `${town} ${VOL_SITES[k % VOL_SITES.length]} ${k + 1}`, account: `${9880000 + i * 7}-${k + 1}`, address: `${100 + k * 17} Ranch Rd, ${town}, TX`, tz: "CT" });
+      const n = 8 + Math.floor(hash(`vn${sid}`) * 5);
+      const start = Math.floor(hash(`vp${sid}`) * products.length);
+      const ap = hash(`va${sid}`);
+      for (let j = 0; j < n; j++) {
+        const p = products[(start + j * 3) % products.length];
+        const rid = `${sid}~${p.id}`;
+        const configured = hash(`vc${rid}`) < 0.95;
+        rows.push({
+          id: rid,
+          customerId: id,
+          shiptoId: sid,
+          productId: p.id,
+          rateType: configured ? share.rates[Math.floor(hash(`vr${rid}`) * 4)] : "",
+          /* AN UNPRICED ROW KEEPS ITS MARKET — one without reads as Houston. */
+          market,
+          margins: configured ? share.margins[hash(`vm${sid}`) > 0.8 ? 1 : 0] : [],
+          fees: configured ? share.fees[hash(`vf${rid}`) > 0.55 ? 1 : 0] : [],
+          taxes: configured ? share.taxes : [],
+          adders: [],
+          discount: 0,
+          applied: !configured ? "shipto" : ap > 0.9 ? "hub" : ap > 0.6 ? "shipto" : "customer",
+          configured,
+          base: 2.4 + Math.round(hash(`vb${rid}`) * 1100) / 1000,
+        });
+      }
+    }
+  }
+  registerVolume(customers, shiptos);
+  volume = rows;
+  return rows;
+}
+const withVolume = (rows: ConfigRow[]) => [...rows, ...volumeRows()];
+
 // ------------------------------------------------------------------ seed --
 
 const ch = (setting: ChangeSetting, action: ChangeAction, value: string | string[]): ChangeRow => ({
@@ -899,9 +1026,15 @@ const RULES: (RuleDef & { daysAgo: number; runs: number; future?: number; inProg
     runs: 1,
   },
   { ...def({ name: "Permian base +$0.03", targets: cust("permian", "mustang"), changes: [ch("base", "adjustAmount", "0.03")] }), daysAgo: 1, runs: 1 },
-  /* A RUN THAT TAKES TIME (Yash, 2026-11-20) — every price, started this
-     morning, about a third through; it keeps creeping while you watch. */
-  { ...TPL[3], name: "All markets base +1%", changes: [ch("base", "adjustPercent", "1")], daysAgo: 0, runs: 1, inProgress: 0.36 },
+  /* A RUN THAT TAKES TIME (Yash, 2026-11-20) — started this morning, about a
+     third through; it keeps creeping while you watch. Louisiana only since
+     2026-11-26: every record is now past 50K, which only Support runs. */
+  {
+    ...def({ name: "Louisiana base +1%", where: [{ ...blankWhere(), region: "Louisiana" }], changes: [ch("base", "adjustPercent", "1")] }),
+    daysAgo: 0,
+    runs: 1,
+    inProgress: 0.36,
+  },
 ];
 
 function seed(rows: ConfigRow[], ents: EntityMap) {
@@ -937,9 +1070,9 @@ const startOfDay = (t: number) => {
 /** Bulk rules and templates, with the configuration as runs have left it. */
 export function useBulkRules() {
   const log = useChangeLog();
-  if (!state.seeded) seed(log.rows, log.entityMap);
+  if (!state.seeded) seed(withVolume(log.rows), log.entityMap);
   const s = React.useSyncExternalStore(subscribe, () => state);
-  const rows = React.useMemo(() => withOverlay(log.rows, s.overlay), [log.rows, s.overlay]);
+  const rows = React.useMemo(() => withOverlay(withVolume(log.rows), s.overlay), [log.rows, s.overlay]);
   return { version: s.version, rules: s.rules, templates: s.templates, rows, entityMap: log.entityMap, entities: log.entities };
 }
 
@@ -949,9 +1082,11 @@ export const lastRun = (r: Rule) => r.runs[r.runs.length - 1] ?? null;
 export const countOf = (run: Run, o: RunResult["outcome"]) => run.results.filter((x) => x.outcome === o).length;
 
 /** "Scheduled" · "In progress" · "Done" · "Partly failed". */
-export function ruleStatus(r: Rule): "Scheduled" | "In progress" | "Done" | "Partly failed" {
+export function ruleStatus(r: Rule): "Draft" | "Scheduled" | "In progress" | "Done" | "Partly failed" {
   const run = lastRun(r);
-  if (!run || run.status === "scheduled") return "Scheduled";
+  /* A RULE THAT NEVER RAN — kept as a draft (Yash, 2026-11-26). */
+  if (!run) return "Draft";
+  if (run.status === "scheduled") return "Scheduled";
   /* IN PROGRESS, NOT RUNNING (Yash, 2026-11-20) — a run takes time. */
   if (run.status === "running") return "In progress";
   return countOf(run, "failed") ? "Partly failed" : "Done";

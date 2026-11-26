@@ -29,6 +29,8 @@ import {
   type Setting,
 } from "./changeLog";
 import { addEntity, savePricing, useChangeLog } from "./changeLogStore";
+import { lockMessage, useBulkLock } from "./bulkRules";
+import { BannerInline } from "@/components/ui/banner";
 import { CATEGORIES } from "./seed";
 import { HUBS } from "./pricingConfig";
 import { APPLIED_LABEL, UNCONFIGURED, customerPricing, historyOf, perGal, type PricingTarget } from "./pricingConfig";
@@ -124,6 +126,9 @@ function PricingSheetBody({
   const log = useChangeLog();
   const ents = log.entityMap;
   const isRow = target.kind === "row";
+  /* A BULK RULE IN PROGRESS HOLDS CONFIGURATION (Yash, 2026-11-26) — the
+     form reads, nothing changes until the run ends. */
+  const lock = useBulkLock();
 
   /* WHAT THE SHEET FOUND — read once per open; the sheet's own saves must
      not rebuild the form (interactions §1). */
@@ -172,6 +177,7 @@ function PricingSheetBody({
      kept aside; a configured record writes its one change. */
   React.useEffect(() => {
     const t = window.setTimeout(() => {
+      if (lock) return;
       if (!configured) {
         DRAFTS.set(keyOf(target), draft);
         return;
@@ -194,6 +200,7 @@ function PricingSheetBody({
   ].filter(Boolean) as { key: string; label: string; target: string }[];
 
   const configure = () => {
+    if (lock) return void toast.warning(lockMessage(lock.name));
     if (missing.length) return;
     const customerId = isRow ? undefined : (target as { customerId: string }).customerId;
     const sample = isRow ? found.record! : found.record ?? log.rows.find((r) => r.customerId === customerId)!;
@@ -296,7 +303,13 @@ function PricingSheetBody({
       headerSubtitle={<span className="text-sm text-muted-foreground">{subtitle}</span>}
       onSubmit={configure}
     >
+      {lock && (
+        <BannerInline status="caution" title="Bulk rule in progress" className="mb-6">
+          {lockMessage(lock.name)}
+        </BannerInline>
+      )}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]">
+        <fieldset disabled={!!lock} className="m-0 min-w-0 border-0 p-0">
         <div className="flex min-w-0 flex-col gap-10">
           <SheetSection title="Details" id="pricing-details">
             <div className="grid grid-cols-2 gap-4">
@@ -424,6 +437,7 @@ function PricingSheetBody({
           )}
         </div>
 
+        </fieldset>
         <SheetRail>
           <SummaryCard title="Price summary">
             <dl className="flex flex-col">

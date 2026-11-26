@@ -18,10 +18,11 @@ import type { ListFacet } from "../ListFilters";
 import { StandardList } from "../StandardList";
 import { fmtWhen, plural } from "./changeLog";
 import { fitColumns } from "./fitColumns";
-import { BulkRuleSheet, StatusPill, type BulkSheetTarget } from "./BulkRuleSheet";
+import { BulkRuleSheet, LockedButton, StatusPill, type BulkSheetTarget } from "./BulkRuleSheet";
 import {
   changesText,
   countOf,
+  runningRule,
   defOf,
   lastRun,
   ruleStatus,
@@ -92,10 +93,17 @@ export function BulkRulesScreen() {
   /* A RERUN FROM THE LIST ASKS FIRST (Yash, 2026-11-18) — it says what the
      run would change, or that nothing would, before it goes. */
   const [rerun, setRerun] = React.useState<Rule | null>(null);
+  const lock = runningRule(bulk.rules);
   const next = React.useMemo(
     () => (rerun ? previewRule(rerun, bulk.rows, bulk.entityMap, adjustedBy(rerun)) : null),
     [rerun, bulk.rows, bulk.entityMap]
   );
+  /** Failed records in the last run, or records a run would change now. */
+  const needsReview = (r: Rule) => {
+    const run = lastRun(r);
+    if (run && run.status === "done" && countOf(run, "failed") > 0) return true;
+    return previewRule(r, bulk.rows, bulk.entityMap, adjustedBy(r)).updated.length > 0;
+  };
   const text = (r: Rule, key: RKey): string => {
     const run = lastRun(r);
     switch (key) {
@@ -121,7 +129,8 @@ export function BulkRulesScreen() {
   };
   /* BY THE CLOCK (Yash, 2026-11-20) — the Last run column, latest first;
      a scheduled run, still to come, sits above the ones that ran. */
-  const ordered = React.useMemo(() => [...bulk.rules].sort((a, b) => (lastRun(b)?.at ?? 0) - (lastRun(a)?.at ?? 0)), [bulk.rules]);
+  /* A DRAFT, NEVER RUN, SITS BY WHEN IT WAS SAVED (Yash, 2026-11-26). */
+  const ordered = React.useMemo(() => [...bulk.rules].sort((a, b) => (lastRun(b)?.at ?? b.createdAt) - (lastRun(a)?.at ?? a.createdAt)), [bulk.rules]);
   /* THE SCOPE IN FULL, UP TO 360 — longer cuts off with "…", whole on hover (Yash, 2026-11-19). */
   const columns = React.useMemo(
     () => fitColumns(RULE_COLUMNS, bulk.rules, (r, k) => [text(r, k)], ["status"]).map((c) => (CAP[c.key] ? { ...c, width: Math.min(c.width ?? CAP[c.key]!, CAP[c.key]!) } : c)),
@@ -164,13 +173,19 @@ export function BulkRulesScreen() {
                 <Pencil />
                 Edit
               </DropdownMenuItem>
+              {lastRun(r) && (
               <DropdownMenuItem
                 disabled={lastRun(r)?.status === "running"}
-                onSelect={() => setRerun(r)}
+                onSelect={() => (lastRun(r)?.status === "scheduled" || !needsReview(r) ? setRerun(r) : setOpen({ kind: "rule", id: r.id, review: true }))}
               >
                 <RotateCw />
-                {lastRun(r)?.status === "scheduled" ? "Run now" : "Run again"}
+                {/* PREVIEW AND RERUN (Yash, 2026-11-26) — opens only the review, over
+                    this list, when records failed or need a rerun; else asks "No
+                    records need rerunning". A scheduled rule keeps Run now; a
+                    draft has neither. */}
+                {lastRun(r)?.status === "scheduled" ? "Run now" : "Preview and rerun"}
               </DropdownMenuItem>
+              )}
               {/* NO SAVE AS TEMPLATE (Yash, 2026-11-19) — templates are hidden; Duplicate reuses a rule. */}
               <DropdownMenuItem onSelect={() => setOpen({ kind: "rule", id: null, from: { ...defOf(r), name: `${r.name} (copy)` } })}>
                 <Copy />
@@ -209,6 +224,10 @@ export function BulkRulesScreen() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
+            {/* ONE RUN AT A TIME (Yash, 2026-11-26). */}
+            {lock && lock.id !== rerun?.id ? (
+              <LockedButton label={next && next.updated.length === 0 ? "Run again" : `Rerun ${plural(next?.updated.length ?? 0, "record")}`} name={lock.name} />
+            ) : (
             <AlertDialogAction
               onClick={() => {
                 if (!rerun) return;
@@ -218,6 +237,7 @@ export function BulkRulesScreen() {
             >
               {next && next.updated.length === 0 ? "Run again" : `Rerun ${plural(next?.updated.length ?? 0, "record")}`}
             </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -40,6 +40,11 @@ export const productsOf = (c: ChangeRecord) => uniq(c.lines.map((l) => productOf
 export const entitiesOf = (c: ChangeRecord) => settingsOf(c).map((s) => SETTING_LABEL[s]);
 export const repricedOf = (c: ChangeRecord) => c.orders.filter((o) => o.status === "repriced").length;
 
+/* ASSIGNED OR INHERITED (Yash, 2026-11-18) — inherited is made on customer
+   pricing and flows down to its ship-tos; everything else, setup included,
+   is assigned. One reading for the column, its filter and the summary. */
+export const assignmentOf = (c: ChangeRecord): "Assigned" | "Inherited" => (c.source === "customer" ? "Inherited" : "Assigned");
+
 export type FeedColumnKey =
   | "when"
   | "id"
@@ -47,6 +52,7 @@ export type FeedColumnKey =
   | "action"
   | "by"
   | "source"
+  | "assignment"
   | "customers"
   | "shiptos"
   | "orders"
@@ -61,12 +67,13 @@ export type FeedColumnKey =
 export const FEED_COLUMNS: ListColumn<FeedColumnKey>[] = [
   { key: "when", label: "Date & time", width: 180, sortable: true },
   /* NO CHANGE ID COLUMN (Yash, 2026-11-18) — the opened change carries it. */
-  { key: "entity", label: "Entity", width: 140, sortable: true },
+  { key: "entity", label: "Artifact", width: 140, sortable: true },
   { key: "action", label: "Action", width: 120, sortable: true },
   /* ENTITY → ACTION → CHANGE, the order it is said in (Yash, 2026-11-17). */
   { key: "change", label: "Change", width: 360, sortable: true },
-  { key: "by", label: "Made by", width: 150, sortable: true },
-  { key: "source", label: "Made via", width: 200, sortable: true },
+  { key: "by", label: "Change by", width: 150, sortable: true },
+  { key: "source", label: "Change via", width: 200, sortable: true },
+  /* ASSIGNED OR INHERITED, beside how it was made (Yash, 2026-11-18). */
   { key: "customers", label: "Customers", width: 250, sortable: true },
   { key: "shiptos", label: "Ship-tos", width: 110, sortable: true },
   { key: "orders", label: "Orders affected", width: 150, sortable: true },
@@ -79,8 +86,8 @@ export const FEED_COLUMNS: ListColumn<FeedColumnKey>[] = [
 export const FEED_GROUP_DIMS: GroupDim<ChangeRecord>[] = [
   { key: "day", label: "Day", valuesOf: (c) => [fmtDate(c.effectiveAt)] },
   { key: "action", label: "Action", hides: "action", valuesOf: (c) => [actionOf(c)] },
-  { key: "entity", label: "Entity", multi: true, valuesOf: entitiesOf },
-  { key: "source", label: "Made via", hides: "source", valuesOf: (c) => [SOURCE_LABEL[c.source]] },
+  { key: "entity", label: "Artifact", multi: true, valuesOf: entitiesOf },
+  { key: "source", label: "Change via", hides: "source", valuesOf: (c) => [SOURCE_LABEL[c.source]] },
   {
     key: "status",
     label: "Status",
@@ -88,7 +95,7 @@ export const FEED_GROUP_DIMS: GroupDim<ChangeRecord>[] = [
     order: Object.values(STATUS_LABEL),
     valuesOf: (c) => [STATUS_LABEL[c.status]],
   },
-  { key: "by", label: "Made by", hides: "by", valuesOf: (c) => [c.by] },
+  { key: "by", label: "Change by", hides: "by", valuesOf: (c) => [c.by] },
   { key: "customer", label: "Customer", multi: true, valuesOf: customersOf },
   { key: "shipto", label: "Ship-to", multi: true, valuesOf: shiptosOf },
 ];

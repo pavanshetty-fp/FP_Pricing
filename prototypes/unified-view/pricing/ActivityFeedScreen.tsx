@@ -47,6 +47,7 @@ import {
   FEED_GROUP_DIMS,
   STATUS_KIND,
   actionOf,
+  assignmentOf,
   customersOf,
   repricedOf,
   scopeOf,
@@ -91,6 +92,7 @@ const FACET_VALUES: Record<string, (c: ChangeRecord) => string[]> = {
   action: (c) => [actionOf(c)],
   entity: entitiesOf,
   source: (c) => [SOURCE_LABEL[c.source]],
+  assignment: (c) => [assignmentOf(c)],
   status: (c) => [STATUS_LABEL[c.status]],
   by: (c) => [c.by],
   customer: customersOf,
@@ -228,6 +230,8 @@ export function ActivityFeedScreen() {
           return c.by;
         case "source":
           return SOURCE_LABEL[c.source];
+        case "assignment":
+          return assignmentOf(c);
         case "customers": {
           const cs = customersOf(c);
           if (scope) {
@@ -271,11 +275,11 @@ export function ActivityFeedScreen() {
       { key: "customer", label: "Customer", options: opts("customer"), searchable: true },
       { key: "shipto", label: "Ship-to", options: opts("shipto"), searchable: true },
       { key: "product", label: "Product", options: opts("product"), searchable: true },
-      { key: "action", label: "Action", options: ACTIONS.filter((a) => a !== "Deactivated") },
-      { key: "entity", label: "Entity", options: SETTINGS.map((s) => SETTING_LABEL[s]) },
-      { key: "source", label: "Made via", options: Object.values(SOURCE_LABEL) },
+      { key: "action", label: "Action", options: ACTIONS },
+      { key: "entity", label: "Artifact", options: SETTINGS.map((s) => SETTING_LABEL[s]) },
+      { key: "source", label: "Change via", options: Object.values(SOURCE_LABEL) },
       { key: "status", label: "Status", options: Object.values(STATUS_LABEL) },
-      { key: "by", label: "Made by", options: opts("by") },
+      { key: "by", label: "Change by", options: opts("by") },
     ];
   }, [log.changes]);
 
@@ -515,9 +519,9 @@ export function ActivityFeedScreen() {
     /* ASSIGNED OR INHERITED (Yash, 2026-11-18) — inherited is made on
        customer pricing and flows down; everything else, setup included,
        is assigned. */
-    const inheritedEvents = filtered.filter((c) => c.source === "customer").length;
+    const inheritedEvents = filtered.filter((c) => assignmentOf(c) === "Inherited").length;
     const impacts = cut.reduce((n, c) => n + shiptosOf(c).length, 0);
-    const inherited = cut.filter((c) => c.source === "customer").reduce((n, c) => n + shiptosOf(c).length, 0);
+    const inherited = cut.filter((c) => assignmentOf(c) === "Inherited").reduce((n, c) => n + shiptosOf(c).length, 0);
     const touched = uniq(cut.flatMap((c) => c.lines.map((l) => l.shiptoId))).length;
     const inScope = (customerId: string, shiptoId: string) =>
       !scope || (scope.shipto ? shiptoOf(shiptoId).name === scope.shipto : customerOf(customerId).name === scope.customer);
@@ -539,7 +543,7 @@ export function ActivityFeedScreen() {
             label="Change events"
             info={<p>The number of changes made during this period. A bulk update counts as one change event.</p>}
             value={summary.events.toLocaleString()}
-            note={`${(summary.events - summary.inheritedEvents).toLocaleString()} assigned · ${summary.inheritedEvents.toLocaleString()} inherited`}
+            note={`${(summary.events - summary.inheritedEvents).toLocaleString()} direct · ${summary.inheritedEvents.toLocaleString()} inherited`}
           />
           <InfoFigure
             label="Ship-to impacts"

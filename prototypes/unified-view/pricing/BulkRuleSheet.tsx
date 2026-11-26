@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Copy, MoreHorizontal, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Clock, Loader2, FolderOpen, Gauge, Info, Plus, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Clock, Loader2, FolderOpen, Gauge, Info, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
@@ -73,12 +73,22 @@ import {
   ruleStatus,
   runAgain,
   settingLabel,
+  changeValue,
   updateRule,
   updateTemplate,
   useBulkRules,
   valueKind,
   whereMatches,
   whichLabel,
+  combinationsOf,
+  lockMessage,
+  runDraft,
+  runningRule,
+  saveDraft,
+  SUPPORT_LIMIT,
+  SUPPORT_BAR,
+  supportMessage,
+  supportTitle,
   type ChangeRow,
   type ChangeSetting,
   type Preview,
@@ -106,10 +116,133 @@ import {
 */
 
 export type BulkSheetTarget =
-  | { kind: "rule"; id: string | null; from?: RuleDef; /** The same sheet turns into this rule (Apply). */ stay?: boolean }
+  | { kind: "rule"; id: string | null; from?: RuleDef; /** The same sheet turns into this rule (Apply). */ stay?: boolean; /** Opens only its review, over the page it came from (list's Preview and rerun). */ review?: boolean }
   | { kind: "template"; id: string | null };
 
+/** A preview worked out on a press: its definition, how far it has got, and the records loaded so far. */
+type Shot = { key: string; phase: "working" | "loading" | "done"; preview: ReturnType<typeof previewRule> | null; loaded: number };
+
+/** A RUN HELD BY ANOTHER RULE IN PROGRESS — dead, its reason on hover (IX-8). */
+export function LockedButton({ label, name }: { label: string; name: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} className="inline-flex rounded-md focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none">
+          <Button disabled className="pointer-events-none">
+            {label}
+          </Button>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">{lockMessage(name)}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** What changed's columns: Artifact · Action · Change · Records affected (the Activity feed's). */
+const WC_GRID = "grid grid-cols-[140px_110px_minmax(0,1fr)_auto] items-center gap-4 px-4";
+const CHANGE_ACTION: Record<ChangeRow["action"], string> = {
+  add: "Assigned",
+  remove: "Unassigned",
+  replace: "Updated",
+  set: "Updated",
+  adjustAmount: "Updated",
+  adjustPercent: "Updated",
+};
+function WhatChanged({
+  changes,
+  rows,
+  failures,
+  ents,
+  onOpen,
+}: {
+  changes: ChangeRow[];
+  rows: PriceRow[];
+  /** A retry: every failed record counts, though nothing moved on it. */
+  failures: boolean;
+  ents: EntityMap;
+  onOpen?: (picked: string[]) => void;
+}) {
+  const ready = changes.filter(changeReady);
+  if (!ready.length) return null;
+  const withValue = (id: string) => {
+    const e = ents.get(id);
+    return typeof e?.value === "number" && !e.dynamic ? `${e.name}: ${money(e.value)}` : (e?.name ?? id);
+  };
+  const text = (c: ChangeRow) => {
+    if (c.action === "add" || c.action === "remove" || c.action === "replace") return c.entityIds.map(withValue).join(", ");
+    if (c.setting === "rateType") return c.entityIds.map((id) => ents.get(id)?.name ?? id).join(", ");
+    if (c.action === "set") return money(Number(c.amount));
+    return changeValue(c, ents);
+  };
+  return (
+    <section className="flex shrink-0 flex-col gap-2">
+      <h3 className="text-sm font-medium text-foreground">What changed</h3>
+      <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+        <div className={cn(WC_GRID, "bg-fp-table-header py-2 text-sm font-medium text-muted-foreground")}>
+          <span>Artifact</span>
+          <span>Action</span>
+          <span>Change</span>
+          <span className="text-right">Records affected</span>
+        </div>
+        {ready.map((c, i) => {
+          const label = settingLabel(c.setting as ChangeSetting);
+          const n = rows.filter((p) => (p.lines ?? []).some((l) => l.label === label && (failures || l.before !== l.after))).length;
+          return (
+            <div key={i} className={cn(WC_GRID, "py-2.5 text-sm")}>
+              <span className="text-foreground">{label}</span>
+              <span>
+                <Pill>{CHANGE_ACTION[c.action]}</Pill>
+              </span>
+              <span className={cn("truncate", c.action === "remove" ? "text-muted-foreground" : "text-foreground")}>{text(c)}</span>
+              <span className="text-right">
+                {n > 0 && onOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpen([`setting:${label}`])}
+                    className="rounded-sm text-foreground underline decoration-current/50 decoration-dotted underline-offset-4 outline-none hover:decoration-solid focus-visible:ring-2 focus-visible:ring-ring/50"
+                  >
+                    {plural(n, "record")}
+                  </button>
+                ) : (
+                  <span className={n ? "text-foreground" : "text-muted-foreground"}>{n ? plural(n, "record") : "—"}</span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/** The footer's left while a preview works: a spinner and what it is doing. */
+function ProgressNote({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="flex items-center gap-2 text-sm text-foreground">
+      <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+      <span>{children}</span>
+    </span>
+  );
+}
+
+/** RECORDS LOADING IN — over the table, as the developer's build has it. */
+function LoadingStrip({ loaded, total }: { loaded: number; total: number }) {
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-border bg-accent-violet-soft px-4 py-3">
+      <div className="flex items-center gap-2 text-sm">
+        <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+        <span className="font-medium text-foreground">Loading records…</span>
+        <span className="tabular-nums text-muted-foreground">
+          {loaded.toLocaleString()} of {total.toLocaleString()}
+        </span>
+      </div>
+      <Progress value={total ? (loaded / total) * 100 : 0} aria-label="Loading records" />
+    </div>
+  );
+}
+
 const STATUS_KIND: Record<ReturnType<typeof ruleStatus>, PillKind> = {
+  Draft: "neutral",
   Scheduled: "info",
   "In progress": "info",
   Done: "success",
@@ -191,7 +324,57 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
     return () => window.clearTimeout(t);
   }, [d]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const preview = React.useMemo(() => previewRule(d, bulk.rows, bulk.entityMap, rule ? adjustedBy(rule) : undefined), [d, bulk.rows, bulk.entityMap, rule]);
+  /* PREVIEW IMPACT FIRST (Yash, 2026-11-26) — a rule that has not run works
+     out its impact on a press, not on every edit: with every customer that
+     is 50K+ records. Working out, then the records load in; an edit after
+     that asks for a new preview. A rule that has run reads live, as before. */
+  const staged = !isTemplate && (creating || (!!rule && rule.runs.length === 0));
+  const defKey = JSON.stringify([d.groups, d.matches, d.join, d.changes, d.exclude, d.where, d.targets, d.source]);
+  const [shot, setShot] = React.useState<Shot | null>(null);
+  const fresh = shot && shot.key === defKey ? shot : null;
+  const emptyPreview = React.useMemo(() => previewRule(d, [], bulk.entityMap), [defKey, bulk.entityMap]); // eslint-disable-line react-hooks/exhaustive-deps
+  const livePreview = React.useMemo(
+    () => (staged ? null : previewRule(d, bulk.rows, bulk.entityMap, rule ? adjustedBy(rule) : undefined)),
+    [staged, defKey, bulk.rows, bulk.entityMap, rule] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const preview = livePreview ?? fresh?.preview ?? emptyPreview;
+  /* THE COMBINATIONS' OWN COUNTS AND WARNINGS stay live — matching is cheap. */
+  const combosKey = JSON.stringify([d.groups, d.matches, d.join, d.exclude]);
+  const combos = React.useMemo(() => (staged ? combinationsOf(d, bulk.rows, bulk.entityMap).groupImpacts : null), [staged, combosKey, bulk.rows, bulk.entityMap]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* THE RECORDS AS THEY LOAD — a slice that grows each beat. */
+  const loadedAll = React.useMemo(() => (fresh?.preview ? allOfPreview(fresh.preview) : []), [fresh?.preview]);
+  const loadedRows = React.useMemo(() => loadedAll.slice(0, fresh?.loaded ?? 0), [loadedAll, fresh?.loaded]);
+  React.useEffect(() => {
+    if (!shot || shot.phase !== "loading" || !shot.preview) return;
+    const total = shot.preview.list.length;
+    const t = window.setTimeout(
+      () =>
+        setShot((x) => {
+          if (!x || x.key !== shot.key || !x.preview) return x;
+          const loaded = Math.min(total, x.loaded + Math.max(250, Math.ceil(total / 10)));
+          return { ...x, loaded, phase: loaded >= total ? "done" : "loading" };
+        }),
+      450
+    );
+    return () => window.clearTimeout(t);
+  }, [shot]);
+  /* OVER 50K, KEPT AS A DRAFT (Yash, 2026-11-26) — the counts are in; the
+     rule is saved without running and the act becomes Contact Support. */
+  /* THE LIMIT COUNTS EVERY RECORD THE RUN GOES THROUGH (Yash, 2026-11-26) —
+     a run reads each matched record, changed or not; counting only the ones
+     that change let a 104,310-record run through. */
+  const over = !!fresh?.preview && fresh.preview.matched > SUPPORT_LIMIT;
+  React.useEffect(() => {
+    if (!over || !creating) return;
+    const made = saveDraft({ ...defOf(d), name: d.name.trim() || "Untitled bulk rule" }, null);
+    onOpen({ kind: "rule", id: made.id, stay: true });
+  }, [over]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* ONE RUN AT A TIME (Yash, 2026-11-26) — another rule in progress holds
+     every run; a preview still works. */
+  const lock = runningRule(bulk.rules);
+  const locked = lock && lock.id !== rule?.id ? lock : null;
+  const runButton = (label: string, onClick: () => void) =>
+    locked ? <LockedButton label={label} name={locked.name} /> : <Button onClick={onClick}>{label}</Button>;
   const at = whenOf(d.day, d.time);
   const later = at > NOW;
 
@@ -212,13 +395,19 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
     !d.conditions && d.targets.length > 1 && d.targets.some((t) => !t.customerId) && { key: "customer", label: "Choose a customer on each line", target: stepId("applies") },
     !isTemplate && !preview.groups.some((g) => g.asked) && { key: "if", label: "Add a condition", target: stepId("where") },
     !ready && { key: "change", label: "Add a change", target: stepId("change") },
-    preview.groups.some((g) => g.sameAs) && { key: "same", label: "Two combinations are the same", target: stepId("where") },
-    !isTemplate && ready && preview.updated.length === 0 && { key: "none", label: "Nothing to update", target: stepId("change") },
+    (combos ?? preview.groups).some((g) => g.sameAs) && { key: "same", label: "Two combinations are the same", target: stepId("where") },
+    !isTemplate && ready && (!staged || fresh?.phase === "done") && preview.updated.length === 0 && { key: "none", label: "Nothing to update", target: stepId("change") },
   ].filter(Boolean) as { key: string; label: string; target: string }[];
 
   /* APPLY STAYS ON THIS PAGE (Yash, 2026-11-19) — no new sheet: the page
      becomes the rule, and its status bar follows the run. */
   const apply = () => {
+    if (rule) {
+      updateRule(rule.id, { ...defOf(d), name: d.name.trim() });
+      runDraft(rule.id, at, d.time !== NO_TIME, bulk.rows, bulk.entityMap);
+      toast.success(later ? `${d.name.trim()} scheduled for ${fmtWhen(at)}` : `${d.name.trim()} running on ${plural(preview.updated.length, "price")}`);
+      return;
+    }
     const made = createRule({ ...defOf(d), name: d.name.trim() }, at, d.time !== NO_TIME, bulk.rows, bulk.entityMap);
     toast.success(later ? `${made.name} scheduled for ${fmtWhen(at)}` : `${made.name} running on ${plural(preview.updated.length, "price")}`);
     onOpen({ kind: "rule", id: made.id, stay: true });
@@ -276,9 +465,22 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
     .filter((x) => x.row);
   const needRows = preview.updated.filter((p) => !failedIds.has(p.row.id));
   const after: "failed" | "rerun" | "none" | null =
-    !rule || scheduled || running ? null : failedRows.length ? "failed" : needRows.length ? "rerun" : "none";
+    !rule || staged || scheduled || running ? null : failedRows.length ? "failed" : needRows.length ? "rerun" : "none";
   const [review, setReview] = React.useState<"rerun" | "failures" | null>(null);
   const [confirmAgain, setConfirmAgain] = React.useState(false);
+  /* REVIEW AND RERUN FROM THE LIST (Yash, 2026-11-26) — the sheet opens on
+     the review the footer would: failures first, else the rerun, else the
+     "No records need rerunning" ask. */
+  const reviewOnly = target.kind === "rule" && !!target.review;
+  const closeReview = () => (reviewOnly ? onClose() : setReview(null));
+  const reviewed = React.useRef(false);
+  React.useEffect(() => {
+    if (reviewed.current || target.kind !== "rule" || !target.review || !after) return;
+    reviewed.current = true;
+    if (after === "failed") setReview("failures");
+    else if (after === "rerun") setReview("rerun");
+    else setConfirmAgain(true);
+  }, [after, target]);
   const rerun = (verb: string, n: number) => {
     if (!rule) return;
     runAgain(rule.id, bulk.rows, bulk.entityMap);
@@ -306,7 +508,26 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
     }
     submit();
   };
-  const createAside = creating && raised && pending.length > 0 ? <PendingStrip tone="caution" pending={pending} /> : undefined;
+  /* PREVIEW WAITS ON THE RULE'S CONTENT ONLY — a condition and a change, not a name. */
+  const startPreview = () => {
+    const missing = pending.filter((p) => p.key === "if" || p.key === "change" || p.key === "same" || p.key === "region" || p.key === "customer");
+    if (missing.length) {
+      setRaised(true);
+      if (missing[0].target) attend(missing[0].target);
+      return;
+    }
+    const key = defKey;
+    const snap = d;
+    setShot({ key, phase: "working", preview: null, loaded: 0 });
+    window.setTimeout(() => {
+      const p = previewRule(snap, bulk.rows, bulk.entityMap, rule ? adjustedBy(rule) : undefined);
+      setShot((x) => (x && x.key === key ? { key, phase: "loading", preview: p, loaded: 0 } : x));
+    }, 1400);
+  };
+  const contactSupport = () => toast.info("Contact support isn't set up in the prototype yet.");
+  /* A RULE THAT HAS RUN, NOW OVER THE LIMIT, RERUNS THROUGH SUPPORT TOO. */
+  const ranOver = !staged && !!rule && preview.matched > SUPPORT_LIMIT;
+  const createAside = staged && raised && pending.length > 0 ? <PendingStrip tone="caution" pending={pending} /> : undefined;
   const status = (tone: "caution" | "ok" | "progress", lead: string, rest?: string) => (
     <span className={cn("flex items-center gap-2 text-sm", tone === "ok" ? "text-muted-foreground" : "text-foreground")}>
       {tone === "progress" ? (
@@ -356,8 +577,24 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
   ];
   const rerunNoun = needCust ? "customer" : "record";
   const rerunN = needCust ? needCust.length : needRows.length;
+  const stagedAside = !staged
+    ? undefined
+    : fresh?.phase === "working"
+      ? status("progress", "Working out what this rule changes…")
+      : over
+        ? /* AN ALERT READS IN ITS OWN COLOUR, NOT BOLD (Yash, 2026-11-26). */
+          (
+            <span className="flex items-center gap-2 text-sm text-fp-banner-accent-caution">
+              <CircleAlert className="size-4 shrink-0" />
+              <span>{SUPPORT_BAR}</span>
+            </span>
+          )
+        : fresh?.phase === "loading"
+          ? status("progress", "Loading records", `${(fresh.loaded).toLocaleString()} of ${fresh.preview!.list.length.toLocaleString()}`)
+          : undefined;
   const footerAside =
     createAside ??
+    stagedAside ??
     (after === "failed"
       ? status("caution", "Run partially failed", `${failedRows.length.toLocaleString()} of ${plural(run!.total, "record")} failed`)
       : after === "rerun"
@@ -368,9 +605,19 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
             ? /* IN PROGRESS, IN THE BAR TOO (Yash, 2026-11-20) — no act until it ends. */
               status("progress", "In progress", `${run!.progress.toLocaleString()} of ${plural(run!.total, "record")} done`)
             : undefined);
-  const footerPrimary = rule ? (
-    scheduled ? (
-      <Button onClick={runNow}>Run now</Button>
+  const footerPrimary = staged ? (
+    !fresh ? (
+      <Button onClick={startPreview}>Preview impact</Button>
+    ) : fresh.phase === "working" ? null : over ? (
+      <Button onClick={contactSupport}>Contact support</Button>
+    ) : (
+      runButton(createAction, press)
+    )
+  ) : rule ? (
+    ranOver && !running ? (
+      <Button onClick={contactSupport}>Contact support</Button>
+    ) : scheduled ? (
+      runButton("Run now", runNow)
     ) : after === "failed" ? (
       <Button onClick={() => setReview("failures")}>Review failures</Button>
     ) : after === "rerun" ? (
@@ -392,7 +639,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
         matches={d.matches ?? []}
         join={d.join ?? "or"}
         onChange={(p) => setD((x) => ({ ...x, ...p }))}
-        impacts={asRan.groups}
+        impacts={combos ?? asRan.groups}
         configRows={bulk.rows}
         ents={bulk.entityMap}
       />
@@ -425,15 +672,25 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
       )}
       {/* THE TABLE IS ALWAYS THERE (Yash, 2026-11-20) — empty until there are
           conditions and a change, and says so in its body. */}
-      {creating && !isTemplate && (
-        <SheetSection title={preview.customerMode && ready ? "Customers to update" : "Records to update"} id={stepId("prices")} variant="plain">
-          {!ready || !preview.groups.some((g) => g.asked) ? (
-            <PricesView resetKey="empty" rows={[]} ents={bulk.entityMap} apply={null} onOpen={setPriceOpen} empty="Select conditions and changes to see records here." />
-          ) : preview.customerMode ? (
-            <CustomersView resetKey="new" rows={customersOf(allOfPreview(preview))} apply={listApply} onOpen={(c) => setList(custNames(c))} />
-          ) : (
-            <PricesView resetKey="new" rows={allOfPreview(preview)} ents={bulk.entityMap} apply={listApply} onOpen={setPriceOpen} empty="No records match these conditions." />
-          )}
+      {staged && (
+        <SheetSection title={fresh?.preview?.customerMode ? "Customers to update" : "Records to update"} id={stepId("prices")} variant="plain">
+          <div className="flex flex-col gap-3">
+            {fresh?.phase === "loading" && <LoadingStrip loaded={fresh.loaded} total={fresh.preview!.list.length} />}
+            {!fresh?.preview ? (
+              <PricesView
+                resetKey="empty"
+                rows={[]}
+                ents={bulk.entityMap}
+                apply={null}
+                onOpen={setPriceOpen}
+                empty={fresh?.phase === "working" ? "Working out what this rule changes…" : "Select conditions and changes, then preview, to see records here."}
+              />
+            ) : fresh.preview.customerMode ? (
+              <CustomersView resetKey="new" rows={customersOf(loadedRows)} apply={listApply} onOpen={(c) => setList(custNames(c))} />
+            ) : (
+              <PricesView resetKey="new" rows={loadedRows} ents={bulk.entityMap} apply={listApply} onOpen={setPriceOpen} empty="No records match these conditions." />
+            )}
+          </div>
         </SheetSection>
       )}
     </>
@@ -453,6 +710,74 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
     [CELL.name, CELL.pick, CELL.pick, CELL.pick, CELL.bin],
     [CELL.pick, CELL.pick, CELL.name, CELL.bin],
   ];
+
+  const overlays = (
+    <>
+      {list && <ListSheet list={list} ents={bulk.entityMap} onClose={() => setList(null)} />}
+      {review === "rerun" && (
+        <ReviewRunSheet
+          title="Review rerun"
+          changes={d.changes}
+          action={`Rerun ${plural(rerunN, rerunNoun)}`}
+          kind="change"
+          rows={needPrices}
+          customers={needCust ? needCust.map((c) => ({ ...c, outcome: WILL })) : null}
+          onNames={setList}
+          figures={rerunFigures}
+          ents={bulk.entityMap}
+          onConfirm={() => {
+            rerun("Rerunning", needRows.length);
+            closeReview();
+          }}
+          onClose={closeReview}
+          level={reviewOnly ? 1 : 2}
+          locked={locked}
+          onSupport={ranOver ? contactSupport : undefined}
+        />
+      )}
+      {review === "failures" && (
+        <ReviewRunSheet
+          title="Review failures"
+          changes={d.changes}
+          action={`Retry ${plural(failedRows.length, "record")}`}
+          kind="why"
+          rows={failedRows}
+          figures={failFigures}
+          ents={bulk.entityMap}
+          onConfirm={() => {
+            rerun("Retrying", failedRows.length);
+            closeReview();
+          }}
+          onClose={closeReview}
+          level={reviewOnly ? 1 : 2}
+          locked={locked}
+          onSupport={ranOver ? contactSupport : undefined}
+        />
+      )}
+      <AlertDialog
+        open={confirmAgain}
+        onOpenChange={(o) => {
+          setConfirmAgain(o);
+          if (!o && reviewOnly) onClose();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>No records need rerunning</AlertDialogTitle>
+            <AlertDialogDescription>All records are up to date. You can still run this rule again if needed.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            {locked ? <LockedButton label="Run again" name={locked.name} /> : <AlertDialogAction onClick={() => rerun("", 0)}>Run again</AlertDialogAction>}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {priceOpen && <PriceSheet price={priceOpen} ents={bulk.entityMap} onClose={() => setPriceOpen(null)} />}
+    </>
+  );
+  /* PREVIEW AND RERUN FROM THE LIST (Yash, 2026-11-26) — only the review,
+     over the list it came from; no rule page under it. */
+  if (reviewOnly) return overlays;
 
   return (
     <RecordSheet
@@ -511,7 +836,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]">
           {body}
           {/* THE EMPTY IMPACT CARD, ALONE, RUNS THE COLUMN — as a lone card does (IX-100). */}
-          <SheetRail className={!rule && !preview.groups.some((g) => g.asked) ? "lg:h-(--rail-max)" : undefined}>
+          <SheetRail className={staged && !fresh ? "lg:h-(--rail-max)" : undefined}>
             {rule && run && !scheduled ? (
               <RunImpactCard
                 rule={rule}
@@ -523,54 +848,23 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
                 onNames={setList}
               />
             ) : (
-              <PreviewImpactCard d={d} preview={preview} ready={ready} ents={bulk.entityMap} onFilter={focusPrices} onNames={setList} />
+              <PreviewImpactCard
+                d={d}
+                preview={preview}
+                ready={ready}
+                ents={bulk.entityMap}
+                onFilter={fresh?.phase === "done" ? focusPrices : undefined}
+                onNames={setList}
+                stage={staged ? { phase: fresh?.phase ?? "none", loaded: fresh?.loaded ?? 0, total: fresh?.preview?.list.length ?? 0, over, onPreview: startPreview } : undefined}
+              />
             )}
-            {rule && <ActivityCard title="History" entries={entries} />}
+            {rule && rule.runs.length > 0 && <ActivityCard title="History" entries={entries} />}
           </SheetRail>
         </div>
         {prices}
         </div>
       )}
-      {list && <ListSheet list={list} ents={bulk.entityMap} onClose={() => setList(null)} />}
-      {review === "rerun" && (
-        <ReviewRunSheet
-          title="Review rerun"
-          action={`Rerun ${plural(rerunN, rerunNoun)}`}
-          kind="change"
-          rows={needPrices}
-          customers={needCust ? needCust.map((c) => ({ ...c, outcome: WILL })) : null}
-          onNames={setList}
-          figures={rerunFigures}
-          ents={bulk.entityMap}
-          onConfirm={() => rerun("Rerunning", needRows.length)}
-          onClose={() => setReview(null)}
-        />
-      )}
-      {review === "failures" && (
-        <ReviewRunSheet
-          title="Review failures"
-          action={`Retry ${plural(failedRows.length, "record")}`}
-          kind="why"
-          rows={failedRows}
-          figures={failFigures}
-          ents={bulk.entityMap}
-          onConfirm={() => rerun("Retrying", failedRows.length)}
-          onClose={() => setReview(null)}
-        />
-      )}
-      <AlertDialog open={confirmAgain} onOpenChange={setConfirmAgain}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>No records need rerunning</AlertDialogTitle>
-            <AlertDialogDescription>All records are up to date. You can still run this rule again if needed.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => rerun("", 0)}>Run again</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      {priceOpen && <PriceSheet price={priceOpen} ents={bulk.entityMap} onClose={() => setPriceOpen(null)} />}
+      {overlays}
     </RecordSheet>
   );
 }
@@ -861,8 +1155,14 @@ function GroupsSection({
       boxed={false}
       info={
         <>
-          <p>In a combination, Match all needs every condition to hold; Match any needs one.</p>
-          <p>Between combinations, AND needs a record to meet all of them; OR needs any one. A record changes once.</p>
+          {/* HOW MATCHING WORKS (Yash, 2026-11-26). */}
+          <p className="font-medium text-foreground">How matching works</p>
+          <p>Within a combination, Match all requires every condition to match, while Match any requires at least one condition to match.</p>
+          <p>
+            Between combinations, AND requires a record to match every combination, while OR requires it to match at least one. A record is changed only
+            once, even if it matches multiple combinations.
+          </p>
+          <p>When a condition has multiple values, a record can match any of them. Selecting “All” includes every available value.</p>
         </>
       }
     >
@@ -1682,6 +1982,7 @@ function PreviewImpactCard({
   ents,
   onFilter,
   onNames,
+  stage,
 }: {
   d: RuleDef;
   preview: ReturnType<typeof previewRule>;
@@ -1690,13 +1991,66 @@ function PreviewImpactCard({
   /** Opens the records list below — none on a template. */
   onFilter?: (picked: string[]) => void;
   onNames?: (l: PriceList) => void;
+  /** A rule that has not run: its impact is worked out on a press. */
+  stage?: { phase: "none" | "working" | "loading" | "done"; loaded: number; total: number; over: boolean; onPreview: () => void };
 }) {
   const Z = preview.matched;
-  const cs = ready && preview.customerMode ? customersOf(allOfPreview(preview)) : null;
+  const all = React.useMemo(() => (ready && preview.customerMode ? allOfPreview(preview) : null), [ready, preview]);
+  const cs = React.useMemo(() => (all ? customersOf(all) : null), [all]);
   /* NOTHING ASKED YET — an empty set, not every record (Yash, 2026-11-19). */
   const asked = preview.groups.some((g) => g.asked);
+  if (stage && (stage.phase === "none" || stage.phase === "working"))
+    return (
+      <RailCard title="Impact" icon={<Gauge />} className={stage.phase === "none" ? "flex min-h-0 flex-1 flex-col" : undefined}>
+        {stage.phase === "none" ? (
+          /* NOT WORKED OUT YET (Yash, 2026-11-26, as the developer's build) —
+             one line and the act; an edit after a preview comes back here. */
+          <div className="flex flex-col items-start gap-3 px-4 py-3">
+            <p className="text-base text-muted-foreground">See which records this rule reaches and what it changes.</p>
+            <Button variant="outline" size="sm" onClick={stage.onPreview}>
+              <RefreshCw />
+              Preview impact
+            </Button>
+          </div>
+        ) : (
+          <p className="flex items-center gap-2 border-b border-border px-4 py-3 text-base text-muted-foreground">
+            <Loader2 className="size-4 shrink-0 animate-spin" />
+            Working out what this rule changes…
+          </p>
+        )}
+        {/* NO "NO CHANGE YET" (Yash, 2026-11-26) — the block shows once there is a change. */}
+        {d.changes.some(changeReady) && <Settings changes={d.changes} ents={ents} />}
+        {stage.phase === "none" && !asked && <QuietPattern className="min-h-24 flex-1" />}
+      </RailCard>
+    );
   return (
     <RailCard title="Impact" icon={<Gauge />} className={asked ? undefined : "flex min-h-0 flex-1 flex-col"}>
+      {stage?.over && (
+        /* EDGE TO EDGE (Yash, 2026-11-26) — the card's own strip, as Loading
+           records is, in the soft caution wash; no box inside the card. */
+        /* THE TEXT STARTS UNDER THE ICON (Yash, 2026-11-26) — not indented past it. */
+        <div className="flex flex-col gap-1 border-b border-fp-banner-accent-caution/30 bg-fp-banner-accent-caution/10 px-4 py-3">
+          <span className="flex items-center gap-2 text-sm font-medium text-fp-banner-accent-caution">
+            <CircleAlert className="size-4 shrink-0" />
+            {supportTitle(preview.matched)}
+          </span>
+          <span className="text-sm text-muted-foreground">{supportMessage(preview.matched)}</span>
+        </div>
+      )}
+      {stage?.phase === "loading" && (
+        <div className="flex flex-col gap-2 border-b border-border bg-accent-violet-soft px-4 py-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="flex items-center gap-2 text-base font-medium text-foreground">
+              <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+              Loading records…
+            </span>
+            <span className="text-sm tabular-nums text-muted-foreground">
+              {stage.loaded.toLocaleString()} of {stage.total.toLocaleString()}
+            </span>
+          </div>
+          <Progress value={stage.total ? (stage.loaded / stage.total) * 100 : 0} aria-label="Loading records" />
+        </div>
+      )}
       {!asked ? (
         /* THE EMPTY STATE, ONE LINE — the card runs the column, its empty
            stretch the one QuietPattern (UX-93; Yash, 2026-11-19). */
@@ -2175,7 +2529,8 @@ function PricesView({
           /* "MATCHED BY", not "Combination" — its chip with two values picked
              read "Combination 2", like the second combination. */
           ...(combined ? [{ key: "combination", label: "Matched by" }] : []),
-          { key: "setting", label: "Entity" },
+          /* ARTIFACT, AS THE ACTIVITY FEED SAYS IT (2026-11-26). */
+          { key: "setting", label: "Artifact" },
           { key: "applied", label: "Applied pricing", order: [OVERRIDE.customer, OVERRIDE.hub, ...Object.values(APPLIED)] },
           { key: "product", label: "Product", searchable: true },
           { key: "shipto", label: "Ship-to", searchable: true },
@@ -2418,6 +2773,10 @@ function ReviewRunSheet({
   onConfirm,
   onClose,
   onNames,
+  level = 2,
+  locked = null,
+  changes = [],
+  onSupport,
 }: {
   title: string;
   action: string;
@@ -2430,14 +2789,59 @@ function ReviewRunSheet({
   onConfirm: () => void;
   onClose: () => void;
   onNames?: (l: PriceList) => void;
+  /** 1 when it opens on its own over the list; 2 over the rule. */
+  level?: 1 | 2;
+  /** The rule's changes — the What changed table. */
+  changes?: ChangeRow[];
+  /** Over 50K records — the act is Contact support. */
+  onSupport?: () => void;
+  /** Another rule in progress — the act waits for it. */
+  locked?: Rule | null;
 }) {
   const [apply, setApply] = React.useState<{ tab: string; picked: string[]; n: number } | null>(null);
   /* THE SAME LIST AS RECORDS UPDATED (Yash, 2026-11-20) — search, Filters,
      Ship-to · Customer · Product · Change · Price; a row opens its make-up. */
   const [price, setPrice] = React.useState<PriceRow | null>(null);
+  /* WORKED OUT, THEN LOADED IN (Yash, 2026-11-26) — as Preview impact. */
+  const total = customers ? customers.length : rows.length;
+  const [phase, setPhase] = React.useState<"working" | "loading" | "done">("working");
+  const [loaded, setLoaded] = React.useState(0);
+  React.useEffect(() => {
+    if (phase === "done") return;
+    const t = window.setTimeout(
+      () => {
+        if (phase === "working") return setPhase(total ? "loading" : "done");
+        const next = Math.min(total, loaded + Math.max(5, Math.ceil(total / 6)));
+        setLoaded(next);
+        if (next >= total) setPhase("done");
+      },
+      phase === "working" ? 1200 : 400
+    );
+    return () => window.clearTimeout(t);
+  }, [phase, loaded, total]);
+  const shownRows = React.useMemo(() => (customers ? rows : rows.slice(0, phase === "done" ? rows.length : loaded)), [customers, rows, loaded, phase]);
+  const shownCustomers = React.useMemo(() => customers?.slice(0, phase === "done" ? customers.length : loaded) ?? null, [customers, loaded, phase]);
   return (
     <RecordSheet
-      level={2}
+      level={level}
+      /* A SIDE SHEET, NOT THE FULL PAGE (Yash, 2026-11-26) — on its own over the list too. */
+      presentation="sheet"
+      footerPrimary={
+        phase === "working" ? null : onSupport ? (
+          <Button onClick={onSupport}>Contact support</Button>
+        ) : locked ? (
+          <LockedButton label={action} name={locked.name} />
+        ) : undefined
+      }
+      footerAside={
+        phase === "working" ? (
+          <ProgressNote>Working out what this rule changes…</ProgressNote>
+        ) : phase === "loading" ? (
+          <ProgressNote>
+            Loading records · {loaded.toLocaleString()} of {total.toLocaleString()}
+          </ProgressNote>
+        ) : undefined
+      }
       open
       onOpenChange={(v) => !v && onClose()}
       mode="create"
@@ -2450,6 +2854,13 @@ function ReviewRunSheet({
       showCancel={false}
       onSubmit={onConfirm}
     >
+      {phase === "working" ? (
+        <p className="flex items-center gap-2 text-base text-muted-foreground">
+          <Loader2 className="size-4 shrink-0 animate-spin" />
+          Working out what this rule changes…
+        </p>
+      ) : (
+      <>
       {/* FIGURES ON TOP, AS THE ACTIVITY FEED'S — a figure with a filter narrows the table. */}
       <div className={FIGURE_STRIP}>
         {figures.map((f) => (
@@ -2464,10 +2875,22 @@ function ReviewRunSheet({
           />
         ))}
       </div>
-      {customers ? (
-        <CustomersView resetKey={title} rows={customers} apply={apply} onOpen={(c) => onNames?.(custNames(c))} />
+      {/* WHAT CHANGED, AS THE ACTIVITY FEED'S (Yash, 2026-11-26) — each change
+          the run makes, and the records it reaches; a count narrows the table. */}
+      <WhatChanged
+        changes={changes}
+        rows={rows}
+        failures={kind === "why"}
+        ents={ents}
+        onOpen={customers ? undefined : (picked) => setApply({ tab: "prices", picked, n: Date.now() })}
+      />
+      {phase === "loading" && <LoadingStrip loaded={loaded} total={total} />}
+      </>
+      )}
+      {shownCustomers ? (
+        <CustomersView resetKey={title} rows={shownCustomers} apply={apply} onOpen={(c) => onNames?.(custNames(c))} />
       ) : (
-        <PricesView resetKey={title} rows={rows} ents={ents} apply={apply} onOpen={setPrice} />
+        <PricesView resetKey={title} rows={phase === "working" ? [] : shownRows} ents={ents} apply={apply} onOpen={setPrice} />
       )}
       {price && <PriceSheet price={price} ents={ents} onClose={() => setPrice(null)} />}
     </RecordSheet>

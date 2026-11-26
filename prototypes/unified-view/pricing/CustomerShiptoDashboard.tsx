@@ -139,10 +139,10 @@ export function CustomerShiptoDashboard() {
   };
   const facets: ListFacet[] = [
     { key: "product", label: "Product", options: uniq(scope.changes.flatMap(facetValues.product)).sort(), searchable: true },
-    { key: "entity", label: "Entity", options: uniq(scope.changes.flatMap(facetValues.entity)).sort() },
+    { key: "entity", label: "Artifact", options: uniq(scope.changes.flatMap(facetValues.entity)).sort() },
     { key: "method", label: "Made how", options: uniq(scope.changes.flatMap(facetValues.method)).sort() },
     { key: "kind", label: "Kind", options: ["Assignment", "Inherited"] },
-    { key: "by", label: "Made by", options: uniq(scope.changes.flatMap(facetValues.by)).sort(), searchable: true },
+    { key: "by", label: "Change by", options: uniq(scope.changes.flatMap(facetValues.by)).sort(), searchable: true },
     { key: "status", label: "Status", options: uniq(scope.changes.flatMap(facetValues.status)).sort() },
   ];
   const narrow = React.useCallback(

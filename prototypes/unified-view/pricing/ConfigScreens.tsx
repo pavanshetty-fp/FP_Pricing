@@ -20,6 +20,7 @@ import type { GroupDim } from "@/components/tables-layout";
 import { TwoLineCell, type ListColumn } from "../ListTable";
 import { customerOf, effectivePrice, fmtWhen, plural, productOf, readSetting, shiptoOf, uniq, type ConfigRow, type Setting } from "./changeLog";
 import { customerRecordFor, resetToCustomer, useChangeLog } from "./changeLogStore";
+import { lockMessage, useBulkLock } from "./bulkRules";
 import { ConfigList } from "./ConfigList";
 import { PricingSheet } from "./PricingSheet";
 import { openFeedFor, takeReopen } from "./pricingNav";
@@ -150,6 +151,7 @@ export function ShiptoPricingScreen() {
   /* RESET TO CUSTOMER PRICING (Yash, 2026-11-17) — a ship-to priced on its
      own goes back to its customer's pricing. Asks first; logged as a change. */
   const [resetting, setResetting] = React.useState<ConfigRow | null>(null);
+  const bulkLock = useBulkLock();
   const facts = React.useMemo(() => new Map(log.rows.map((r) => [r.id, factsOf(r, ents)])), [log.rows, ents]);
   /* FEES FROM THE FEE RULE ENGINE (Yash, 2026-11-24) — what reaches the price
      by scope, less what was removed; the cell opens them. */
@@ -350,6 +352,8 @@ export function ShiptoPricingScreen() {
             <AlertDialogAction
               onClick={() => {
                 if (!resetting) return;
+                /* ONE BULK RUN AT A TIME HOLDS CONFIGURATION (Yash, 2026-11-26). */
+                if (bulkLock) return void toast.warning(lockMessage(bulkLock.name));
                 const id = resetToCustomer(resetting.id);
                 toast.success(`Reset to customer pricing${id ? ` · ${id}` : ""}`);
                 setResetting(null);

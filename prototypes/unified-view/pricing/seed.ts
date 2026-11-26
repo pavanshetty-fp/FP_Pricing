@@ -87,6 +87,37 @@ const CUSTOMER_SEED: { id: string; name: string; account: string; sites: number;
   { id: "permian", name: "Permian Frac Partners", account: "9877350", sites: 14, region: ["Pecos, TX", "Monahans, TX", "Kermit, TX"] },
   { id: "coastal", name: "Coastal Waste Haulers", account: "9877902", sites: 9, region: ["Beaumont, TX", "Port Arthur, TX"] },
   { id: "natchez", name: "Natchez Timber Co.", account: "9878114", sites: 6, region: ["Natchez, MS", "Vidalia, LA"] },
+  /* 28 MORE CUSTOMERS (Yash, 2026-11-26) — the demo at a tenant's scale:
+     about 4,300 more ship-tos and 13,000 more prices, so a rule over ten
+     customers reaches thousands and a run takes long enough to see. */
+  { id: "acadiana", name: "Acadiana Ready Mix", account: "9879000", sites: 110, region: ["Lafayette, LA", "New Iberia, LA", "Opelousas, LA", "Crowley, LA"] },
+  { id: "brazos", name: "Brazos Valley Hauling", account: "9879013", sites: 147, region: ["Bryan, TX", "College Station, TX", "Navasota, TX", "Hearne, TX"] },
+  { id: "caddo", name: "Caddo Lake Farms", account: "9879026", sites: 184, region: ["Shreveport, LA", "Mooringsport, LA", "Vivian, LA"] },
+  { id: "calcasieu", name: "Calcasieu Marine Fuel", account: "9879039", sites: 131, region: ["Lake Charles, LA", "Cameron, LA", "Sulphur, LA"] },
+  { id: "coastal-bend", name: "Coastal Bend Logistics", account: "9879052", sites: 168, region: ["Corpus Christi, TX", "Portland, TX", "Robstown, TX", "Kingsville, TX"] },
+  { id: "crescent", name: "Crescent City Paving", account: "9879065", sites: 115, region: ["New Orleans, LA", "Metairie, LA", "Kenner, LA", "Chalmette, LA"] },
+  { id: "deep-south", name: "Deep South Rentals", account: "9879078", sites: 152, region: ["Mobile, AL", "Daphne, AL", "Foley, AL", "Theodore, AL"] },
+  { id: "east-tx", name: "East Texas Timber", account: "9879091", sites: 189, region: ["Lufkin, TX", "Jasper, TX", "Woodville, TX"] },
+  { id: "gulf-south", name: "Gulf South Utilities", account: "9879104", sites: 136, region: ["Gulfport, MS", "Biloxi, MS", "Pascagoula, MS"] },
+  { id: "hill-country", name: "Hill Country Builders", account: "9879117", sites: 173, region: ["Austin, TX", "Kerrville, TX", "Fredericksburg, TX", "Boerne, TX"] },
+  { id: "houma", name: "Houma Offshore Supply", account: "9879130", sites: 120, region: ["Houma, LA", "Thibodaux, LA", "Port Fourchon, LA"] },
+  { id: "magnolia", name: "Magnolia Ag Partners", account: "9879143", sites: 157, region: ["Greenville, MS", "Greenwood, MS", "Clarksdale, MS"] },
+  { id: "midland-basin", name: "Midland Basin Water", account: "9879156", sites: 194, region: ["Midland, TX", "Stanton, TX", "Big Spring, TX"] },
+  { id: "mississippi-river", name: "Mississippi River Towing", account: "9879169", sites: 141, region: ["Baton Rouge, LA", "Vicksburg, MS", "Natchez, MS"] },
+  { id: "panhandle", name: "Panhandle Cattle Co.", account: "9879182", sites: 178, region: ["Amarillo, TX", "Hereford, TX", "Dumas, TX"] },
+  { id: "pecos-valley", name: "Pecos Valley Sand", account: "9879195", sites: 125, region: ["Pecos, TX", "Kermit, TX", "Monahans, TX"] },
+  { id: "permian-haul", name: "Permian Crude Haulers", account: "9879208", sites: 162, region: ["Odessa, TX", "Andrews, TX", "Hobbs, NM"] },
+  { id: "piney-woods", name: "Piney Woods Aggregates", account: "9879221", sites: 199, region: ["Tyler, TX", "Longview, TX", "Marshall, TX"] },
+  { id: "port-arthur", name: "Port Arthur Terminals", account: "9879234", sites: 146, region: ["Port Arthur, TX", "Nederland, TX", "Groves, TX"] },
+  { id: "red-stick", name: "Red Stick Construction", account: "9879247", sites: 183, region: ["Baton Rouge, LA", "Zachary, LA", "Denham Springs, LA"] },
+  { id: "sabine", name: "Sabine River Energy", account: "9879260", sites: 130, region: ["Orange, TX", "Vinton, LA", "Vidor, TX"] },
+  { id: "san-jacinto", name: "San Jacinto Fleet", account: "9879273", sites: 167, region: ["Houston, TX", "Baytown, TX", "Pasadena, TX", "Humble, TX"] },
+  { id: "south-plains", name: "South Plains Cotton", account: "9879286", sites: 114, region: ["Lubbock, TX", "Levelland, TX", "Brownfield, TX"] },
+  { id: "tejas", name: "Tejas Waste Services", account: "9879299", sites: 151, region: ["San Antonio, TX", "New Braunfels, TX", "Seguin, TX"] },
+  { id: "tombigbee", name: "Tombigbee Paper", account: "9879312", sites: 188, region: ["Mobile, AL", "Jackson, AL", "Monroeville, AL"] },
+  { id: "trinity", name: "Trinity Rail Services", account: "9879325", sites: 135, region: ["Dallas, TX", "Fort Worth, TX", "Ennis, TX"] },
+  { id: "vermilion", name: "Vermilion Rice Growers", account: "9879338", sites: 172, region: ["Abbeville, LA", "Kaplan, LA", "Gueydan, LA"] },
+  { id: "west-texas-rig", name: "West Texas Rig Services", account: "9879351", sites: 119, region: ["Midland, TX", "Odessa, TX", "Seminole, TX"] },
 ];
 
 /* SITES NAMED THE WAY THE CUSTOMER WOULD (Yash, 2026-11-17: "use some
@@ -103,6 +134,34 @@ const SITE_TYPES: Record<string, string[]> = {
   "delta-ag": ["Grain Elevator", "Farm Shop", "Seed Warehouse", "Gin", "Fertilizer Plant", "Equipment Shed", "Dryer Site", "Co-op Store"],
   coastal: ["Transfer Station", "Landfill", "Recycling Center", "Truck Yard", "Hauling Depot"],
   natchez: ["Sawmill", "Log Yard", "Logging Camp"],
+  "acadiana": ["Batch Plant", "Ready-Mix Yard", "Truck Shop"],
+  "brazos": ["Truck Yard", "Hauling Depot", "Shop"],
+  "caddo": ["Farm Shop", "Grain Bin", "Equipment Shed"],
+  "calcasieu": ["Fuel Dock", "Marine Terminal", "Supply Base"],
+  "coastal-bend": ["Distribution Center", "Cross-Dock", "Fleet Yard"],
+  "crescent": ["Asphalt Plant", "Equipment Yard", "Job Site"],
+  "deep-south": ["Rental Yard", "Service Center", "Equipment Yard"],
+  "east-tx": ["Sawmill", "Log Yard", "Logging Camp"],
+  "gulf-south": ["Service Center", "Substation Yard", "Line Yard"],
+  "hill-country": ["Job Site", "Equipment Yard", "Shop"],
+  "houma": ["Supply Base", "Fuel Dock", "Boat Yard"],
+  "magnolia": ["Grain Elevator", "Farm Shop", "Co-op Store"],
+  "midland-basin": ["Water Station", "Disposal Well", "Pump Yard"],
+  "mississippi-river": ["Fleeting Area", "Fuel Dock", "Marine Terminal"],
+  "panhandle": ["Feed Yard", "Ranch Shop", "Feed Mill"],
+  "pecos-valley": ["Sand Mine", "Transload Yard", "Shop"],
+  "permian-haul": ["Truck Yard", "Field Office", "Crude Station"],
+  "piney-woods": ["Quarry", "Gravel Pit", "Crushing Plant"],
+  "port-arthur": ["Terminal", "Tank Farm", "Truck Rack"],
+  "red-stick": ["Job Site", "Laydown Yard", "Equipment Yard"],
+  "sabine": ["Plant", "Field Office", "Pipe Yard"],
+  "san-jacinto": ["Fleet Yard", "Truck Terminal", "Maintenance Shop"],
+  "south-plains": ["Gin", "Farm Shop", "Warehouse"],
+  "tejas": ["Transfer Station", "Landfill", "Truck Yard"],
+  "tombigbee": ["Mill", "Chip Yard", "Log Yard"],
+  "trinity": ["Rail Yard", "Repair Shop", "Transload Yard"],
+  "vermilion": ["Rice Dryer", "Farm Shop", "Pump Station"],
+  "west-texas-rig": ["Rig Yard", "Field Office", "Supply Yard"],
 };
 const STREETS = ["Highway 90", "Broad St", "Industrial Pkwy", "Airline Hwy", "Main St", "County Rd 12", "Harborside Dr", "Loop 250", "FM 1960", "Timberland Dr"];
 /* FRAC PADS BY LEASE (Yash, 2026-11-16: "keep realistic data") — the way
@@ -187,8 +246,17 @@ export const FAMILY: Record<string, string[]> = {
   natchez: ["ddt", "dob", "kero", "lpg"],
 };
 
-export const customerOf = (id: string) => CUSTOMERS.find((c) => c.id === id)!;
-export const shiptoOf = (id: string) => SHIPTOS.find((s) => s.id === id)!;
+/* BULK-RULE VOLUME (Yash, 2026-11-26) — the extra customers and ship-tos the
+   bulk rule engine generates so "All customers · All ship-tos" passes 50K
+   records. Registered here so their names read; no other screen lists them. */
+const VOLUME_CUSTOMERS = new Map<string, Customer>();
+const VOLUME_SHIPTOS = new Map<string, ShipTo>();
+export function registerVolume(customers: Customer[], shiptos: ShipTo[]) {
+  customers.forEach((c) => VOLUME_CUSTOMERS.set(c.id, c));
+  shiptos.forEach((s) => VOLUME_SHIPTOS.set(s.id, s));
+}
+export const customerOf = (id: string) => VOLUME_CUSTOMERS.get(id) ?? CUSTOMERS.find((c) => c.id === id)!;
+export const shiptoOf = (id: string) => VOLUME_SHIPTOS.get(id) ?? SHIPTOS.find((s) => s.id === id)!;
 export const productOf = (id: string) => PRODUCTS.find((p) => p.id === id)!;
 export const categoryOf = (id: string) => CATEGORIES.find((c) => c.id === id)!;
 export const shiptosOfCustomer = (customerId: string) => SHIPTOS.filter((s) => s.customerId === customerId);

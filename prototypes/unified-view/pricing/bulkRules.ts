@@ -894,8 +894,9 @@ export function useBulkLock(): Rule | null {
 export const SUPPORT_LIMIT = 50_000;
 /** The Impact card's warning over the limit, with the real count (Yash, 2026-11-26). */
 export const supportTitle = (n: number) => `Large update: ${n.toLocaleString()} records`;
-export const supportMessage = (n: number) =>
-  `This update affects ${n.toLocaleString()} records and may take time to process. While it runs, other actions may be temporarily unavailable. Support is required to process this update.`;
+/* ONE SENTENCE (Yash, 2026-11-26) — the count is in the title. */
+export const supportMessage = (_n: number) =>
+  "This update may take time and temporarily prevent other actions, so please contact Support to proceed.";
 export const SUPPORT_BAR = "This update affects 50K+ records and requires support to process.";
 
 /** A rule kept without running — over the limit, it waits for Support. */

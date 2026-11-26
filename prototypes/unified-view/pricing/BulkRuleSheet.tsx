@@ -531,8 +531,8 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
       setShot((x) => (x && x.key === key ? { key, phase: "loading", preview: p, loaded: 0 } : x));
     }, 1400);
   };
-  const contactSupport = () => toast.info("Contact support isn't set up in the prototype yet.");
-  /* A RULE THAT HAS RUN, NOW OVER THE LIMIT, RERUNS THROUGH SUPPORT TOO. */
+  /* A RULE THAT HAS RUN, NOW OVER THE LIMIT, CAN'T RERUN EITHER — no act
+     (Yash, 2026-11-26: no Contact support; split it or reach FleetPanda support). */
   const ranOver = !staged && !!rule && preview.matched > SUPPORT_LIMIT;
   const createAside = staged && raised && pending.length > 0 ? <PendingStrip tone="caution" pending={pending} /> : undefined;
   const status = (tone: "caution" | "ok" | "progress", lead: string, rest?: string) => (
@@ -584,24 +584,26 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
   ];
   const rerunNoun = needCust ? "customer" : "record";
   const rerunN = needCust ? needCust.length : needRows.length;
+  const overBar = (
+    <span className="flex items-center gap-2 text-sm text-fp-banner-accent-caution">
+      <CircleAlert className="size-4 shrink-0" />
+      <span>{SUPPORT_BAR}</span>
+    </span>
+  );
   const stagedAside = !staged
     ? undefined
     : fresh?.phase === "working"
       ? status("progress", "Working out what this rule changes…")
       : over
         ? /* AN ALERT READS IN ITS OWN COLOUR, NOT BOLD (Yash, 2026-11-26). */
-          (
-            <span className="flex items-center gap-2 text-sm text-fp-banner-accent-caution">
-              <CircleAlert className="size-4 shrink-0" />
-              <span>{SUPPORT_BAR}</span>
-            </span>
-          )
+          overBar
         : fresh?.phase === "loading"
           ? status("progress", "Loading records", `${(fresh.loaded).toLocaleString()} of ${fresh.preview!.list.length.toLocaleString()}`)
           : undefined;
   const footerAside =
     createAside ??
     stagedAside ??
+    (ranOver && !running ? overBar : undefined) ??
     (after === "failed"
       ? status("caution", "Run partially failed", `${failedRows.length.toLocaleString()} of ${plural(run!.total, "record")} failed`)
       : after === "rerun"
@@ -615,15 +617,11 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
   const footerPrimary = staged ? (
     !fresh ? (
       <Button onClick={startPreview}>Preview impact</Button>
-    ) : fresh.phase === "working" ? null : over ? (
-      <Button onClick={contactSupport}>Contact support</Button>
-    ) : (
+    ) : fresh.phase === "working" || over ? null : (
       runButton(createAction, press)
     )
   ) : rule ? (
-    ranOver && !running ? (
-      <Button onClick={contactSupport}>Contact support</Button>
-    ) : scheduled ? (
+    ranOver && !running ? null : scheduled ? (
       runButton("Run now", runNow)
     ) : after === "failed" ? (
       <Button onClick={() => setReview("failures")}>Preview failures</Button>
@@ -741,7 +739,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
           onClose={closeReview}
           level={reviewOnly ? 1 : 2}
           locked={locked}
-          onSupport={ranOver ? contactSupport : undefined}
+          overLimit={ranOver}
         />
       )}
       {review === "failures" && (
@@ -760,7 +758,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
           onClose={closeReview}
           level={reviewOnly ? 1 : 2}
           locked={locked}
-          onSupport={ranOver ? contactSupport : undefined}
+          overLimit={ranOver}
         />
       )}
       <AlertDialog
@@ -2785,7 +2783,7 @@ function ReviewRunSheet({
   level = 2,
   locked = null,
   changes = [],
-  onSupport,
+  overLimit,
   empty,
 }: {
   title: string;
@@ -2803,8 +2801,8 @@ function ReviewRunSheet({
   level?: 1 | 2;
   /** The rule's changes — the What changed table. */
   changes?: ChangeRow[];
-  /** Over 50K records — the act is Contact support. */
-  onSupport?: () => void;
+  /** Over 50K records — no act; the bar says why. */
+  overLimit?: boolean;
   /** Said in the table when nothing needs it — "All records are up to date." */
   empty?: string;
   /** Another rule in progress — the act waits for it. */
@@ -2839,14 +2837,17 @@ function ReviewRunSheet({
       /* A SIDE SHEET, NOT THE FULL PAGE (Yash, 2026-11-26) — on its own over the list too. */
       presentation="sheet"
       footerPrimary={
-        phase === "working" ? null : onSupport ? (
-          <Button onClick={onSupport}>Contact support</Button>
-        ) : locked ? (
+        phase === "working" || overLimit ? null : locked ? (
           <LockedButton label={action} name={locked.name} />
         ) : undefined
       }
       footerAside={
-        phase === "working" ? (
+        overLimit && phase !== "working" ? (
+          <span className="flex items-center gap-2 text-sm text-fp-banner-accent-caution">
+            <CircleAlert className="size-4 shrink-0" />
+            <span>{SUPPORT_BAR}</span>
+          </span>
+        ) : phase === "working" ? (
           <ProgressNote>Working out what this rule changes…</ProgressNote>
         ) : phase === "loading" ? (
           <ProgressNote>

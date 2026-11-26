@@ -1,3 +1,4 @@
+import type { BannerAlert } from "@/components/ui/alert-banner";
 import * as React from "react";
 import {
   CURRENT_USER,
@@ -880,8 +881,25 @@ export function updateTemplate(id: string, def: RuleDef) {
    runs and customer or ship-to configuration can't change; a preview can. */
 export const runningRule = (rules: Rule[]) => rules.find((r) => lastRun(r)?.status === "running") ?? null;
 export const lockMessage = (name: string) =>
-  `A bulk action "${name}" is currently in progress. Please wait for it to finish before making another change.`;
+  `Bulk rule “${name}” is currently being applied. Please wait for it to finish before making another change.`;
 /** The rule running now, for screens outside bulk rules (customer and ship-to pricing). */
+/** THE RUN ON THE LIST'S BANNER (Yash, 2026-11-26) — the customer and ship-to
+    lists say what is running and how far it has got. Keyed by run, so a ✕
+    holds for this run only. */
+export function bulkRunAlert(rule: Rule | null): BannerAlert[] {
+  const run = rule && lastRun(rule);
+  if (!rule || !run || run.status !== "running") return [];
+  return [
+    {
+      id: `bulk-${run.id}`,
+      status: "caution",
+      tag: "In progress",
+      title: `Bulk rule “${rule.name}”`,
+      detail: `· ${run.progress.toLocaleString()} of ${run.total.toLocaleString()} records updated`,
+    },
+  ];
+}
+
 export function useBulkLock(): Rule | null {
   const log = useChangeLog();
   if (!state.seeded) seed(withVolume(log.rows), log.entityMap);
@@ -896,8 +914,9 @@ export const SUPPORT_LIMIT = 50_000;
 export const supportTitle = (n: number) => `Large update: ${n.toLocaleString()} records`;
 /* ONE SENTENCE (Yash, 2026-11-26) — the count is in the title. */
 export const supportMessage = (_n: number) =>
-  "This update may take time and temporarily prevent other actions, so please contact Support to proceed.";
-export const SUPPORT_BAR = "This update affects 50K+ records and requires support to process.";
+  "This update is too large to apply at once. Bulk updates are limited to 50,000 records at a time. To continue, split this into smaller updates, or reach out to FleetPanda support for further assistance.";
+/* NO CONTACT SUPPORT BUTTON (Yash, 2026-11-26) — the bar says what to do. */
+export const SUPPORT_BAR = "Update exceeds the 50,000-record limit. Split it into smaller updates or contact FleetPanda Support.";
 
 /** A rule kept without running — over the limit, it waits for Support. */
 export function saveDraft(def: RuleDef, id: string | null): Rule {

@@ -20,7 +20,7 @@ import type { GroupDim } from "@/components/tables-layout";
 import { TwoLineCell, type ListColumn } from "../ListTable";
 import { customerOf, effectivePrice, fmtWhen, plural, productOf, readSetting, shiptoOf, uniq, type ConfigRow, type Setting } from "./changeLog";
 import { customerRecordFor, resetToCustomer, useChangeLog } from "./changeLogStore";
-import { lockMessage, useBulkLock } from "./bulkRules";
+import { bulkRunAlert, lockMessage, useBulkLock } from "./bulkRules";
 import { ConfigList } from "./ConfigList";
 import { PricingSheet } from "./PricingSheet";
 import { openFeedFor, takeReopen } from "./pricingNav";
@@ -316,6 +316,7 @@ export function ShiptoPricingScreen() {
         one="price"
         searchPlaceholder="Search ship-tos, customers, products…"
         unconfigured={{ count: unconfigured, title: `${plural(unconfigured, "ship-to price")} not configured yet`, facet: `applied:${UNCONFIGURED}` }}
+        leadAlerts={bulkRunAlert(bulkLock)}
         configured={(r) => r.configured}
         nameOf={(r) => `${productOf(r.productId).name} at ${shiptoOf(r.shiptoId).name}`}
         onOpen={open}
@@ -393,6 +394,7 @@ export function CustomerPricingScreen() {
   const rowById = React.useMemo(() => new Map(log.rows.map((r) => [r.id, r])), [log.rows]);
   const statusOf = (c: CustomerPricing) => (c.record ? CONFIGURED : UNCONFIGURED);
   const feeStore = useFees();
+  const bulkLock = useBulkLock();
   const hub = useHubMap(log.rows, ents);
   const [feeTarget, setFeeTarget] = React.useState<FeeTarget | null>(null);
   /* A customer's fees: those reaching prices that follow it, less its removals. */
@@ -518,6 +520,7 @@ export function CustomerPricingScreen() {
         one="customer"
         searchPlaceholder="Search customers…"
         unconfigured={{ count: unconfigured, title: `${plural(unconfigured, "customer")} without customer pricing`, facet: `status:${UNCONFIGURED}` }}
+        leadAlerts={bulkRunAlert(bulkLock)}
         configured={(c) => !!c.record}
         nameOf={(c) => customerOf(c.customerId).name}
         onOpen={(c) => setPricing({ kind: "customer", customerId: c.customerId })}

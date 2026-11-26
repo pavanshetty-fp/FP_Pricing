@@ -1,6 +1,8 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Plus, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
@@ -304,12 +306,17 @@ function PricingSheetBody({
       onSubmit={configure}
     >
       {lock && (
-        <BannerInline status="caution" title="Bulk rule in progress" className="mb-6">
-          {lockMessage(lock.name)}
-        </BannerInline>
+        /* STICKY ON TOP WHILE THE FORM SCROLLS (Yash, 2026-11-26) — the sheet's
+           white behind it, so rows pass under it, not beside it. */
+        <div className="sticky -top-4 z-10 -my-4 bg-popover py-4">
+          <BannerInline status="caution" title="Bulk rule in progress">
+            {lockMessage(lock.name)}
+          </BannerInline>
+        </div>
       )}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]">
-        <fieldset disabled={!!lock} className="m-0 min-w-0 border-0 p-0">
+        <LockedArea message={lock ? lockMessage(lock.name) : null}>
+        <fieldset disabled={!!lock} className={cn("m-0 min-w-0 border-0 p-0", lock && "pointer-events-none")}>
         <div className="flex min-w-0 flex-col gap-10">
           <SheetSection title="Details" id="pricing-details">
             <div className="grid grid-cols-2 gap-4">
@@ -438,6 +445,7 @@ function PricingSheetBody({
         </div>
 
         </fieldset>
+        </LockedArea>
         <SheetRail>
           <SummaryCard title="Price summary">
             <dl className="flex flex-col">
@@ -542,3 +550,32 @@ function NewEntitySheet({
 }
 
 
+
+/* THE LOCKED FORM SAYS WHY ON HOVER (Yash, 2026-11-26) — the not-allowed
+   arrow over every field and add, and the lock's line beside the pointer, in
+   the tooltip's own look. The form ignores the pointer while locked, so this
+   box is what the pointer meets. */
+function LockedArea({ message, children }: { message: string | null; children: React.ReactNode }) {
+  const [at, setAt] = React.useState<{ x: number; y: number } | null>(null);
+  if (!message) return <>{children}</>;
+  return (
+    <div
+      className="min-w-0 cursor-not-allowed"
+      onMouseMove={(e) => setAt({ x: e.clientX, y: e.clientY })}
+      onMouseLeave={() => setAt(null)}
+    >
+      {children}
+      {at &&
+        createPortal(
+          <div
+            role="tooltip"
+            style={{ left: at.x + 14, top: at.y + 18 }}
+            className="pointer-events-none fixed z-50 w-72 rounded-md bg-foreground px-3 py-1.5 text-xs text-balance text-background"
+          >
+            {message}
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}

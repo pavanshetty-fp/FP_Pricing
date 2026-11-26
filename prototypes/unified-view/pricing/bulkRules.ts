@@ -740,7 +740,13 @@ export function previewRule(def: RuleDef, rows: ConfigRow[], ents: EntityMap, ad
 /* ONE PRICE IN THIRTY FAILS on a first try, for a reason a person can act on;
    a later run of the same rule mostly gets them through. */
 const FAIL_REASONS = ["Rate type not posted at this market today", "Price locked by an open order", "Ship-to on credit hold"];
+/* MOSTLY DONE (Yash, 2026-11-26) — one sample rule partly fails (Contractor
+   margin, so Review failures can be shown); of the rules made in the
+   prototype, about one in four. The rest finish clean. */
+const FAILING_SEEDS = new Set(["rule-2"]);
+const mayFail = (ruleId: string) => (ruleId.startsWith("rule-") && Number(ruleId.slice(5)) < 100 ? FAILING_SEEDS.has(ruleId) : hash(`rulefail${ruleId}`) < 0.25);
 function failureOf(ruleId: string, runN: number, rowId: string) {
+  if (!mayFail(ruleId)) return null;
   const h = hash(`fail${ruleId}${rowId}`);
   if (h > 0.035) return null;
   if (runN > 1 && hash(`retry${ruleId}${rowId}${runN}`) > 0.2) return null;
@@ -907,7 +913,14 @@ export function saveDraft(def: RuleDef, id: string | null): Rule {
 /** Run a draft for the first time — now, or at a later moment. */
 export function runDraft(ruleId: string, at: number, timeSet: boolean, rows: ConfigRow[], ents: EntityMap) {
   if (at > NOW) {
-    set({ rules: state.rules.map((r) => (r.id === ruleId ? { ...r, at, timeSet, runs: [{ id: newId("run"), n: 1, at, by: CURRENT_USER, status: "scheduled", total: 0, progress: 0, results: [] }] } : r)) });
+    /* AN EDITED RULE KEEPS ITS PAST RUNS; the scheduled one goes after them. */
+    set({
+      rules: state.rules.map((r) => {
+        if (r.id !== ruleId) return r;
+        const kept = r.runs.filter((x) => x.status !== "scheduled");
+        return { ...r, at, timeSet, runs: [...kept, { id: newId("run"), n: kept.length + 1, at, by: CURRENT_USER, status: "scheduled" as const, total: 0, progress: 0, results: [] }] };
+      }),
+    });
     return;
   }
   updateRule(ruleId, { at: NOW, timeSet: false });
@@ -1014,7 +1027,7 @@ const RULES: (RuleDef & { daysAgo: number; runs: number; future?: number; inProg
     where: [{ ...blankWhere(), markets: ["Mobile", "Beaumont"] }],
     exclude: [{ ...blankTarget(), customerId: "coastal", productIds: ["u87"] }],
     daysAgo: 9,
-    runs: 2,
+    runs: 1,
   },
   {
     ...def({
@@ -1026,15 +1039,8 @@ const RULES: (RuleDef & { daysAgo: number; runs: number; future?: number; inProg
     runs: 1,
   },
   { ...def({ name: "Permian base +$0.03", targets: cust("permian", "mustang"), changes: [ch("base", "adjustAmount", "0.03")] }), daysAgo: 1, runs: 1 },
-  /* A RUN THAT TAKES TIME (Yash, 2026-11-20) — started this morning, about a
-     third through; it keeps creeping while you watch. Louisiana only since
-     2026-11-26: every record is now past 50K, which only Support runs. */
-  {
-    ...def({ name: "Louisiana base +1%", where: [{ ...blankWhere(), region: "Louisiana" }], changes: [ch("base", "adjustPercent", "1")] }),
-    daysAgo: 0,
-    runs: 1,
-    inProgress: 0.36,
-  },
+  /* NO RULE IN PROGRESS AT THE START (Yash, 2026-11-26) — one is made in the
+     demo, under 50K records, to show the hold. */
 ];
 
 function seed(rows: ConfigRow[], ents: EntityMap) {
@@ -1045,7 +1051,11 @@ function seed(rows: ConfigRow[], ents: EntityMap) {
   };
   const out: Rule[] = [];
   RULES.forEach((d, i) => {
-    const { daysAgo, runs, future, inProgress, ...rest } = d;
+    const { daysAgo, runs, future, inProgress, ...legacy } = d;
+    /* SEEDS RUN AS THE SHEET READS THEM (Yash, 2026-11-26) — as one combination
+       of conditions, so a run and its preview count the same records; the old
+       form left 3PL ship-tos out of the run but not out of the preview. */
+    const rest = { ...legacy, groups: [toConditions(legacy)], matches: ["all" as const], conditions: undefined };
     const at = future ? startOfDay(NOW + future * DAY) + 6 * 3_600_000 : inProgress ? NOW - 40 * 60_000 : NOW - daysAgo * DAY - 3 * 3_600_000;
     let rule: Rule = { ...rest, id: `rule-${i + 1}`, at, timeSet: !!future, createdBy: i % 2 ? "Deepika Jain" : "Yash J", createdAt: at - DAY, runs: [] };
     if (future) rule.runs = [{ id: `run-${i}-1`, n: 1, at, by: rule.createdBy, status: "scheduled", total: 0, progress: 0, results: [] }];

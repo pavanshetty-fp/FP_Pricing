@@ -98,12 +98,6 @@ export function BulkRulesScreen() {
     () => (rerun ? previewRule(rerun, bulk.rows, bulk.entityMap, adjustedBy(rerun)) : null),
     [rerun, bulk.rows, bulk.entityMap]
   );
-  /** Failed records in the last run, or records a run would change now. */
-  const needsReview = (r: Rule) => {
-    const run = lastRun(r);
-    if (run && run.status === "done" && countOf(run, "failed") > 0) return true;
-    return previewRule(r, bulk.rows, bulk.entityMap, adjustedBy(r)).updated.length > 0;
-  };
   const text = (r: Rule, key: RKey): string => {
     const run = lastRun(r);
     switch (key) {
@@ -176,7 +170,7 @@ export function BulkRulesScreen() {
               {lastRun(r) && (
               <DropdownMenuItem
                 disabled={lastRun(r)?.status === "running"}
-                onSelect={() => (lastRun(r)?.status === "scheduled" || !needsReview(r) ? setRerun(r) : setOpen({ kind: "rule", id: r.id, review: true }))}
+                onSelect={() => (lastRun(r)?.status === "scheduled" ? setRerun(r) : setOpen({ kind: "rule", id: r.id, review: true }))}
               >
                 <RotateCw />
                 {/* PREVIEW AND RERUN (Yash, 2026-11-26) — opens only the review, over

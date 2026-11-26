@@ -163,7 +163,7 @@ function WhatChanged({
   onOpen?: (picked: string[]) => void;
 }) {
   const ready = changes.filter(changeReady);
-  if (!ready.length) return null;
+  if (!ready.length || !rows.length) return null;
   const withValue = (id: string) => {
     const e = ents.get(id);
     return typeof e?.value === "number" && !e.dynamic ? `${e.name}: ${money(e.value)}` : (e?.name ?? id);
@@ -328,8 +328,13 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
      out its impact on a press, not on every edit: with every customer that
      is 50K+ records. Working out, then the records load in; an edit after
      that asks for a new preview. A rule that has run reads live, as before. */
-  const staged = !isTemplate && (creating || (!!rule && rule.runs.length === 0));
   const defKey = JSON.stringify([d.groups, d.matches, d.join, d.changes, d.exclude, d.where, d.targets, d.source]);
+  /* AN EDITED RULE PREVIEWS AGAIN (Yash, 2026-11-26) — once its conditions or
+     changes move from how it opened, it asks for Preview impact before it can
+     run (or say Contact support); its last run stays in History. */
+  const [openedKey, setOpenedKey] = React.useState(defKey);
+  const edited = !!rule && defKey !== openedKey;
+  const staged = !isTemplate && (creating || (!!rule && rule.runs.length === 0) || edited);
   const [shot, setShot] = React.useState<Shot | null>(null);
   const fresh = shot && shot.key === defKey ? shot : null;
   const emptyPreview = React.useMemo(() => previewRule(d, [], bulk.entityMap), [defKey, bulk.entityMap]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -405,6 +410,8 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
     if (rule) {
       updateRule(rule.id, { ...defOf(d), name: d.name.trim() });
       runDraft(rule.id, at, d.time !== NO_TIME, bulk.rows, bulk.entityMap);
+      /* It ran as it reads now — no longer an unpreviewed edit. */
+      setOpenedKey(defKey);
       toast.success(later ? `${d.name.trim()} scheduled for ${fmtWhen(at)}` : `${d.name.trim()} running on ${plural(preview.updated.length, "price")}`);
       return;
     }
@@ -479,7 +486,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
     reviewed.current = true;
     if (after === "failed") setReview("failures");
     else if (after === "rerun") setReview("rerun");
-    else setConfirmAgain(true);
+    else setReview("rerun");
   }, [after, target]);
   const rerun = (verb: string, n: number) => {
     if (!rule) return;
@@ -619,11 +626,12 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
     ) : scheduled ? (
       runButton("Run now", runNow)
     ) : after === "failed" ? (
-      <Button onClick={() => setReview("failures")}>Review failures</Button>
+      <Button onClick={() => setReview("failures")}>Preview failures</Button>
     ) : after === "rerun" ? (
-      <Button onClick={() => setReview("rerun")}>Review rerun</Button>
+      <Button onClick={() => setReview("rerun")}>Preview rerun</Button>
     ) : after === "none" ? (
-      <Button onClick={() => setConfirmAgain(true)}>Run again</Button>
+      /* NOTHING TO RERUN, SAID IN THE PREVIEW (Yash, 2026-11-26) — no modal. */
+      <Button onClick={() => setReview("rerun")}>Preview rerun</Button>
     ) : null
   ) : template ? (
     <Button onClick={() => onOpen({ kind: "rule", id: null, from: { ...defOf(d), name: "" } })}>Create rule from template</Button>
@@ -667,7 +675,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
           counts are the Impact card's on the right (Yash, 2026-11-18). */}
       {/* A RAN RULE'S PRICES SIT IN THE SAME PLACE, UNDER THE RECIPE — not on
           top of the rule (Yash, 2026-11-18). */}
-      {rule && shown && (
+      {rule && shown && !staged && (
         <RunSection run={shown} runs={doneRuns} onPick={setRunId} rows={bulk.rows} ents={bulk.entityMap} apply={listApply} onOpenPrice={setPriceOpen} customerMode={preview.customerMode} onNames={setList} />
       )}
       {/* THE TABLE IS ALWAYS THERE (Yash, 2026-11-20) — empty until there are
@@ -716,12 +724,13 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
       {list && <ListSheet list={list} ents={bulk.entityMap} onClose={() => setList(null)} />}
       {review === "rerun" && (
         <ReviewRunSheet
-          title="Review rerun"
+          title="Preview rerun"
           changes={d.changes}
-          action={`Rerun ${plural(rerunN, rerunNoun)}`}
+          action={rerunN ? `Rerun ${plural(rerunN, rerunNoun)}` : "Run again"}
+          empty="All records are up to date."
           kind="change"
           rows={needPrices}
-          customers={needCust ? needCust.map((c) => ({ ...c, outcome: WILL })) : null}
+          customers={needCust && needCust.length ? needCust.map((c) => ({ ...c, outcome: WILL })) : null}
           onNames={setList}
           figures={rerunFigures}
           ents={bulk.entityMap}
@@ -737,7 +746,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
       )}
       {review === "failures" && (
         <ReviewRunSheet
-          title="Review failures"
+          title="Preview failures"
           changes={d.changes}
           action={`Retry ${plural(failedRows.length, "record")}`}
           kind="why"
@@ -837,7 +846,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
           {body}
           {/* THE EMPTY IMPACT CARD, ALONE, RUNS THE COLUMN — as a lone card does (IX-100). */}
           <SheetRail className={staged && !fresh ? "lg:h-(--rail-max)" : undefined}>
-            {rule && run && !scheduled ? (
+            {rule && run && !scheduled && !staged ? (
               <RunImpactCard
                 rule={rule}
                 run={shown ?? run}
@@ -2777,6 +2786,7 @@ function ReviewRunSheet({
   locked = null,
   changes = [],
   onSupport,
+  empty,
 }: {
   title: string;
   action: string;
@@ -2795,6 +2805,8 @@ function ReviewRunSheet({
   changes?: ChangeRow[];
   /** Over 50K records — the act is Contact support. */
   onSupport?: () => void;
+  /** Said in the table when nothing needs it — "All records are up to date." */
+  empty?: string;
   /** Another rule in progress — the act waits for it. */
   locked?: Rule | null;
 }) {
@@ -2849,7 +2861,7 @@ function ReviewRunSheet({
       createTitle={title}
       editTitle={title}
       createAction={action}
-      canSubmit={rows.length > 0}
+      canSubmit={rows.length > 0 || !!empty}
       /* NO CANCEL (G23) — Yash asked Cancel / Rerun; the guardrail says Close is the exit. Raised with Yash. */
       showCancel={false}
       onSubmit={onConfirm}
@@ -2890,7 +2902,7 @@ function ReviewRunSheet({
       {shownCustomers ? (
         <CustomersView resetKey={title} rows={shownCustomers} apply={apply} onOpen={(c) => onNames?.(custNames(c))} />
       ) : (
-        <PricesView resetKey={title} rows={phase === "working" ? [] : shownRows} ents={ents} apply={apply} onOpen={setPrice} />
+        <PricesView resetKey={title} rows={phase === "working" ? [] : shownRows} ents={ents} apply={apply} onOpen={setPrice} empty={phase === "working" ? undefined : empty} />
       )}
       {price && <PriceSheet price={price} ents={ents} onClose={() => setPrice(null)} />}
     </RecordSheet>

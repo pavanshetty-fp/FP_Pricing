@@ -36,7 +36,6 @@ import {
   feeCell,
   feesOnCustomer,
   feesOnRow,
-  modeOf,
   perGalText,
   rateText,
   ruleText,
@@ -55,7 +54,7 @@ import { openFeeInNewTab } from "./pricingNav";
   THE APPLICATION LAYER (Yash, 2026-11-24) — what a price or a customer gets
   from the fees whose scope reaches it. Remove takes a fee off here until it
   is put back; nothing is edited here. Edit fee opens the fee's own page in
-  a new tab. Groups: Always applied · By rule · Offered on orders · Removed.
+  a new tab. Groups: Always applied (By rule fees included) · Review and apply · Removed.
 */
 
 export type FeeTarget =
@@ -85,25 +84,24 @@ interface Line {
   fromCustomer?: boolean;
 }
 
-/** The four groups, in reading order. */
+/** THREE GROUPS (Yash, 2026-11-26) — on a customer or ship-to a By rule fee
+ *  is an always-applied fee (its rule decides per order), so it sits in
+ *  Always applied with its rule under its name; "Offered on orders" reads
+ *  Review and apply, as on the fee. */
 const GROUPS: { key: string; title: string; has: (l: Line) => boolean }[] = [
   {
     key: "always",
     title: "Always applied",
-    has: (l) => !l.removed && modeOf(l.fee) === "always",
+    has: (l) => !l.removed && !l.fee.review,
   },
   {
     key: "review",
-    title: "Offered on orders",
+    title: "Review and apply",
     has: (l) => !l.removed && l.fee.review,
-  },
-  {
-    key: "rule",
-    title: "By rule",
-    has: (l) => !l.removed && modeOf(l.fee) === "rule",
   },
   { key: "removed", title: "Removed", has: (l) => l.removed },
 ];
+const appliedAs = (f: Fee) => (f.review ? "Review and apply" : "Always applied");
 
 /** The lines for a target. */
 export function useFeeLines(target: FeeTarget | null): Line[] {
@@ -199,7 +197,10 @@ export function FeeGroups({
   const groups = GROUPS.map((g) => ({ ...g, lines: lines.filter(g.has) }));
   const [tab, setTab] = React.useState(() => groups.find((g) => g.lines.length)?.key ?? "always");
   const g = groups.find((x) => x.key === tab) ?? groups[0];
-  const reachHead = target.kind === "row" ? "Reaches through" : "Reaches";
+  /* NO "REACHES THROUGH" ON A PRICE (Yash, 2026-11-26); a customer keeps
+     Reaches (its ship-tos). Removed adds how the fee applies. */
+  const showReach = target.kind === "customer";
+  const showApplied = g.key === "removed";
 
   const control =
     mode === "tabs" ? (
@@ -233,15 +234,19 @@ export function FeeGroups({
     <table className="w-full table-fixed border-collapse text-sm">
       <colgroup>
         <col />
-        <col className="w-[220px]" />
-        <col className="w-[240px]" />
+        {/* THE NAME GETS THE ROOM (Yash, 2026-11-26) — rate, application and
+            reach take only what their longest value needs. */}
+        <col className="w-[210px]" />
+        {showApplied && <col className="w-[160px]" />}
+        {showReach && <col className="w-[180px]" />}
         <col className="w-[52px]" />
       </colgroup>
       <thead>
         <tr className="border-b border-border bg-fp-table-header">
           <th className={TH}>Fee</th>
           <th className={TH}>Rate</th>
-          <th className={TH}>{reachHead}</th>
+          {showApplied && <th className={TH}>Application</th>}
+          {showReach && <th className={TH}>Reaches</th>}
           <th aria-hidden />
         </tr>
       </thead>
@@ -251,11 +256,18 @@ export function FeeGroups({
             <td className="px-3 py-2">
               <span className="flex min-w-0 flex-col">
                 <span className="truncate text-foreground">{l.fee.name}</span>
-                <span className="truncate text-xs text-muted-foreground">{l.fee.when === "rule" ? ruleText(l.fee.rule) : l.fee.code}</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {l.removed && l.fromCustomer ? "Removed on customer" : l.fee.when === "rule" ? ruleText(l.fee.rule) : l.fee.code}
+                </span>
               </span>
             </td>
             <td className="truncate px-3 tabular-nums">{rateText(l.fee.amount)}</td>
-            <td className="px-3 py-2">
+            {showApplied && (
+              <td className="px-3">
+                <Pill>{appliedAs(l.fee)}</Pill>
+              </td>
+            )}
+            {showReach && <td className="px-3 py-2">
               {l.removed && l.fromCustomer ? (
                 <Pill>Removed on customer</Pill>
               ) : (
@@ -280,7 +292,7 @@ export function FeeGroups({
                   </span>
                 </span>
               )}
-            </td>
+            </td>}
             <td className="p-0 text-center">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

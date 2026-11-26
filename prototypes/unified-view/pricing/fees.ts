@@ -1161,15 +1161,15 @@ export function feeCell(list: Pick<RowFee, "fee" | "state">[]) {
 }
 
 /** GROUP COUNTS FOR THE FEE CELL (Yash, 2026-11-25 — for the demo, to decide
- *  against "N fees"): "2 applied · 1 to review · 12 by rule · 1 removed",
+ *  against "N fees"): "14 applied · 1 to review · 1 removed",
  *  empty groups left out. */
 export function feeGroupText(list: Pick<RowFee, "fee" | "state">[]): string {
   const on = list.filter((x) => x.state === "applied");
   const n = (m: FeeMode[]) => on.filter((x) => m.includes(modeOf(x.fee))).length;
   const parts: [number, string][] = [
-    [n(["always"]), "applied"],
+    /* By rule counts as applied on a price (Yash, 2026-11-26). */
+    [n(["always", "rule"]), "applied"],
     [n(["review", "ruleReview"]), "to review"],
-    [n(["rule"]), "by rule"],
     [list.length - on.length, "removed"],
   ];
   const text = parts.filter(([c]) => c > 0).map(([c, l]) => `${c} ${l}`).join(" · ");

@@ -110,8 +110,8 @@ Changes reach new and undelivered orders. Delivered orders keep what they had.
 | P2 | Effective price | Includes the charged fees' $/gal |
 | P3 | Hub column | Shows the ship-to's hub |
 | P4 | Click the Fee cell | Side sheet: ship-to · product, with the Applied pricing tag |
-| P5 | Groups | Always applied · Review and apply · By rule · Removed. Two versions on a switch: **Tabs** or **Filter** (segment control). Persisted per browser |
-| P6 | Table columns | Fee · Rate · Reaches through (the scope combination that reached this price, e.g. "Customer: Acme · Hub: Creole") |
+| P5 | Groups | Always applied (By rule fees included, rule under the name) · Review and apply · Removed. Two versions on a switch: **Tabs** or **Filter**. Persisted per browser |
+| P6 | Table columns | Fee · Rate (customer adds Reaches). Removed adds **Application**: Always applied / Review and apply |
 | P7 | ⋯ › Remove | Confirm: "Remove {fee} from {ship-to}?" + "{fee} won't be charged on {product} orders at {ship-to}. Orders not yet delivered lose the fee; delivered orders keep it. You can put it back any time." Buttons: Keep fee · Remove fee |
 | P8 | After Remove | Fee moves to Removed; Fee cell total drops; undelivered orders drop it |
 | P9 | ⋯ › Put back | Back in its group; charged again on new / undelivered orders |

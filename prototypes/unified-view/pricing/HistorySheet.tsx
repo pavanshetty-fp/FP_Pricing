@@ -117,7 +117,9 @@ export function HistorySheet({
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search this history" aria-label="Search this history" className="h-8 pl-8" />
           </div>
-          <DateRangeFilter {...dateWindow} noun="changes" value={range} onChange={setRange} />
+          {/* A CALENDAR ICON, NO STEPPER (Yash, 2026-11-27) — the Export sheet's
+              date control (IX-17): the same picker, one day or a range. */}
+          <DateRangeFilter fullWidth {...dateWindow} noun="changes" value={range} onChange={setRange} />
           <ListFilters align="end" historyKey={historyKey} facets={facets} value={sel} countFor={(f) => narrow(f).length} onApply={setSel} />
         </div>
         <FilterChips className="mt-0" facets={facets} selected={sel} onChange={setSel} />

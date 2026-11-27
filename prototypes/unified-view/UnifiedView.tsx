@@ -289,6 +289,9 @@ const SUB_NAV: Record<string, NavGroup[]> = {
   "pricing-setup": [
     {
       items: [
+        /* BULK RULES LIVE IN PRICING SETUP, FIRST (Yash, 2026-11-27) — was
+           Pricing configuration; at the top of the list. */
+        { key: "pricing-setup-bulk-rules", label: "Bulk rules", icon: <Workflow /> },
         { key: "pricing-setup-margin", label: "Margin", icon: <Percent /> },
         { key: "pricing-setup-fee", label: "Fee", icon: <Receipt /> },
         { key: "pricing-setup-tax", label: "Tax", icon: <Landmark /> },
@@ -298,8 +301,6 @@ const SUB_NAV: Record<string, NavGroup[]> = {
         { key: "pricing-setup-driver-rate", label: "Driver rate", icon: <Fuel /> },
         { key: "pricing-setup-driver-demurrage", label: "Driver demurrage", icon: <Timer /> },
         { key: "pricing-setup-freight", label: "Freight", icon: <Truck /> },
-        /* BULK RULES LIVE IN PRICING SETUP (Yash, 2026-11-27) — was Pricing configuration. */
-        { key: "pricing-setup-bulk-rules", label: "Bulk rules", icon: <Workflow /> },
       ],
     },
   ],

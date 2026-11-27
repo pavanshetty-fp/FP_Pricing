@@ -723,10 +723,14 @@ function Old({ text }: { text: string }) {
 /** What changed's columns: Artifact · Action · Change · Records affected. */
 const WC_GRID = "grid grid-cols-[140px_110px_minmax(0,1fr)_auto] items-start gap-4 px-4";
 
+/** Labelled, since the arrow is gone (Yash, 2026-11-27): "Before" over
+ *  "After", the old value muted. */
 function BeforeAfter({ before, after }: { before: string; after: string }) {
   return (
-    <span className="flex min-w-0 flex-col gap-0.5 break-words">
+    <span className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 break-words">
+      <span className="text-muted-foreground">Before</span>
       <span className="text-muted-foreground">{before}</span>
+      <span className="text-muted-foreground">After</span>
       <span className="text-foreground">{after}</span>
     </span>
   );

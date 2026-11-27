@@ -118,7 +118,7 @@ export function HistorySheet({
             <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search this history" aria-label="Search this history" className="h-8 pl-8" />
           </div>
           <DateRangeFilter {...dateWindow} noun="changes" value={range} onChange={setRange} />
-          <ListFilters historyKey={historyKey} facets={facets} value={sel} countFor={(f) => narrow(f).length} onApply={setSel} />
+          <ListFilters align="end" historyKey={historyKey} facets={facets} value={sel} countFor={(f) => narrow(f).length} onApply={setSel} />
         </div>
         <FilterChips className="mt-0" facets={facets} selected={sel} onChange={setSel} />
 

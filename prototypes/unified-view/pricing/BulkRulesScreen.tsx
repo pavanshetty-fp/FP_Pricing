@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Copy, LayoutTemplate, MoreHorizontal, Pencil, RotateCw, Workflow } from "lucide-react";
+import { Copy, Eye, LayoutTemplate, MoreHorizontal, Pencil, RotateCw, Workflow } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -163,9 +163,11 @@ export function BulkRulesScreen() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              {/* A RULE THAT HAS RUN IS VIEWED, NOT EDITED (Yash, 2026-11-27) —
+                  Duplicate to change it, Preview and rerun to run it again. */}
               <DropdownMenuItem onSelect={() => setOpen({ kind: "rule", id: r.id })}>
-                <Pencil />
-                Edit
+                {r.runs.some((x) => x.status !== "scheduled") ? <Eye /> : <Pencil />}
+                {r.runs.some((x) => x.status !== "scheduled") ? "View" : "Edit"}
               </DropdownMenuItem>
               {lastRun(r) && (
               <DropdownMenuItem

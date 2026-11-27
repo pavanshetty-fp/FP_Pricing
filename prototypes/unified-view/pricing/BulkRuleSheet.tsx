@@ -332,6 +332,9 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
   /* AN EDITED RULE PREVIEWS AGAIN (Yash, 2026-11-26) — once its conditions or
      changes move from how it opened, it asks for Preview impact before it can
      run (or say Contact support); its last run stays in History. */
+  /* A RULE THAT HAS RUN CAN'T BE EDITED (Yash, 2026-11-27) — duplicate it to
+     change it, or rerun it as it is. A scheduled or draft rule still edits. */
+  const ran = !!rule && rule.runs.some((r) => r.status !== "scheduled");
   const [openedKey, setOpenedKey] = React.useState(defKey);
   const edited = !!rule && defKey !== openedKey;
   const staged = !isTemplate && (creating || (!!rule && rule.runs.length === 0) || edited);
@@ -638,7 +641,15 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
   );
 
   const body = (
-    <div className="flex min-w-0 flex-col gap-10">
+    /* …AND LOOKS IT (Yash, 2026-11-27) — every cell, + and Add in the table
+       cells' own disabled look (opacity-50, not-allowed, no hover). */
+    <fieldset
+      disabled={ran}
+      className={cn(
+        "m-0 flex min-w-0 flex-col gap-10 border-0 p-0",
+        ran && "[&_:is(button,input,textarea):disabled]:cursor-not-allowed [&_:is(button,input,textarea):disabled]:opacity-50 [&_button:disabled]:hover:bg-transparent"
+      )}
+    >
       <RuleSection d={d} set={set} setD={setD} isTemplate={isTemplate} canLoad={false} templates={bulk.templates} />
       <GroupsSection
         groups={d.groups ?? [[blankCondition()]]}
@@ -661,7 +672,7 @@ export function BulkRuleSheet({ target, onClose, onOpen }: { target: BulkSheetTa
         ents={bulk.entityMap}
         exclude
       />
-    </div>
+    </fieldset>
   );
 
   /* THE PRICES RUN THE FULL WIDTH, UNDER THE FORM AND ITS CARD — the 3PL
@@ -1446,7 +1457,7 @@ function TargetSection({
     return (
       <RecipeSection id={id} tag={tag} rest={rest} boxed={false} last={exclude}>
         <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-fp-outline-1 px-4 py-3">
-          <span className="text-sm text-foreground">Add exclusion</span>
+          <span className="text-sm text-foreground in-[fieldset:disabled]:opacity-50">Add exclusion</span>
           <Button variant="outline" size="sm" onClick={add}>
             <Plus /> Add
           </Button>

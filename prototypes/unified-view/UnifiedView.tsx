@@ -281,7 +281,6 @@ const SUB_NAV: Record<string, NavGroup[]> = {
       items: [
         { key: "pricing-config-customer", label: "Customer", icon: <Users /> },
         { key: "pricing-config-shipto", label: "Ship-to", icon: <MapPin /> },
-        { key: "pricing-config-bulk-rules", label: "Bulk rules", icon: <Workflow /> },
         /* BULK TEMPLATES HIDDEN (Yash, 2026-11-19) — a rule is reused by
            duplicating it. The screen stays in the code. */
       ],
@@ -299,6 +298,8 @@ const SUB_NAV: Record<string, NavGroup[]> = {
         { key: "pricing-setup-driver-rate", label: "Driver rate", icon: <Fuel /> },
         { key: "pricing-setup-driver-demurrage", label: "Driver demurrage", icon: <Timer /> },
         { key: "pricing-setup-freight", label: "Freight", icon: <Truck /> },
+        /* BULK RULES LIVE IN PRICING SETUP (Yash, 2026-11-27) — was Pricing configuration. */
+        { key: "pricing-setup-bulk-rules", label: "Bulk rules", icon: <Workflow /> },
       ],
     },
   ],
@@ -1000,7 +1001,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         return <CustomerPricingScreen />;
       case "pricing-config-shipto":
         return <ShiptoPricingScreen />;
-      case "pricing-config-bulk-rules":
+      case "pricing-setup-bulk-rules":
         return <BulkRulesScreen />;
       case "pricing-config-bulk-templates":
         return <BulkTemplatesScreen />;

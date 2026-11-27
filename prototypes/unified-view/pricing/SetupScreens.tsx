@@ -29,16 +29,14 @@ import {
   TableRowRemove,
 } from "@/components/form-layout/table-cells";
 import { HangingAdd } from "../HangingAdd";
-import { TwoLineCell, type ListColumn } from "../ListTable";
-import { RecordViews, type ViewRow, type ViewTab } from "../masterdata/RecordViews";
+import type { ListColumn } from "../ListTable";
 import type { ListFacet } from "../ListFilters";
 import { RecordSheet, useDraftSaveState, DraftStatusChip } from "../RecordSheet";
 import { ActivityCard, SheetRail, type TimelineEntry } from "../SheetCards";
 import { StandardList } from "../StandardList";
 import { TokenMultiSelect } from "../TokenMultiSelect";
-import { changeSummary, fmtWhen, type ChangeRecord, type Entity, type EntityMap, type SetupField } from "./changeLog";
-import { fitTab } from "./customerShiptoViews";
-import { ChangeSheet } from "./ChangeSheet";
+import { changeSummary, plural, recordAction, type ChangeRecord, type Entity, type EntityMap, type SetupField } from "./changeLog";
+import { HistorySheet, type HistoryItem } from "./HistorySheet";
 import {
   createSetup,
   logSetup,
@@ -742,7 +740,7 @@ function activityOf(id: string, changes: ChangeRecord[], audit: SetupAudit[] | u
       .filter((c) => c.status !== "canceled" && c.edits.some((e) => e.entityIds.includes(id) && (e.operation === "create" || e.operation === "edit")))
       .map((c) => {
         const created = c.edits.some((e) => e.operation === "create");
-        return { key: c.id, at: c.effectiveAt, by: c.by, change: created ? "Created" : changeSummary(c, ents), action: created ? "Added" : "Updated", changeId: c.id };
+        return { key: c.id, at: c.effectiveAt, by: c.by, change: created ? "Created" : changeSummary(c, ents), action: created ? "Added" : recordAction(c), changeId: c.id };
       }),
     ...(audit ?? []).map((a) => ({ key: a.session, at: a.at, by: a.by, change: a.changes.join(" · "), action: AUDIT_ACTION[a.action] ?? a.action })),
   ].sort((a, b) => b.at - a.at);
@@ -779,64 +777,16 @@ function DeactivateDialog({ kind, name, open, onClose, onConfirm }: { kind: Kind
 }
 
 /**
- * THE FULL HISTORY — every change on the record, searchable, filterable by
- * action and person. Read-only, so no footer (rule 28).
+ * THE FULL HISTORY — every change on the record as a timeline (Yash,
+ * 2026-11-27, the dev site's artifact history), with search, Filters and
+ * dates. Read-only, so no footer (rule 28).
  */
 function SetupActivitySheet({ kind, id, onClose }: { kind: Kind; id: string; onClose: () => void }) {
   const log = useChangeLog();
-  const [changeId, setChangeId] = React.useState<string | null>(null);
   const e = log.entities.find((x) => x.id === id);
-  const items = activityOf(id, log.changes, log.audit[id], log.entityMap);
-  const tab: ViewTab = fitTab({
-    key: "history",
-    label: "History",
-    noun: "changes",
-    one: "change",
-    columns: [
-      { key: "when", label: "Date & time", width: 180, sortable: true },
-      { key: "action", label: "Action", width: 130, sortable: true },
-      { key: "change", label: "Change", width: 320, sortable: true },
-    ],
-    rows: items.map(
-      (x): ViewRow => ({
-        id: x.key,
-        text: { when: fmtWhen(x.at), change: x.change, action: x.action, by: x.by },
-        sort: { when: x.at },
-        status: x.action,
-        values: { action: x.action, by: x.by },
-      })
-    ),
-    facets: [
-      { key: "action", label: "Action" },
-      { key: "by", label: "Change by" },
-    ],
-    renderCell: (r, key) =>
-      key === "when" ? <TwoLineCell title={r.text.when} description={r.text.by} /> : key === "action" ? <Pill>{r.text.action}</Pill> : undefined,
-    /* A price change opens the change itself, as on Customer and Ship-to. */
-    onOpen: (r) => {
-      const cid = items.find((x) => x.key === r.id)?.changeId;
-      if (cid) setChangeId(cid);
-    },
-    nameOf: (r) => r.text.change,
+  const items: HistoryItem[] = activityOf(id, log.changes, log.audit[id], log.entityMap).map((x) => {
+    const n = x.changeId ? log.changes.find((c) => c.id === x.changeId)?.lines.length ?? 0 : 0;
+    return { key: x.key, at: x.at, action: x.action, change: x.change, text: x.change, by: x.by, note: n ? plural(n, "record") : undefined, changeId: x.changeId };
   });
-  const tab2: ViewTab = { ...tab, columns: tab.columns.map((c) => (c.key === "change" ? { ...c, width: Math.min(c.width ?? 320, 360) } : c)) };
-  return (
-    <RecordSheet
-      size="full"
-      open
-      onOpenChange={(v) => !v && onClose()}
-      mode="edit"
-      editTitle={`${e?.name ?? ""} history`}
-      createTitle=""
-      createAction=""
-      showCancel={false}
-      stepNav={false}
-      noFooter
-      headerSubtitle={<span className="text-sm text-muted-foreground">{KIND[kind].title}</span>}
-      onSubmit={onClose}
-    >
-      <RecordViews hideSingleTab resetKey={id} tabs={[tab2]} searchPlaceholder="Search this history" historyKey={`pricing-setup-activity-${kind}`} />
-      <ChangeSheet id={changeId} onClose={() => setChangeId(null)} onOpen={setChangeId} level={2} />
-    </RecordSheet>
-  );
+  return <HistorySheet title={`${e?.name ?? ""} history`} subtitle={KIND[kind].title} items={items} onClose={onClose} historyKey={`pricing-setup-activity-${kind}`} />;
 }

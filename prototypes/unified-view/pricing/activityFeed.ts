@@ -65,7 +65,7 @@ export type FeedColumnKey =
    what to what). One field per column, so each sorts and filters on its own;
    no row actions — people come here to read what happened. */
 export const FEED_COLUMNS: ListColumn<FeedColumnKey>[] = [
-  { key: "when", label: "Date & time", width: 180, sortable: true },
+  { key: "when", label: "Date & time", width: 220, sortable: true },
   /* NO CHANGE ID COLUMN (Yash, 2026-11-18) — the opened change carries it. */
   { key: "entity", label: "Artifact", width: 140, sortable: true },
   { key: "action", label: "Action", width: 120, sortable: true },

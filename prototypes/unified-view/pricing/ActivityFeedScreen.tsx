@@ -31,7 +31,7 @@ import {
   SOURCE_LABEL,
   STATUS_LABEL,
   changeSummary,
-  fmtWhen,
+  fmtStamp,
   customerOf,
   plural,
   shiptoOf,
@@ -219,7 +219,7 @@ export function ActivityFeedScreen() {
     (c: ChangeRecord, key: FeedColumnKey): string => {
       switch (key) {
         case "when":
-          return fmtWhen(c.effectiveAt);
+          return fmtStamp(c.effectiveAt);
         case "id":
           return c.id;
         case "entity":
@@ -714,7 +714,7 @@ export function ActivityFeedScreen() {
               onReorderColumns={setColumnOrder}
               columnWidths={columnWidths}
               onResizeColumns={setColumnWidths}
-              openLabel={(c) => `Open change made ${fmtWhen(c.effectiveAt)}`}
+              openLabel={(c) => `Open change made ${fmtStamp(c.effectiveAt)}`}
               onOpenRow={(c) => setOpenId(c.id)}
               showColumnFilters={colFiltersOpen}
               onToggleColumnFilters={() =>

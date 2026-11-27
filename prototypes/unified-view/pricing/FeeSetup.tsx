@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Copy, FlaskConical, MoreHorizontal, Pencil, Power, Receipt } from "lucide-react";
+import { Copy, FlaskConical, History, MoreHorizontal, Pencil, Power, Receipt } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +60,7 @@ import {
 import { StandardList } from "../StandardList";
 import { NOW, plural, readSetting, uniq, type ConfigRow } from "./changeLog";
 import { useChangeLog } from "./changeLogStore";
+import { HistorySheet, type HistoryItem } from "./HistorySheet";
 import { fitColumns } from "./fitColumns";
 import {
   APPLICABLE_LABEL,
@@ -82,7 +83,7 @@ import {
   blankCond,
   blankFee,
   createFee,
-  feeDiff,
+  feeEdits,
   hubsIn,
   inScope,
   modeOf,
@@ -161,6 +162,7 @@ export function FeeSetupScreen() {
     return id && fees.some((f) => f.id === id) ? { id, page: true } : null;
   });
   const [off, setOff] = React.useState<Fee | null>(null);
+  const [history, setHistory] = React.useState<string | null>(null);
   const counts = React.useMemo(
     /* SHIP-TOS, NOT PRICES (Yash, 2026-11-25) — a ship-to × product count read
        as noise; the ship-tos a fee reaches is the number people ask for. */
@@ -246,6 +248,10 @@ export function FeeSetupScreen() {
                 <Pencil />
                 Edit
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setHistory(f.id)}>
+                <History />
+                History
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => setOpen({ id: null, from: f.id })}
               >
@@ -290,6 +296,7 @@ export function FeeSetupScreen() {
           }}
         />
       )}
+      {history && <FeeHistorySheet id={history} onClose={() => setHistory(null)} />}
       <AlertDialog open={!!off} onOpenChange={(o) => !o && setOff(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -318,6 +325,25 @@ export function FeeSetupScreen() {
       </AlertDialog>
     </>
   );
+}
+
+/** A FEE'S HISTORY (Yash, 2026-11-27) — the timeline every artifact has:
+ *  its fee history, each entry but an order's opening its change. */
+function FeeHistorySheet({ id, onClose }: { id: string; onClose: () => void }) {
+  const store = useFees();
+  const fee = store.fees.find((f) => f.id === id);
+  const list = store.audit[id] ?? [];
+  const items: HistoryItem[] = list.map((a, k) => ({
+    key: `${id}-${k}`,
+    at: a.at,
+    action: a.action,
+    change: a.change,
+    text: a.change,
+    by: a.by,
+    note: a.rowIds?.length ? plural(a.rowIds.length, "record") : undefined,
+    changeId: a.kind && a.kind !== "order" ? `CH-F-${id}-${list.length - 1 - k}` : undefined,
+  }));
+  return <HistorySheet title={`${fee?.name ?? ""} history`} subtitle="Fee" items={items} onClose={onClose} historyKey="pricing-setup-activity-fee" />;
 }
 
 // ------------------------------------------------------------- the sheet --
@@ -351,18 +377,16 @@ function FeeSheet({
   const saveState = useDraftSaveState(d);
   const patch = (p: Partial<Fee>) => setD((x) => ({ ...x, ...p }));
 
-  /* AUTOSAVE — an existing fee, 600ms after an edit settles. The history
-     keeps one line per open sheet. */
-  const logged = React.useRef<string[]>([]);
+  /* AUTOSAVE — an existing fee, 600ms after an edit settles. Each save logs
+     what moved since the last one, old → new (Yash, 2026-11-27). */
+  const saved = React.useRef<Fee>(start);
   React.useEffect(() => {
     if (creating) return;
     const t = window.setTimeout(() => {
       if (!d.name.trim()) return;
-      const changes = feeDiff(start, d).filter(
-        (c) => !logged.current.includes(c),
-      );
-      logged.current = [...logged.current, ...changes];
-      updateFee(d, changes);
+      const edits = feeEdits(saved.current, d);
+      saved.current = d;
+      updateFee(d, edits);
     }, 600);
     return () => window.clearTimeout(t);
   }, [d]); // eslint-disable-line react-hooks/exhaustive-deps

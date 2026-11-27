@@ -3,9 +3,19 @@ import {
   CURRENT_USER,
   NOW,
   DAY,
+  FIELD_LABEL,
+  NOT_SET,
+  recordAction,
+  recordTitle,
+  type ChangeRecord,
   type ConfigRow,
+  type Edit,
+  type Entity,
   type EntityMap,
+  type ImpactLine,
+  type SetupField,
 } from "./changeLog";
+import { logSnapshot, setFeeLog } from "./changeLogStore";
 import {
   CUSTOMERS,
   SHIPTOS,
@@ -884,11 +894,25 @@ const SEED: Fee[] = [
 
 // ----------------------------------------------------------------- store --
 
+/** What a fee event did — the Activity feed reads it as a change. */
+export type FeeEventKind = "create" | "edit" | "assign" | "unassign" | "order";
+export interface FeeFieldEdit {
+  field: SetupField;
+  from: string;
+  to: string;
+}
 export interface FeeAudit {
   at: number;
   by: string;
   change: string;
   action: string;
+  kind?: FeeEventKind;
+  /** Edit: the fields, old → new. */
+  edits?: FeeFieldEdit[];
+  /** The prices (ship-to × product) it reached when it was made. */
+  rowIds?: string[];
+  /** Assign / unassign on a customer's pricing. */
+  customerId?: string;
 }
 
 interface State {
@@ -924,6 +948,7 @@ let state: State = {
           by: ["Priya Nair", "Cody McLelland", "Valarie Rogers"][i % 3],
           change: "Created",
           action: "Added",
+          kind: "create" as const,
         },
       ],
     ]),
@@ -933,7 +958,9 @@ let state: State = {
 /* ONE STORE ACROSS TABS (Yash, 2026-11-24) — Edit fee opens the fee in a
    new tab, so the fees, removals and applies are kept in the browser and
    shared between tabs: an edit in one shows in the other. */
-const KEY = "fp-pricing-fees-v2";
+/* v3 (2026-11-27): history entries carry what they changed and reached, so
+   the Activity feed can read them; older saved fees start from the sample. */
+const KEY = "fp-pricing-fees-v3";
 try {
   const raw = typeof window !== "undefined" ? window.localStorage.getItem(KEY) : null;
   if (raw) state = { ...state, ...(JSON.parse(raw) as Partial<State>) };
@@ -952,6 +979,7 @@ const save = () => {
 const set = (next: Partial<State>) => {
   state = { ...state, ...next };
   save();
+  syncLog();
   listeners.forEach((l) => l());
 };
 if (typeof window !== "undefined")
@@ -959,6 +987,7 @@ if (typeof window !== "undefined")
     if (e.key !== KEY || !e.newValue) return;
     try {
       state = { ...state, ...(JSON.parse(e.newValue) as Partial<State>) };
+      syncLog();
       listeners.forEach((l) => l());
     } catch {
       /* ignore a bad write */
@@ -975,12 +1004,14 @@ const log = (
   change: string,
   action = "Updated",
   patch: Partial<State> = {},
+  extra: Partial<FeeAudit> = {},
 ) => {
   const entry: FeeAudit = {
     at: nowOf() + 60_000,
     by: CURRENT_USER,
     change,
     action,
+    ...extra,
   };
   set({
     ...patch,
@@ -1000,47 +1031,132 @@ export function createFee(f: Fee): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")}`;
   for (let i = 2; state.fees.some((x) => x.id === id); i++) id = `${id}-${i}`;
-  log(id, "Created", "Added", { fees: [...state.fees, { ...f, id }] });
+  log(id, "Created", "Added", { fees: [...state.fees, { ...f, id }] }, { kind: "create" });
   return id;
 }
-/** Autosave of an open fee sheet — `changes` are what the sheet moved. */
-export function updateFee(f: Fee, changes: string[]) {
+/** The prices a fee reaches now — configured ship-to × product in its scope. */
+function reachIds(f: Fee | undefined): string[] {
+  if (!f) return [];
+  const { rows, ents } = logSnapshot();
+  const hubs = hubMap(rows, ents);
+  return rows
+    .filter((r) => r.configured && inScope(f, r, hubs.get(r.shiptoId) ?? "Houston hub").ok)
+    .map((r) => r.id);
+}
+const actionOf = (edits: FeeFieldEdit[]) =>
+  recordAction({ edits: edits.map((e) => ({ operation: "edit" as const, field: e.field, to: e.to })) });
+/** Autosave of an open fee sheet — `edits` are what moved since its last save.
+ *  The change reaches what the fee reached before or reaches now. */
+export function updateFee(f: Fee, edits: FeeFieldEdit[]) {
+  const prev = state.fees.find((x) => x.id === f.id);
   const fees = state.fees.map((x) => (x.id === f.id ? f : x));
-  if (!changes.length) return set({ fees });
-  log(f.id, changes.join(" · "), "Updated", { fees });
+  if (!edits.length) return set({ fees });
+  const rowIds = [...new Set([...reachIds(prev), ...reachIds(f)])];
+  log(f.id, edits.map(feeEditText).join(" · "), actionOf(edits), { fees }, { kind: "edit", edits, rowIds });
 }
 export function setFeeActive(id: string, active: boolean) {
+  const edits: FeeFieldEdit[] = [{ field: "active", from: active ? "Inactive" : "Active", to: active ? "Active" : "Inactive" }];
   log(
     id,
     active ? "Activated" : "Deactivated",
     active ? "Activated" : "Deactivated",
     { fees: state.fees.map((x) => (x.id === id ? { ...x, active } : x)) },
+    { kind: "edit", edits, rowIds: reachIds(feeById(id)) },
   );
 }
 
-/** What an open sheet changed, in words. */
-export function feeDiff(a: Fee, b: Fee): string[] {
-  const out: string[] = [];
-  if (a.name !== b.name) out.push(`Name: ${a.name} → ${b.name}`);
-  if (a.code !== b.code) out.push(`Code: ${b.code}`);
-  if (a.erpId !== b.erpId) out.push(`ERP ID: ${b.erpId}`);
-  if (a.desc !== b.desc) out.push("Description changed");
-  if (a.applicableType !== b.applicableType)
-    out.push(`Applicable type: ${APPLICABLE_LABEL[b.applicableType]}`);
-  if (modeOf(a) !== modeOf(b))
-    out.push(`Application: ${MODE_LABEL[modeOf(b)]}`);
-  if (JSON.stringify(a.rule) !== JSON.stringify(b.rule) && b.when === "rule")
-    out.push("Rule changed");
-  if (
-    JSON.stringify(a.scope) !== JSON.stringify(b.scope) ||
-    JSON.stringify(a.products) !== JSON.stringify(b.products)
-  )
-    out.push("Scope changed");
-  if (JSON.stringify(a.amount) !== JSON.stringify(b.amount))
-    out.push(`Rate: ${rateText(b.amount)}`);
-  if (a.active !== b.active) out.push(b.active ? "Activated" : "Deactivated");
+const ruleOf = (f: Fee) => (f.when === "rule" ? ruleText(f.rule) : NOT_SET);
+/** What an open sheet changed: each field, old → new. */
+export function feeEdits(a: Fee, b: Fee): FeeFieldEdit[] {
+  const out: FeeFieldEdit[] = [];
+  const add = (field: SetupField, from: string, to: string) => from !== to && out.push({ field, from, to });
+  add("name", a.name, b.name);
+  add("code", a.code, b.code);
+  add("erpId", a.erpId, b.erpId);
+  add("desc", a.desc, b.desc);
+  add("applicable", APPLICABLE_LABEL[a.applicableType], APPLICABLE_LABEL[b.applicableType]);
+  add("application", MODE_LABEL[modeOf(a)], MODE_LABEL[modeOf(b)]);
+  if (JSON.stringify(a.rule) !== JSON.stringify(b.rule) && b.when === "rule") add("rule", ruleOf(a), ruleOf(b));
+  if (JSON.stringify(a.scope) !== JSON.stringify(b.scope) || JSON.stringify(a.products) !== JSON.stringify(b.products)) add("scope", scopeText(a), scopeText(b));
+  if (JSON.stringify(a.amount) !== JSON.stringify(b.amount)) add("rate", rateText(a.amount), rateText(b.amount));
+  add("active", a.active ? "Active" : "Inactive", b.active ? "Active" : "Inactive");
   return out;
 }
+/** One field edit, in words: "Rate: $0.0195 / gallon → $0.0210 / gallon". */
+export const feeEditText = (e: FeeFieldEdit) =>
+  e.field === "active"
+    ? e.to === "Active" ? "Activated" : "Deactivated"
+    : e.field === "desc"
+      ? "Description updated"
+      : `${FIELD_LABEL[e.field]}: ${e.from || NOT_SET} → ${e.to || NOT_SET}`;
+/** What an open sheet changed, in words. */
+export const feeDiff = (a: Fee, b: Fee): string[] => feeEdits(a, b).map(feeEditText);
+
+// ------------------------------------------------- fees in the change log --
+
+/* FEES IN THE ACTIVITY FEED (Yash, 2026-11-27) — every fee event but an
+   order's is a change in the log: Added, Updated / Activated / Deactivated
+   with the prices it reached, Assigned / Unassigned on a customer or a price.
+   Built from the fee history, once per entry. */
+const recCache = new WeakMap<FeeAudit, ChangeRecord>();
+function feeRecord(feeId: string, a: FeeAudit, n: number, ents: EntityMap, rowOf: (id: string) => ConfigRow | undefined): ChangeRecord | null {
+  const kind = a.kind;
+  if (!kind || kind === "order") return null;
+  const cached = recCache.get(a);
+  if (cached) return cached;
+  const rowIds = a.rowIds ?? [];
+  const edits: Edit[] =
+    kind === "create"
+      ? [{ setting: "fee", operation: "create", entityIds: [feeId], rowIds: [] }]
+      : kind === "edit"
+        ? (a.edits ?? []).map((e) => ({ setting: "fee" as const, operation: "edit" as const, entityIds: [feeId], rowIds: [], ...e }))
+        : [{ setting: "fee", operation: kind === "assign" ? "add" : "remove", entityIds: [feeId], rowIds, ...(a.customerId ? { via: "customer" as const } : {}) }];
+  if (!edits.length) return null;
+  const name = ents.get(feeId)?.name ?? feeId;
+  const lines: ImpactLine[] = [];
+  if (kind !== "create")
+    for (const id of rowIds) {
+      const r = rowOf(id);
+      if (!r) continue;
+      const at = { rowId: r.id, customerId: r.customerId, shiptoId: r.shiptoId, productId: r.productId, setting: "fee" as const, delta: 0, outcome: "changed" as const };
+      if (kind === "edit") for (const e of a.edits ?? []) lines.push({ ...at, before: e.from, after: e.to, beforeIds: [feeId], afterIds: [feeId], field: e.field });
+      else if (kind === "assign") lines.push({ ...at, before: "", after: name, beforeIds: [], afterIds: [feeId] });
+      else lines.push({ ...at, before: name, after: "", beforeIds: [feeId], afterIds: [] });
+    }
+  const rec: ChangeRecord = {
+    id: `CH-F-${feeId}-${n}`,
+    title: recordTitle(edits, ents),
+    edits,
+    source: kind === "assign" || kind === "unassign" ? (a.customerId ? "customer" : "shiptoInline") : "setup",
+    by: a.by,
+    madeAt: a.at,
+    effectiveAt: a.at,
+    status: "applied",
+    noChange: 0,
+    lines,
+    orders: [],
+    ...(a.customerId ? { customerId: a.customerId } : {}),
+    external: "fee",
+  };
+  recCache.set(a, rec);
+  return rec;
+}
+function syncLog() {
+  const feeEnts: Entity[] = state.fees.map((f) => ({ id: f.id, setting: "fee", name: f.name, desc: f.desc }));
+  const { rows, ents } = logSnapshot();
+  const all: EntityMap = new Map([...ents, ...feeEnts.map((e) => [e.id, e] as const)]);
+  const rowMap = new Map(rows.map((r) => [r.id, r]));
+  const changes: ChangeRecord[] = [];
+  for (const f of state.fees) {
+    const list = state.audit[f.id] ?? [];
+    list.forEach((a, k) => {
+      const rec = feeRecord(f.id, a, list.length - 1 - k, all, (id) => rowMap.get(id));
+      if (rec) changes.push(rec);
+    });
+  }
+  setFeeLog(feeEnts, changes);
+}
+syncLog();
 
 // ------------------------------------------------------- what applies -----
 
@@ -1241,16 +1357,26 @@ export function setRowFee(row: ConfigRow, feeId: string, on: boolean) {
   log(
     feeId,
     `${on ? "Put back on" : "Removed from"} ${pname(row)}`,
-    on ? "Added" : "Deleted",
+    on ? "Assigned" : "Unassigned",
     patch,
+    { kind: on ? "assign" : "unassign", rowIds: [row.id] },
   );
 }
 export function setCustomerFee(customerId: string, feeId: string, on: boolean) {
   const cur = state.customerOff[customerId] ?? [];
+  /* The prices following the customer that the fee reaches. */
+  const fee = feeById(feeId);
+  const { rows, ents } = logSnapshot();
+  const hubs = hubMap(rows, ents);
+  const rowIds = fee
+    ? rows
+        .filter((r) => r.customerId === customerId && r.configured && r.applied !== "shipto" && inScope(fee, r, hubs.get(r.shiptoId) ?? "Houston hub").ok)
+        .map((r) => r.id)
+    : [];
   log(
     feeId,
     `${on ? "Put back on" : "Removed from"} ${customerOf(customerId).name}`,
-    on ? "Added" : "Deleted",
+    on ? "Assigned" : "Unassigned",
     {
       customerOff: {
         ...state.customerOff,
@@ -1259,6 +1385,7 @@ export function setCustomerFee(customerId: string, feeId: string, on: boolean) {
           : [...new Set([...cur, feeId])],
       },
     },
+    { kind: on ? "assign" : "unassign", rowIds, customerId },
   );
 }
 
@@ -1275,7 +1402,7 @@ export function setOrderFee(orderId: string, feeId: string, on: boolean) {
   log(
     feeId,
     `${on ? "Applied on" : "Taken off"} order ${orderId}`,
-    on ? "Added" : "Deleted",
+    on ? "Assigned" : "Unassigned",
     {
       orderApplied: {
         ...state.orderApplied,
@@ -1284,6 +1411,7 @@ export function setOrderFee(orderId: string, feeId: string, on: boolean) {
           : cur.filter((x) => x !== feeId),
       },
     },
+    { kind: "order" },
   );
 }
 

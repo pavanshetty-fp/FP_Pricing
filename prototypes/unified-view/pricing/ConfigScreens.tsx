@@ -18,12 +18,13 @@ import { ShiptoCount } from "./customerShiptoParts";
 import { TERM_ICONS } from "@/components/ui/term-icons";
 import type { GroupDim } from "@/components/tables-layout";
 import { TwoLineCell, type ListColumn } from "../ListTable";
-import { customerOf, effectivePrice, fmtWhen, plural, productOf, readSetting, shiptoOf, uniq, type ConfigRow, type Setting } from "./changeLog";
+import { SOURCE_LABEL, changeSummary, customerOf, effectivePrice, fmtWhen, plural, productOf, readSetting, recordAction, shiptoOf, uniq, type ConfigRow, type ImpactLine, type Setting } from "./changeLog";
+import { HistorySheet, type HistoryItem } from "./HistorySheet";
 import { customerRecordFor, resetToCustomer, useChangeLog } from "./changeLogStore";
 import { bulkRunAlert, lockMessage, useBulkLock } from "./bulkRules";
 import { ConfigList } from "./ConfigList";
 import { PricingSheet } from "./PricingSheet";
-import { openFeedFor, takeReopen } from "./pricingNav";
+import { takeReopen } from "./pricingNav";
 import { FeeApplicationSheet, FeeCellButton, useRowFees, type FeeTarget } from "./FeeApplication";
 import { feeCell, feeGroupText, feesOnCustomer, isCharged, perGallon, useFees, useHubMap } from "./fees";
 import {
@@ -32,6 +33,7 @@ import {
   centsOf,
   customerPricing,
   factsOf,
+  historyOf,
   listCell,
   perGal,
   type CustomerPricing,
@@ -47,24 +49,51 @@ import {
   opens its pricing sheet (bulk and inline edits come later).
 */
 
-/** The trail a record's View all leaves for the Activity feed. */
-const feedFor = (t: PricingTarget) => {
-  if (t.kind === "row") {
-    const name = shiptoOf(t.shiptoId).name;
-    openFeedFor({ from: "pricing-config-shipto", fromLabel: "Ship-to", record: t, recordLabel: name, facet: `shipto:${name}` });
-  } else {
-    const name = customerOf(t.customerId).name;
-    openFeedFor({ from: "pricing-config-customer", fromLabel: "Customer", record: t, recordLabel: name, facet: `customer:${name}` });
-  }
-};
+/** A CUSTOMER'S OR SHIP-TO'S HISTORY AS A TIMELINE (Yash, 2026-11-27) — every
+ *  change that reached it, the way artifacts and Customer & ship-to read it. */
+function PricingHistory({ target, onClose, level }: { target: PricingTarget; onClose: () => void; level: 1 | 2 }) {
+  const log = useChangeLog();
+  const ents = log.entityMap;
+  const mine = (l: ImpactLine) => (target.kind === "row" ? l.shiptoId === target.shiptoId : l.customerId === target.customerId);
+  const items: HistoryItem[] = historyOf(log.changes, target).map((c) => {
+    const n = c.lines.filter(mine).length;
+    const text = changeSummary(c, ents);
+    return {
+      key: c.id,
+      at: c.effectiveAt,
+      action: recordAction(c),
+      change: text,
+      text,
+      by: c.by,
+      note: [SOURCE_LABEL[c.source], n ? plural(n, "record") : ""].filter(Boolean).join(" · "),
+      changeId: c.id,
+    };
+  });
+  const name = target.kind === "row" ? shiptoOf(target.shiptoId).name : customerOf(target.customerId).name;
+  return (
+    <HistorySheet
+      title={`${name} history`}
+      subtitle={target.kind === "row" ? "Ship-to" : "Customer"}
+      items={items}
+      onClose={onClose}
+      level={level}
+      historyKey={target.kind === "row" ? "pricing-config-shipto-history" : "pricing-config-customer-history"}
+    />
+  );
+}
 
-/** The pricing sheet a configuration page opens. Its history is the Activity
- *  feed, filtered to it (Yash, 2026-11-17); coming back by the path opens
- *  the sheet again. */
+/** The pricing sheet a configuration page opens, and the history behind its
+ *  View all and the row menu's History. */
 function useSheets() {
   const [pricing, setPricing] = React.useState<PricingTarget | null>(takeReopen);
-  const sheets = <PricingSheet target={pricing} onClose={() => setPricing(null)} onHistory={feedFor} />;
-  return { setPricing, setHistory: feedFor, sheets };
+  const [history, setHistory] = React.useState<PricingTarget | null>(null);
+  const sheets = (
+    <>
+      <PricingSheet target={pricing} onClose={() => setPricing(null)} onHistory={setHistory} />
+      {history && <PricingHistory target={history} onClose={() => setHistory(null)} level={pricing ? 2 : 1} />}
+    </>
+  );
+  return { setPricing, setHistory, sheets };
 }
 
 // ------------------------------------------------------------------ ship-to --

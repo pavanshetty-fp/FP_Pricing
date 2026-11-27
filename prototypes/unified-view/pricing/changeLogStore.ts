@@ -43,6 +43,11 @@ interface State {
   /** A setup record's own activity — what changed besides its price (the
    *  price is in the change log). One entry per open sheet, by session. */
   audit: Record<string, SetupAudit[]>;
+  /** FEES IN THE LOG (Yash, 2026-11-27) — the fee rule engine keeps its own
+   *  store; its changes and names are mirrored here so the Activity feed and
+   *  histories read one log. Rebuilt whenever the fee store changes. */
+  feeChanges: ChangeRecord[];
+  feeEnts: Entity[];
   tick: number;
 }
 
@@ -102,7 +107,7 @@ const SEED_META = (): Record<string, SetupMeta> => {
   }
   return out;
 };
-let state: State = { rows: SEED.rows, entities: SEED.entities, changes: SEED.changes, customerOwn: {}, meta: {}, audit: seedAudit(SEED.entities, SEED.changes), tick: 0 };
+let state: State = { rows: SEED.rows, entities: SEED.entities, changes: SEED.changes, customerOwn: {}, meta: {}, audit: seedAudit(SEED.entities, SEED.changes), feeChanges: [], feeEnts: [], tick: 0 };
 const listeners = new Set<() => void>();
 const set = (next: Partial<State>) => {
   state = { ...state, ...next };
@@ -114,8 +119,8 @@ const subscribe = (l: () => void) => {
 };
 
 const nowOf = (s: State) => NOW + s.tick * 60_000;
-const nextId = (s: State) => `CH-${Math.max(...s.changes.map((c) => Number(c.id.slice(3)))) + 1}`;
-const entityMapOf = (s: State): EntityMap => new Map(s.entities.map((e) => [e.id, e]));
+const nextId = (s: State) => `CH-${Math.max(...s.changes.map((c) => Number(c.id.slice(3))).filter(Number.isFinite)) + 1}`;
+const entityMapOf = (s: State): EntityMap => new Map([...s.feeEnts, ...s.entities].map((e) => [e.id, e]));
 const rowMapOf = (s: State) => new Map(s.rows.map((r) => [r.id, r]));
 
 /** The one change Undo is offered on: the most recent that took effect,
@@ -331,7 +336,7 @@ export function resetToCustomer(rowId: string): string | null {
 
 /** The changes on these rows that can be rolled back, newest first. */
 export function rollbackCandidates(rowIds: string[], changes: ChangeRecord[]) {
-  return changes.filter((c) => rollbackEligible(changes, c, rowIds)).sort((a, b) => b.effectiveAt - a.effectiveAt);
+  return changes.filter((c) => !c.external && rollbackEligible(changes, c, rowIds)).sort((a, b) => b.effectiveAt - a.effectiveAt);
 }
 
 /** What rolling this change back on these rows would move. */
@@ -554,11 +559,19 @@ export function logSetup(id: string, session: string, changes: string[], opts: {
   set({ audit: { ...s.audit, [id]: next }, tick: prev ? s.tick : s.tick + 1 });
 }
 
+/** The fee rule engine's changes and fee names, mirrored into the log. */
+export function setFeeLog(feeEnts: Entity[], feeChanges: ChangeRecord[]) {
+  set({ feeEnts, feeChanges });
+}
+/** The rows and names right now — for a store outside React (the fees). */
+export const logSnapshot = () => ({ rows: state.rows, ents: entityMapOf(state) });
+
 export function useChangeLog() {
   const s = React.useSyncExternalStore(subscribe, () => state);
-  const entityMap = React.useMemo(() => entityMapOf(s), [s.entities]); // eslint-disable-line react-hooks/exhaustive-deps
+  const entityMap = React.useMemo(() => entityMapOf(s), [s.entities, s.feeEnts]); // eslint-disable-line react-hooks/exhaustive-deps
   const latestId = React.useMemo(() => latestIdOf(s.changes), [s.changes]);
-  return { changes: s.changes, rows: s.rows, customerOwn: s.customerOwn, entities: s.entities, meta: s.meta, audit: s.audit, entityMap, latestId, now: nowOf(s) };
+  const changes = React.useMemo(() => (s.feeChanges.length ? [...s.changes, ...s.feeChanges] : s.changes), [s.changes, s.feeChanges]);
+  return { changes, rows: s.rows, customerOwn: s.customerOwn, entities: s.entities, meta: s.meta, audit: s.audit, entityMap, latestId, now: nowOf(s) };
 }
 
 /* Seeded after metaOf and its tables exist. */

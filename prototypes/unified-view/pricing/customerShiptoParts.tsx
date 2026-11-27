@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Panel } from "../DashboardParts";
 import { SummaryCard } from "../SheetCards";
-import { STATUS_LABEL, customerOf, plural, shiptoOf, uniq, type ChangeRecord, type EntityMap, type ImpactLine } from "./changeLog";
+import { STATUS_LABEL, customerOf, fmtStamp, plural, shiptoOf, uniq, type ChangeRecord, type EntityMap, type ImpactLine } from "./changeLog";
 import { ChangeText } from "./ChangeText";
 import { RecordSheet } from "../RecordSheet";
 import { ListFilters, type ListFacet } from "../ListFilters";
@@ -230,7 +230,7 @@ export function DrillCard({
 
 // ---------------------------------------------------------------- timeline --
 
-const STAMP = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
 const PAGE = 20;
 
 /** One ship-to it reached. */
@@ -531,8 +531,8 @@ export function ChangeTimeline({
               made · the ship-tos it reached · who. No chips. */}
           <ol className="flex flex-col">
             {shown.map((x, i) => (
-              <li key={x.c.id} className="relative grid grid-cols-[132px_20px_minmax(0,1fr)] gap-x-3 pb-6 last:pb-0">
-                <span className="pt-px text-sm whitespace-nowrap tabular-nums text-muted-foreground">{STAMP.format(x.c.effectiveAt)}</span>
+              <li key={x.c.id} className="relative grid grid-cols-[196px_20px_minmax(0,1fr)] gap-x-3 pb-6 last:pb-0">
+                <span className="pt-px text-sm whitespace-nowrap tabular-nums text-muted-foreground">{fmtStamp(x.c.effectiveAt)}</span>
                 <span className="relative flex justify-center">
                   {i < shown.length - 1 && <span aria-hidden className="absolute top-3 -bottom-6 w-px bg-border" />}
                   <span aria-hidden className="relative mt-1.5 size-2.5 rounded-full bg-fp-viz-1" />

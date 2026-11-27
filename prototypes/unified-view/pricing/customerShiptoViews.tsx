@@ -10,7 +10,7 @@ import {
   STATUS_LABEL,
   changeSummary,
   fmtDate,
-  fmtWhen,
+  fmtStamp,
   plural,
   shiptoOf,
   uniq,
@@ -60,7 +60,7 @@ export function timelineTab(scope: Scope, ents: EntityMap, onOpen: (id: string) 
       return {
         id: c.id,
         text: {
-          when: fmtWhen(c.effectiveAt),
+          when: fmtStamp(c.effectiveAt),
           change: changeSummary(c, ents),
           setting: entities,
           action: actionOf(c),

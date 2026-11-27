@@ -62,6 +62,8 @@ export interface ConfigListProps<T, K extends string> {
   searchPlaceholder: string;
   /** The unconfigured banner: how many, and the facet value that shows them. */
   unconfigured: { count: number; title: string; facet: string };
+  /** Alerts shown before the unconfigured one — a bulk rule's run. */
+  leadAlerts?: BannerAlert[];
   configured: (r: T) => boolean;
   nameOf: (r: T) => string;
   onOpen: (r: T) => void;
@@ -87,7 +89,8 @@ export function ConfigList<T, K extends string>(p: ConfigListProps<T, K>) {
   const [colFiltersOpen, setColFiltersOpen] = React.useState(false);
   const [facetSel, setFacetSel] = React.useState<ReadonlySet<string>>(new Set());
   const [exporting, setExporting] = React.useState(false);
-  const [alertDismissed, setAlertDismissed] = React.useState(false);
+  const [dismissed, setDismissed] = React.useState<ReadonlySet<string>>(new Set());
+  const alertDismissed = dismissed.has("unconfigured");
   const [snoozedUntil, setSnoozedUntil] = React.useState(0);
   const [alertApplied, setAlertApplied] = React.useState(false);
   const activeColFilters = React.useMemo(() => Object.entries(colFilters).filter(([, v]) => v.trim() !== ""), [colFilters]);
@@ -197,12 +200,15 @@ export function ConfigList<T, K extends string>(p: ConfigListProps<T, K>) {
 
   /* THE BANNER — records still waiting to be configured (production's
      "Reminder: … still pending"). View details filters to them. */
-  const alerts: BannerAlert[] =
-    p.unconfigured.count && !alertDismissed
+  /* A BULK RULE'S RUN COMES FIRST (Yash, 2026-11-26) — most serious first
+     (UX-139): while it runs, pricing here is locked. */
+  const alerts: BannerAlert[] = [
+    ...(p.leadAlerts ?? []).filter((a) => !dismissed.has(a.id)),
+    ...(p.unconfigured.count && !alertDismissed
       ? [
           {
             id: "unconfigured",
-            status: "caution",
+            status: "caution" as const,
             tag: "Unconfigured",
             title: p.unconfigured.title,
             count: p.unconfigured.count,
@@ -213,7 +219,8 @@ export function ConfigList<T, K extends string>(p: ConfigListProps<T, K>) {
             },
           },
         ]
-      : [];
+      : ([] as BannerAlert[])),
+  ];
   const alertVisible = alerts.length > 0 && Date.now() >= snoozedUntil;
   useTopBanner(alertVisible);
 
@@ -259,7 +266,7 @@ export function ConfigList<T, K extends string>(p: ConfigListProps<T, K>) {
             setPage(1);
           }}
           onSnooze={(_id, ms) => setSnoozedUntil(Date.now() + ms)}
-          onDismiss={() => setAlertDismissed(true)}
+          onDismiss={(id) => setDismissed((d) => new Set(d).add(id))}
         />
       )}
       <HeadFold collapsed={fold.collapsed}>

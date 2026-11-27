@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fees in bulk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#fafaf9; --fg:#1c1917; --muted:#78716c; --line:#e7e5e4; --card:#fff; --head:#f5f5f4; --accent:#2563eb; --code:#f1f5f9; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0c0a09; --fg:#f5f5f4; --muted:#a8a29e; --line:#292524; --card:#1c1917; --head:#231f1d; --accent:#60a5fa; --code:#1e293b; } }
+:root[data-theme="dark"] { --bg:#0c0a09; --fg:#f5f5f4; --muted:#a8a29e; --line:#292524; --card:#1c1917; --head:#231f1d; --accent:#60a5fa; --code:#1e293b; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 Inter, system-ui, sans-serif; }
+.wrap { display:grid; grid-template-columns:240px minmax(0,1fr); gap:40px; max-width:1240px; margin:0 auto; padding:40px 24px 80px; }
+nav { position:sticky; top:24px; align-self:start; display:flex; flex-direction:column; gap:2px; font-size:13px; max-height:calc(100vh - 48px); overflow:auto; }
+nav a { color:var(--muted); text-decoration:none; padding:4px 8px; border-radius:6px; }
+nav a:hover { color:var(--fg); background:var(--head); }
+main { min-width:0; }
+h1 { font-size:28px; line-height:1.25; margin:0 0 12px; font-weight:600; }
+h2 { font-size:20px; margin:40px 0 12px; font-weight:600; scroll-margin-top:24px; }
+h3 { font-size:16px; margin:28px 0 8px; font-weight:600; }
+p, li { max-width:75ch; }
+hr { border:0; border-top:1px solid var(--line); margin:36px 0; }
+code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:13px; }
+.tw { overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--card); margin:12px 0 20px; }
+table { width:100%; border-collapse:collapse; font-size:14px; }
+th { text-align:left; font-weight:500; background:var(--head); color:var(--muted); padding:10px 12px; border-bottom:1px solid var(--line); }
+td { padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+tr:last-child td { border-bottom:0; }
+td.id { color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; width:1%; }
+ol li, ul li { margin:4px 0; }
+strong { font-weight:600; }
+@media (max-width:860px) { .wrap { grid-template-columns:1fr; padding:24px 16px 60px; } nav { display:none; } }
+@media print { nav { display:none; } .wrap { grid-template-columns:1fr; } }
+</style></head>
+<body><div class="wrap"><nav><a href="#1-where-we-start">1. Where we start</a><a href="#2-what-each-fee-action-means-in-bulk">2. What each fee action means in bulk</a><a href="#3-bulk-bar-on-the-customer-and-ship-to-lists">3. Bulk bar on the Customer and Ship-to lists</a><a href="#4-bulk-rules-and-fees">4. Bulk rules and fees</a><a href="#5-proposed-order-of-work">5. Proposed order of work</a><a href="#6-questions-to-clarify">6. Questions to clarify</a></nav><main>
+<h1 id="fees-in-bulk-customer-ship-to-pages-and-bulk-rules-discussion">Fees in bulk — Customer / Ship-to pages and Bulk rules (discussion)</h1>
+<p>Phase 2 of the fee rule engine. Nothing here is built. Written 2026-11-25 to plan the work. Cases built so far: <code>fee-cases.md</code>.</p>
+<hr>
+<h2 id="1-where-we-start">1. Where we start</h2>
+<p><strong>The fee model (agreed)</strong></p>
+<ul><li><strong>The fee's scope decides who gets it.</strong> Scope is set on the fee in Pricing setup › Fee, and covers customers / hubs / ship-tos and products.</li><li><strong>Adding a fee</strong> to a customer or ship-to is done by widening that scope (decided 2026-11-25).</li><li><strong>Pricing pages can only Remove or Put back.</strong></li></ul>
+<p>- A removal on a customer reaches every price following that customer. - A removal on a ship-to reaches that ship-to only, and <strong>doesn't change its Applied pricing</strong>.</p>
+<p><strong>What exists today that collides with it</strong></p>
+<ul><li><strong>Bulk rules</strong> can still change <strong>Fees: Add / Replace with / Remove</strong> on configurations. They write the fee into the customer or ship-to's own fee list, which is the old model. A bulk "Add fee" today does what we just decided only scope should do.</li><li><strong>Bulk rules land by hierarchy.</strong> A combination with a ship-to or product writes to the ship-to, and turns an inherited ship-to into one with its own pricing. Any other combination writes to the customer, and skips ship-tos with their own or hub pricing. That's right for margins and taxes. For fees it would override pricing just to remove one fee.</li><li><strong>The Customer and Ship-to lists have no multi-select or bulk bar.</strong> A row only opens its pricing sheet.</li></ul>
+<p>So there are two bulk places to decide for fees:</p>
+<div class="tw"><table><thead><tr><th></th><th>Bulk bar (Customer / Ship-to lists)</th><th>Bulk rule (Pricing configuration › Bulk rules)</th></tr></thead><tbody><tr><td>Who</td><td>Rows you tick</td><td>Records matching conditions (Region, Market, Customer, Ship-to, Product…)</td></tr><tr><td>When</td><td>Now</td><td>Now or scheduled; can run again</td></tr><tr><td>Kept</td><td>History on each record</td><td>A rule with runs, records updated, rerun / retry</td></tr><tr><td>Good for</td><td>"These 12 ship-tos shouldn't pay the Hazmat fee"</td><td>"Every Louisiana customer: remove Winter peak from Dec 1"</td></tr></tbody></table></div>
+<hr>
+<h2 id="2-what-each-fee-action-means-in-bulk">2. What each fee action means in bulk</h2>
+<div class="tw"><table><thead><tr><th>Action</th><th>Fits the model?</th><th>Where it writes</th><th>Proposal</th></tr></thead><tbody><tr><td><strong>Remove fee</strong></td><td>✅ Same as a single Remove, many at once</td><td>Removals: customer rows → customer; ship-to rows → that ship-to × product</td><td>Keep, in both places</td></tr><tr><td><strong>Put back fee</strong></td><td>✅</td><td>Clears those removals</td><td>Keep, in both places</td></tr><tr><td><strong>Add fee</strong></td><td>⚠️ Only through scope</td><td>The fee's scope (Include rows)</td><td>Bulk bar: <strong>Add to fee scope</strong>. Bulk rule: see §4</td></tr><tr><td><strong>Replace all fees with</strong></td><td>❌ Rewrites many fees' scopes at once</td><td>—</td><td>Drop for fees</td></tr><tr><td><strong>Change a fee's rate</strong></td><td>❌ The rate belongs to the fee</td><td>—</td><td>Not in bulk; edit the fee</td></tr></tbody></table></div>
+<hr>
+<h2 id="3-bulk-bar-on-the-customer-and-ship-to-lists">3. Bulk bar on the Customer and Ship-to lists</h2>
+<h3 id="3-1-the-flow">3.1 The flow</h3>
+<ol><li>Tick rows (checkbox column, select all on the page / all matching).</li><li>The bulk bar shows the count and its acts. For fees: <strong>Remove fee · Put back fee · Add to fee scope</strong>.</li><li>Pick the fee(s), then a preview with counts, then confirm.</li><li>Each record's History logs it, and the fee's History logs one line ("Removed from 12 ship-tos").</li></ol>
+<h3 id="3-2-mixed-selections">3.2 Mixed selections</h3>
+<p>The selected rows won't all be in the same state for a fee. The preview says what happens to each group before anything changes.</p>
+<div class="tw"><table><thead><tr><th>Remove Hazmat fee from 40 selected</th><th>Count</th><th>What happens</th></tr></thead><tbody><tr><td>Fee reaches them</td><td>32</td><td>Removed</td></tr><tr><td>Already removed</td><td>3</td><td>Nothing</td></tr><tr><td>Fee doesn't reach them (out of scope)</td><td>5</td><td>Nothing, listed with why</td></tr></tbody></table></div>
+<p><strong>Add to fee scope</strong>, on 40 selected ship-tos:</p>
+<div class="tw"><table><thead><tr><th>Group</th><th>Count</th><th>What happens</th></tr></thead><tbody><tr><td>Not in scope</td><td>20</td><td>Added to the fee's scope (an Include row each, or one row per customer)</td></tr><tr><td>Already reached</td><td>15</td><td>Nothing</td></tr><tr><td>Removed on the pricing page</td><td>3</td><td><strong>Put back</strong> instead (scope already covers them)</td></tr><tr><td>Product outside the fee's products</td><td>2</td><td>Not added: the fee doesn't cover that product</td></tr></tbody></table></div>
+<h3 id="3-3-options-for-add-to-fee-scope">3.3 Options for "Add to fee scope"</h3>
+<p><strong>A. Write the rows into the fee's scope directly.</strong></p>
+<div class="tw"><table><thead><tr><th>Pros</th><th>Cons</th></tr></thead><tbody><tr><td>One step; scope stays the only source of truth</td><td>A list-page user edits a fee that may reach thousands of prices</td></tr><tr><td>Easy to undo from the fee's scope</td><td>Scope can fill with one-off rows</td></tr></tbody></table></div>
+<p><strong>B. Open the fee in a new tab with the scope rows pre-filled, not saved.</strong></p>
+<div class="tw"><table><thead><tr><th>Pros</th><th>Cons</th></tr></thead><tbody><tr><td>The whole fee in view; a deliberate change</td><td>One more step; leaves the list</td></tr><tr><td>Works with fee permissions as they are</td><td>Fee sheets autosave, so "not saved yet" needs a pending state</td></tr></tbody></table></div>
+<p><strong>Recommendation: A, with the preview above and an Undo on the toast.</strong> Ship-to rows add <strong>ship-to</strong> Include rows; customer rows add <strong>customer</strong> Include rows. Products stay as the fee's product scope, so a ship-to × product selection can't add one product only (the preview says so).</p>
+<h3 id="3-4-customer-list-vs-ship-to-list">3.4 Customer list vs Ship-to list</h3>
+<div class="tw"><table><thead><tr><th></th><th>Customer list</th><th>Ship-to list</th></tr></thead><tbody><tr><td>Remove / Put back</td><td>On the customer, so every price following it</td><td>On that ship-to × product</td></tr><tr><td>Ship-tos on their own pricing</td><td>Keep their own setup (same as single Remove)</td><td>n/a</td></tr><tr><td>Add to fee scope</td><td>Customer Include row</td><td>Ship-to Include row</td></tr></tbody></table></div>
+<hr>
+<h2 id="4-bulk-rules-and-fees">4. Bulk rules and fees</h2>
+<p>The question: what is a fee change inside a bulk rule, now that scope is the "who" for fees?</p>
+<p><strong>Option 1 — Fees leave Bulk rules.</strong> The fee's scope already is a standing rule (live, reaches future records). Bulk rules keep rate type, base, margin, tax, adders.</p>
+<div class="tw"><table><thead><tr><th>Pros</th><th>Cons</th></tr></thead><tbody><tr><td>One place for fees; no two engines deciding reach</td><td>No scheduled or condition-based removal ("from Dec 1, Louisiana doesn't pay X")</td></tr><tr><td>Simplest to explain</td><td>Teams used to doing fees in bulk rules lose it</td></tr></tbody></table></div>
+<p><strong>Option 2 — Bulk rules do Remove / Put back only</strong> (recommended). A rule's fee change writes removals (or clears them) on the records it matches, as the bulk bar does. Add / Replace go away for fees.</p>
+<div class="tw"><table><thead><tr><th>Pros</th><th>Cons</th></tr></thead><tbody><tr><td>Keeps scheduling, rerun, retry, records updated for fees</td><td>Removals are a snapshot: a customer that joins Louisiana later isn't removed until the rule runs again</td></tr><tr><td>Doesn't override pricing (unlike margins); no "Pricing overridden" for fees</td><td>Fee rows behave differently from other settings in the same rule</td></tr><tr><td>Same words as the pricing pages</td><td></td></tr></tbody></table></div>
+<p><strong>Option 3 — Bulk rules also add to scope.</strong> "Add fee" writes Include rows into the fee's scope for the matched records.</p>
+<div class="tw"><table><thead><tr><th>Pros</th><th>Cons</th></tr></thead><tbody><tr><td>Everything fees can do, in one rule</td><td>Region / Market aren't scope targets. The rule would expand them into customers (a snapshot), or scope gains Region and Market (live)</td></tr><tr><td></td><td>Two places write scope; harder to see why a fee reaches someone</td></tr></tbody></table></div>
+<h3 id="4-1-how-a-fee-change-lands-in-a-rule-option-2">4.1 How a fee change lands in a rule (Option 2)</h3>
+<div class="tw"><table><thead><tr><th>Combination</th><th>Fee removal written on</th></tr></thead><tbody><tr><td>Customer / Region / Market / Rate type… (no ship-to, no product)</td><td>The customer, so every price following it</td></tr><tr><td>A ship-to, or a product</td><td>That ship-to × product. <strong>Applied pricing doesn't change</strong></td></tr><tr><td>Customer-level, ship-to on its own pricing</td><td>Skipped: "Has its own ship-to pricing" (as today)</td></tr><tr><td>Fee doesn't reach the record</td><td>Skipped: "Fee doesn't reach this price"</td></tr><tr><td>Already removed</td><td>Unchanged</td></tr></tbody></table></div>
+<p>Impact card and records updated read as today, with the fee as its own block ("Fees · Remove · Winter peak surcharge").</p>
+<hr>
+<h2 id="5-proposed-order-of-work">5. Proposed order of work</h2>
+<ol><li><strong>Bulk bar on Ship-to and Customer lists:</strong> select, bulk bar, Remove fee / Put back fee with the mixed-selection preview.</li><li><strong>Add to fee scope</strong> from the bulk bar (§3.3 A).</li><li><strong>Bulk rules:</strong> the fee change becomes Remove / Put back (Option 2). Add / Replace go. Skip reasons for fees. Seeds that "Add" fees change to Remove.</li><li><strong>Bulk bar for other settings</strong> (margin, tax, adders, rate type): reuse the Bulk rule sheet pre-filled with the selection, or a light dialog (question 6).</li></ol>
+<hr>
+<h2 id="6-questions-to-clarify">6. Questions to clarify</h2>
+<ol><li>Bulk rules and fees: Option 1 (out), 2 (Remove / Put back only) or 3 (also add to scope)?</li><li>Add to fee scope from the bulk bar: write directly with Undo (A), or open the fee pre-filled (B)?</li><li>Who may change a fee's scope from a list page: anyone who edits pricing, or only those who edit fees?</li><li>A ship-to × product selection where the fee covers other products too: add the ship-to anyway (it gets all the fee's products), or refuse?</li><li>Should Region and Market become <strong>fee scope targets</strong>, so "all Louisiana customers" stays live?</li><li>Bulk bar for margins / taxes / adders: open the Bulk rule sheet pre-filled (one engine, kept as a rule run) or a quick dialog (lighter, no rule)?</li><li>Should a bulk bar action be saved as a one-off rule in Bulk rules (for its records-updated list and retry), or only in History?</li><li>Select all: this page, or every row matching the filters (could be thousands)?</li><li>Customer-level bulk remove: should ship-tos on their own pricing be offered too ("also remove on 4 ship-tos with their own pricing")?</li><li>Existing rules that "Add" fees: convert to scope rows once, or leave them as they ran?</li></ol>
+</main></div></body></html>

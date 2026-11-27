@@ -28,7 +28,48 @@ type State = {
   reopen: PricingTarget | null;
 };
 
-let state: State = { trail: null, go: null, reopen: null };
+/* OPEN FEE, IN A NEW TAB (Yash, 2026-11-24) — a fee's application sheet opens
+   the fee's own page in a new tab: `?fee=<id>` lands on Pricing setup › Fee
+   with the fee open. Read once, before the app clears the address. */
+const HANDOFF = "fp-pricing-edit-fee";
+/** The fee the new tab was opened for — from the address (?fee=),
+ *  or the hand-off the opening tab left, whichever arrives. */
+function readBootFee(): string | null {
+  if (typeof window === "undefined") return null;
+  const fromUrl = new URLSearchParams(window.location.search).get("fee");
+  let fromStore: string | null = null;
+  try {
+    const raw = window.localStorage.getItem(HANDOFF);
+    window.localStorage.removeItem(HANDOFF);
+    const v = raw ? (JSON.parse(raw) as { id: string; at: number }) : null;
+    if (v && Date.now() - v.at < 15_000) fromStore = v.id;
+  } catch {
+    /* storage blocked — the address still carries it */
+  }
+  return fromUrl ?? fromStore;
+}
+let bootFee: string | null = readBootFee();
+
+let state: State = { trail: null, go: bootFee ? { key: "pricing-setup-fee", n: 1 } : null, reopen: null };
+
+/** The fee the page was opened on — read as often as the screen mounts
+ *  (dev mounts twice), dropped once its sheet closes. */
+export const takeFeeToOpen = () => bootFee;
+export const doneWithFeeToOpen = () => {
+  bootFee = null;
+};
+/** EDIT FEE — the fee's page in a new tab (Yash, 2026-11-24). */
+export function openFeeInNewTab(id: string) {
+  try {
+    window.localStorage.setItem(HANDOFF, JSON.stringify({ id, at: Date.now() }));
+  } catch {
+    /* storage blocked — the address carries it */
+  }
+  const url = new URL(window.location.href);
+  url.search = `?fee=${encodeURIComponent(id)}`;
+  url.hash = "";
+  window.open(url.toString(), "_blank");
+}
 const listeners = new Set<() => void>();
 const set = (next: Partial<State>) => {
   state = { ...state, ...next };

@@ -1,6 +1,8 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Plus, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
@@ -29,9 +31,13 @@ import {
   type Setting,
 } from "./changeLog";
 import { addEntity, savePricing, useChangeLog } from "./changeLogStore";
+import { lockMessage, useBulkLock } from "./bulkRules";
+import { BannerInline } from "@/components/ui/banner";
 import { CATEGORIES } from "./seed";
 import { HUBS } from "./pricingConfig";
 import { APPLIED_LABEL, UNCONFIGURED, customerPricing, historyOf, perGal, type PricingTarget } from "./pricingConfig";
+import { FeeGroups, useFeeLines } from "./FeeApplication";
+import { isCharged, perGallon } from "./fees";
 
 /*
   A SHIP-TO'S OR A CUSTOMER'S PRICING, ON THE RECORD SHEET (Yash, 2026-11-17)
@@ -57,8 +63,10 @@ const LISTS: { setting: Setting; title: string; add: string; search: string }[] 
   { setting: "adder", title: "Adders", add: "Add adders", search: "Search adders…" },
 ];
 
-/* A customer's margin, tax and fee come from one of three places; only
-   Customer pricing sets them here. */
+/* A customer's margin comes from one of three places; only Customer pricing
+   sets it here. FEES LEFT THIS CHOICE (Yash, 2026-11-24): a fee reaches its
+   customers, hubs and ship-tos by its own scope (Pricing setup › Fee); this
+   sheet only removes one or puts it back. */
 type Source = "customer" | "shipto" | "hub";
 const SOURCES: [Source, string][] = [
   ["customer", "Customer pricing"],
@@ -120,6 +128,9 @@ function PricingSheetBody({
   const log = useChangeLog();
   const ents = log.entityMap;
   const isRow = target.kind === "row";
+  /* A BULK RULE IN PROGRESS HOLDS CONFIGURATION (Yash, 2026-11-26) — the
+     form reads, nothing changes until the run ends. */
+  const lock = useBulkLock();
 
   /* WHAT THE SHEET FOUND — read once per open; the sheet's own saves must
      not rebuild the form (interactions §1). */
@@ -168,6 +179,7 @@ function PricingSheetBody({
      kept aside; a configured record writes its one change. */
   React.useEffect(() => {
     const t = window.setTimeout(() => {
+      if (lock) return;
       if (!configured) {
         DRAFTS.set(keyOf(target), draft);
         return;
@@ -190,6 +202,7 @@ function PricingSheetBody({
   ].filter(Boolean) as { key: string; label: string; target: string }[];
 
   const configure = () => {
+    if (lock) return void toast.warning(lockMessage(lock.name));
     if (missing.length) return;
     const customerId = isRow ? undefined : (target as { customerId: string }).customerId;
     const sample = isRow ? found.record! : found.record ?? log.rows.find((r) => r.customerId === customerId)!;
@@ -211,7 +224,11 @@ function PricingSheetBody({
   const live = isRow ? log.rows.find((r) => r.id === target.rowId) : undefined;
   const sample = live ?? found.record ?? log.rows.find((r) => r.customerId === (target as { customerId: string }).customerId)!;
   const now = withDraft(sample, draft);
-  const part = (s: Setting) => readSetting(now, s, ents).value;
+  /* Fees from the fee rule engine — the charged per-gallon ones that apply here. */
+  const feeTarget = isRow ? ({ kind: "row", rowId: target.rowId } as const) : ({ kind: "customer", customerId: (target as { customerId: string }).customerId } as const);
+  const feeLines = useFeeLines(configured ? feeTarget : null);
+  const feePerGal = feeLines.filter((l) => !l.removed && isCharged(l.fee)).reduce((t, l) => t + perGallon(l.fee), 0);
+  const part = (s: Setting) => (s === "fee" ? feePerGal : readSetting(now, s, ents).value);
   const base = isRow ? sample.base : null;
   const effective = (base ?? 0) + part("margin") + part("fee") + part("tax") + part("adder") - now.discount;
 
@@ -230,7 +247,7 @@ function PricingSheetBody({
   const [deliveryWindow, setWindow] = React.useState({ from: "", to: "" });
   const [creating, setCreating] = React.useState<Setting | null>(null);
   /* MARGINS BY HUB — a customer priced from hubs sets margins per hub. */
-  const [hubPicks, setHubPicks] = React.useState<Record<string, { margin: string[]; fee: string[] }>>({});
+  const [hubPicks, setHubPicks] = React.useState<Record<string, { margin: string[] }>>({});
   const [hubQuery, setHubQuery] = React.useState("");
   const pocShipto = isRow
     ? shiptoOf(live!.shiptoId).name
@@ -288,7 +305,18 @@ function PricingSheetBody({
       headerSubtitle={<span className="text-sm text-muted-foreground">{subtitle}</span>}
       onSubmit={configure}
     >
+      {lock && (
+        /* STICKY ON TOP WHILE THE FORM SCROLLS (Yash, 2026-11-26) — the sheet's
+           white behind it, so rows pass under it, not beside it. */
+        <div className="sticky -top-4 z-10 -my-4 bg-popover py-4">
+          <BannerInline status="caution" title="Bulk rule in progress">
+            {lockMessage(lock.name)}
+          </BannerInline>
+        </div>
+      )}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_var(--fp-rail-w,340px)]">
+        <LockedArea message={lock ? lockMessage(lock.name) : null}>
+        <fieldset disabled={!!lock} className={cn("m-0 min-w-0 border-0 p-0", lock && "pointer-events-none")}>
         <div className="flex min-w-0 flex-col gap-10">
           <SheetSection title="Details" id="pricing-details">
             <div className="grid grid-cols-2 gap-4">
@@ -325,7 +353,7 @@ function PricingSheetBody({
             )}
           </SheetSection>
           {!isRow && (
-            <SheetSection title="Margin and fee source">
+            <SheetSection title="Margin source">
               <RadioGroup value={source} onValueChange={(v) => setSource(v as Source)} className="flex gap-6">
                 {SOURCES.map(([v, text]) => (
                   <div key={v} className="flex items-center gap-2">
@@ -342,14 +370,16 @@ function PricingSheetBody({
                   In the read-out box the 3PL order sheet uses under its ship-to. */}
               {source === "shipto" && (
                 <p className="rounded-md border border-fp-outline-1 bg-fp-surface-1a px-4 py-2.5 text-sm text-muted-foreground">
-                  Margins and fees come from each ship-to's own pricing.
+                  Margins come from each ship-to's own pricing.
                 </p>
               )}
             </SheetSection>
           )}
-          {LISTS.filter((l) => l.setting !== "adder" && (isRow || source === "customer")).map(listSection)}
+          {/* MARGIN, THEN TAX, THEN FEE (Yash, 2026-11-24) — a customer priced
+              from hubs sets its margins per hub right under the source. */}
+          {LISTS.filter((l) => l.setting === "margin" && (isRow || source === "customer")).map(listSection)}
           {!isRow && source === "hub" && (
-            <SheetSection title="Margins and fees by hub" flush>
+            <SheetSection title="Margins by hub" flush>
               <div className="border-b border-border p-3">
                 <div className="relative">
                   <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -362,30 +392,27 @@ function PricingSheetBody({
                     <tr>
                       <th className="text-left w-1/3 px-3 py-2 font-medium">Hub</th>
                       <th className="text-left border-l border-border px-3 py-2 font-medium">Margins</th>
-                      <th className="text-left border-l border-border px-3 py-2 font-medium">Fees</th>
                     </tr>
                   </thead>
                   <tbody>
                     {HUBS.filter((h) => h.toLowerCase().includes(hubQuery.trim().toLowerCase())).map((h) => (
                       <tr key={h} className="border-t border-border align-middle">
                         <td className="px-3 py-3">{h}</td>
-                        {(["margin", "fee"] as const).map((k) => (
-                          <td key={k} className="relative border-l border-border p-0">
-                            <TableCellMultiSelect
-                              allOption={k === "margin" ? "All margins" : "All fees"}
-                              values={hubPicks[h]?.[k] ?? []}
-                              /* WHAT IS APPLIED COMES FIRST when the list reopens. */
-                              options={[
-                                ...(hubPicks[h]?.[k] ?? []).filter((n) => !n.startsWith("All ")),
-                                ...names(k).map((e) => e.name).filter((n) => !(hubPicks[h]?.[k] ?? []).includes(n)),
-                              ]}
-                              placeholder={k === "margin" ? "Select margins" : "Select fees"}
-                              unitLabel={k}
-                              onChange={(next) => setHubPicks((m) => ({ ...m, [h]: { margin: m[h]?.margin ?? [], fee: m[h]?.fee ?? [], [k]: next } }))}
-                              aria-label={`${k === "margin" ? "Margins" : "Fees"} for ${h}`}
-                            />
-                          </td>
-                        ))}
+                        <td className="relative border-l border-border p-0">
+                          <TableCellMultiSelect
+                            allOption="All margins"
+                            values={hubPicks[h]?.margin ?? []}
+                            /* WHAT IS APPLIED COMES FIRST when the list reopens. */
+                            options={[
+                              ...(hubPicks[h]?.margin ?? []).filter((n) => !n.startsWith("All ")),
+                              ...names("margin").map((e) => e.name).filter((n) => !(hubPicks[h]?.margin ?? []).includes(n)),
+                            ]}
+                            placeholder="Select margins"
+                            unitLabel="margin"
+                            onChange={(next) => setHubPicks((m) => ({ ...m, [h]: { margin: next } }))}
+                            aria-label={`Margins for ${h}`}
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -393,6 +420,8 @@ function PricingSheetBody({
               </div>
             </SheetSection>
           )}
+          {LISTS.filter((l) => l.setting === "tax").map(listSection)}
+          {configured && <FeeGroups target={feeTarget} lines={feeLines} title="Fee" />}
           {/* ADDERS AFTER THE MARGINS AND FEES — wherever those come from. */}
           {LISTS.filter((l) => l.setting === "adder").map(listSection)}
           {!isRow && (
@@ -415,6 +444,8 @@ function PricingSheetBody({
           )}
         </div>
 
+        </fieldset>
+        </LockedArea>
         <SheetRail>
           <SummaryCard title="Price summary">
             <dl className="flex flex-col">
@@ -422,12 +453,10 @@ function PricingSheetBody({
               {/* A CUSTOMER PRICED FROM ITS SHIP-TOS OR HUBS sets no margin,
                   tax or fee here — the summary shows only what it does set. */}
               {(isRow || source === "customer") && (
-                <>
-                  <RailRow variant="line" label="Margin ($/gal)" value={perGal(part("margin"))} />
-                  <RailRow variant="line" label="Tax ($/gal)" value={perGal(part("tax"))} />
-                  <RailRow variant="line" label="Fee ($/gal)" value={perGal(part("fee"))} />
-                </>
+                <RailRow variant="line" label="Margin ($/gal)" value={perGal(part("margin"))} />
               )}
+              <RailRow variant="line" label="Tax ($/gal)" value={perGal(part("tax"))} />
+              <RailRow variant="line" label="Fee ($/gal)" value={perGal(part("fee"))} />
               <RailRow variant="line" label="Adders ($/gal)" value={perGal(part("adder"))} />
               {now.discount > 0 && <RailRow variant="line" label="Discount ($/gal)" value={`−${perGal(now.discount)}`} />}
               {base !== null && <RailRow variant="total" label="Effective price ($/gal)" value={perGal(effective)} />}
@@ -521,3 +550,32 @@ function NewEntitySheet({
 }
 
 
+
+/* THE LOCKED FORM SAYS WHY ON HOVER (Yash, 2026-11-26) — the not-allowed
+   arrow over every field and add, and the lock's line beside the pointer, in
+   the tooltip's own look. The form ignores the pointer while locked, so this
+   box is what the pointer meets. */
+function LockedArea({ message, children }: { message: string | null; children: React.ReactNode }) {
+  const [at, setAt] = React.useState<{ x: number; y: number } | null>(null);
+  if (!message) return <>{children}</>;
+  return (
+    <div
+      className="min-w-0 cursor-not-allowed"
+      onMouseMove={(e) => setAt({ x: e.clientX, y: e.clientY })}
+      onMouseLeave={() => setAt(null)}
+    >
+      {children}
+      {at &&
+        createPortal(
+          <div
+            role="tooltip"
+            style={{ left: at.x + 14, top: at.y + 18 }}
+            className="pointer-events-none fixed z-50 w-72 rounded-md bg-foreground px-3 py-1.5 text-xs text-balance text-background"
+          >
+            {message}
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}

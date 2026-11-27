@@ -58,6 +58,7 @@ import {
   Fuel,
   Timer,
   Building2,
+  Workflow,
 } from "lucide-react";
 import { useTopBannerShown } from "./HeadFold";
 import { MasterAssetsScreen } from "./masterdata/AssetsScreen";
@@ -66,7 +67,11 @@ import { setHeaderSlot } from "./headerSlot";
 import { CustomerShiptoDashboard } from "./pricing/CustomerShiptoDashboard";
 import { OrderTraceScreen } from "./pricing/OrderTraceScreen";
 import { CustomerPricingScreen, ShiptoPricingScreen } from "./pricing/ConfigScreens";
+import { BulkRulesScreen, BulkTemplatesScreen } from "./pricing/BulkRulesScreen";
 import { MarginSetupScreen, MarketSetupScreen, RateTypeSetupScreen } from "./pricing/SetupScreens";
+import { FeeSetupScreen } from "./pricing/FeeSetup";
+import { OrderWellScreen } from "./pricing/OrderWell";
+import { HubPricingScreen } from "./pricing/HubPricing";
 import { MasterCustomersScreen } from "./masterdata/CustomersScreen";
 import { MasterShipTosScreen } from "./masterdata/ShipTosScreen";
 import { MasterSuppliersScreen, MasterTerminalsScreen } from "./masterdata/FuelSourceScreens";
@@ -239,6 +244,8 @@ const SERVICE_NAV: NavItem[] = [
  */
 const PRICING_NAV: NavItem[] = [
   { key: "pricing-dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
+  /* ORDER WELL (Yash, 2026-11-24) — orders to open for the fee demo. */
+  { key: "pricing-order-well", label: "Order well", icon: <ClipboardList /> },
   { key: "pricing-configuration", label: "Pricing configuration", icon: <SlidersHorizontal /> },
   { key: "pricing-setup", label: "Pricing setup", icon: <Settings /> },
   /* CHANGE LOG ABOVE TODAY'S PRICING (Yash, 2026-11-17). */
@@ -274,6 +281,8 @@ const SUB_NAV: Record<string, NavGroup[]> = {
       items: [
         { key: "pricing-config-customer", label: "Customer", icon: <Users /> },
         { key: "pricing-config-shipto", label: "Ship-to", icon: <MapPin /> },
+        /* BULK TEMPLATES HIDDEN (Yash, 2026-11-19) — a rule is reused by
+           duplicating it. The screen stays in the code. */
       ],
     },
   ],
@@ -289,6 +298,8 @@ const SUB_NAV: Record<string, NavGroup[]> = {
         { key: "pricing-setup-driver-rate", label: "Driver rate", icon: <Fuel /> },
         { key: "pricing-setup-driver-demurrage", label: "Driver demurrage", icon: <Timer /> },
         { key: "pricing-setup-freight", label: "Freight", icon: <Truck /> },
+        /* BULK RULES LIVE IN PRICING SETUP (Yash, 2026-11-27) — was Pricing configuration. */
+        { key: "pricing-setup-bulk-rules", label: "Bulk rules", icon: <Workflow /> },
       ],
     },
   ],
@@ -679,7 +690,7 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
   const pricingNav = usePricingNav();
   React.useEffect(() => {
     if (!pricingNav.go) return;
-    setNavKey(pricingNav.go.key.startsWith("pricing-log") ? "pricing-change-log" : "pricing-configuration");
+    setNavKey(pricingNav.go.key.startsWith("pricing-log") ? "pricing-change-log" : pricingNav.go.key.startsWith("pricing-setup") ? "pricing-setup" : "pricing-configuration");
     setSubKey(pricingNav.go.key);
   }, [pricingNav.go]);
   /* THE CURRENT PAGE SCROLLS INTO VIEW IN THE SIDE NAV (Yash, 2026-11-17) —
@@ -990,12 +1001,22 @@ const [archiveVersion, setArchiveVersion] = React.useState<"v1" | "v2">("v1");
         return <CustomerPricingScreen />;
       case "pricing-config-shipto":
         return <ShiptoPricingScreen />;
+      case "pricing-setup-bulk-rules":
+        return <BulkRulesScreen />;
+      case "pricing-config-bulk-templates":
+        return <BulkTemplatesScreen />;
       case "pricing-setup-rate-type":
         return <RateTypeSetupScreen />;
       case "pricing-setup-market":
         return <MarketSetupScreen />;
       case "pricing-setup-margin":
         return <MarginSetupScreen />;
+      case "pricing-setup-fee":
+        return <FeeSetupScreen />;
+      case "pricing-order-well":
+        return <OrderWellScreen />;
+      case "pricing-hub":
+        return <HubPricingScreen />;
       case "md-suppliers":
         return (
           <MasterSuppliersScreen

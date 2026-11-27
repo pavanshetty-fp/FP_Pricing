@@ -47,6 +47,10 @@ export function ColumnResizeHandle({
       {...props}
       className={cn(
         "peer/resize absolute inset-y-0 -right-1.5 z-20 flex w-3 cursor-col-resize items-center justify-center",
+        /* THE LAST COLUMN'S HANDLE STAYS INSIDE THE TABLE — straddling the
+           table's own edge it stuck out 6px and gave a list with no row ⋯
+           column a sideways scroll (Pricing bulk rule, Yash 2026-11-18). */
+        "in-[th:last-child]:right-0",
         "opacity-0 transition-opacity duration-100",
         "group-hover/th:opacity-100 hover:opacity-100 focus-visible:opacity-100",
         "outline-none data-[resizing]:opacity-100",

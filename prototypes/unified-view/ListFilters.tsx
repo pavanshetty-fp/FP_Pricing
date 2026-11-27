@@ -77,8 +77,13 @@ export function ListFilters({
   fullWidth = false,
   countFor,
   historyKey,
+  align,
 }: {
   facets: ListFacet[];
+  /** Which edge the panel lines up with. Default: the trigger's left, or its
+   *  right when full width. A trigger at the right end of a narrow sheet
+   *  passes "end" so the panel opens leftward, inside the sheet. */
+  align?: "start" | "end";
   /** Which list's RECENT HISTORY this is — defaults to the facets it has. */
   historyKey?: string;
   /** Stretch the trigger to its container — for a row of its own, in a sheet. */
@@ -192,7 +197,7 @@ export function ListFilters({
         </Button>
         )}
       </PopoverTrigger>
-      <PopoverContent align={fullWidth ? "end" : "start"} className="w-[600px] overflow-hidden p-0">
+      <PopoverContent align={align ?? (fullWidth ? "end" : "start")} className="w-[600px] overflow-hidden p-0">
         <ListFilterPanel
           facets={facets}
           checked={checked}

@@ -31,7 +31,7 @@ import {
   SOURCE_LABEL,
   STATUS_LABEL,
   changeSummary,
-  fmtWhen,
+  fmtStamp,
   customerOf,
   plural,
   shiptoOf,
@@ -219,7 +219,7 @@ export function ActivityFeedScreen() {
     (c: ChangeRecord, key: FeedColumnKey): string => {
       switch (key) {
         case "when":
-          return fmtWhen(c.effectiveAt);
+          return fmtStamp(c.effectiveAt);
         case "id":
           return c.id;
         case "entity":
@@ -401,14 +401,17 @@ export function ActivityFeedScreen() {
       }
       case "change":
         /* THE NAMES, WITH "+N" ON HOVER (Yash, 2026-11-16). */
-        /* SEVERAL EDITS GO TO A SECOND LINE (Yash, 2026-11-17) — two on the
-           first, the rest under them, each line cut off at the column. */
+        /* ONE ARTIFACT A LINE (Yash, 2026-11-27) — several edits stack, each
+           on its own line, cut off at the column; the row grows to fit. */
         if (c.edits.length > 1 && !c.undoOf && !c.resets && !c.configures) {
           const each = c.edits.map((e) => `${SETTING_LABEL[e.setting]} ${editAction(e).toLowerCase()}: ${editSummary(e, c.lines, ents)}`);
           return (
-            <span className="flex min-w-0 flex-col text-sm text-foreground" title={columnText(c, key)}>
-              <span className="truncate">{each.slice(0, 2).join(" · ")}</span>
-              <span className="truncate">{each.slice(2).join(" · ")}</span>
+            <span className="flex min-w-0 flex-col py-2 text-sm text-foreground" title={columnText(c, key)}>
+              {each.map((t, i) => (
+                <span key={i} className="truncate">
+                  {t}
+                </span>
+              ))}
             </span>
           );
         }
@@ -714,7 +717,7 @@ export function ActivityFeedScreen() {
               onReorderColumns={setColumnOrder}
               columnWidths={columnWidths}
               onResizeColumns={setColumnWidths}
-              openLabel={(c) => `Open change made ${fmtWhen(c.effectiveAt)}`}
+              openLabel={(c) => `Open change made ${fmtStamp(c.effectiveAt)}`}
               onOpenRow={(c) => setOpenId(c.id)}
               showColumnFilters={colFiltersOpen}
               onToggleColumnFilters={() =>

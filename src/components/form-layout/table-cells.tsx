@@ -101,6 +101,9 @@ export interface TableCellSelectProps {
   };
   /** A quiet mark at the end of an option — as TableCellCombobox (2026-10-26). */
   optionTag?: (option: string) => React.ReactNode;
+  /** OPTIONS SHOWN BUT NOT PICKABLE, by option → why — as the multi-select
+   *  (opt-in; Pricing bulk rule v2, Yash 2026-11-18). */
+  unavailable?: Record<string, string>;
   /** Category tabs above the list — as TableCellCombobox (2026-10-26). */
   groups?: { label: string; has: (option: string) => boolean }[];
 }
@@ -125,6 +128,7 @@ export function TableCellSelect({
   multiple,
   autoFocus,
   optionTag,
+  unavailable,
   groups,
 }: TableCellSelectProps) {
   const [open, setOpen] = React.useState(false);
@@ -210,14 +214,15 @@ export function TableCellSelect({
             <CommandGroup>
               {shown.map((opt) => {
                 const used = Boolean(multiple?.taken?.includes(opt)) && opt !== value;
+                const off = !!unavailable?.[opt] && opt !== value;
                 const on = (o: string) => (multiple ? used || picked.includes(o) : o === value);
-                return (
+                const item = (
                 <CommandItem
                   key={opt}
                   value={opt}
-                  disabled={used}
+                  disabled={used || off}
                   onSelect={() => {
-                    if (used) return;
+                    if (used || off) return;
                     if (multiple) {
                       toggle(opt);
                       return;
@@ -243,6 +248,14 @@ export function TableCellSelect({
                   <span className="flex-1" />
                   {optionTag?.(opt)}
                 </CommandItem>
+                );
+                /* A disabled item takes no pointer — the reason sits on a wrapper. */
+                return off ? (
+                  <div key={opt} title={unavailable![opt]}>
+                    {item}
+                  </div>
+                ) : (
+                  item
                 );
               })}
             </CommandGroup>
@@ -509,6 +522,14 @@ export interface TableCellMultiSelectProps {
    *  (opt-in; Pricing's hub margins and fees, Yash 2026-11-17 — to confirm
    *  with Pavan). Its label is the value `onChange` returns. */
   allOption?: string;
+  /** OPTIONS SHOWN BUT NOT PICKABLE, by option → why (opt-in; Pricing's bulk
+   *  rule, Yash 2026-11-18 — a product none of the row's ship-tos takes).
+   *  Dimmed, the reason on hover (a control that refuses says why). */
+  unavailable?: Record<string, string>;
+  /** A QUIET SECOND LINE under an option — its value, its description
+   *  (opt-in; Pricing's bulk rule, Yash 2026-11-18: fees, taxes and margins
+   *  are picked by what they charge). */
+  optionNote?: (option: string) => React.ReactNode;
   onChange: (next: string[]) => void;
   /**
    * Take focus when the cell MOUNTS — pass it to the first editable cell of a
@@ -541,6 +562,8 @@ export function TableCellMultiSelect({
   unitLabel = "selected",
   summary: summaryOverride,
   allOption,
+  unavailable,
+  optionNote,
   onChange,
   "aria-label": ariaLabel,
   autoFocus,
@@ -595,7 +618,7 @@ export function TableCellMultiSelect({
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-0">
+      <PopoverContent align="start" className={cn("p-0", optionNote ? "w-80" : "w-64")}>
         <Command>
           <CommandInput placeholder="Search…" />
           <CommandList>
@@ -617,11 +640,13 @@ export function TableCellMultiSelect({
                   <span className="flex-1 truncate">{allOption}</span>
                 </CommandItem>
               )}
-              {options.map((opt) => (
+              {options.map((opt) => {
+                const item = (
                 <CommandItem
                   key={opt}
                   value={opt}
                   onSelect={() => toggle(opt)}
+                  disabled={!!unavailable?.[opt]}
                   aria-checked={draft.includes(opt)}
                   icon={
                     <Checkbox
@@ -631,9 +656,26 @@ export function TableCellMultiSelect({
                     />
                   }
                 >
-                  <span className="flex-1 truncate">{opt}</span>
+                  {optionNote ? (
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate">{opt}</span>
+                      <span className="truncate text-xs text-muted-foreground">{optionNote(opt)}</span>
+                    </span>
+                  ) : (
+                    <span className="flex-1 truncate">{opt}</span>
+                  )}
                 </CommandItem>
-              ))}
+                );
+                /* A disabled item takes no pointer, so the reason sits on a
+                   wrapper the pointer reaches. */
+                return unavailable?.[opt] ? (
+                  <div key={opt} title={unavailable[opt]}>
+                    {item}
+                  </div>
+                ) : (
+                  item
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>

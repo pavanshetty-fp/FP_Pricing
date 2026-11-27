@@ -44,7 +44,7 @@ import {
   editAction,
   editSummary,
   fmtDate,
-  fmtDateTime,
+  fmtStamp,
   fmtWhen,
   lineAction,
   money,
@@ -444,7 +444,7 @@ function ChangeSheetBody({
       mode="edit"
       /* NO CHANGE ID ON SCREEN (Yash, 2026-11-18) — the title is when it
          was made; who and how sit under it; what changed is listed below. */
-      editTitle={fmtDateTime(c.madeAt)}
+      editTitle={fmtStamp(c.madeAt)}
       createTitle=""
       createAction=""
       showCancel={false}
@@ -541,7 +541,7 @@ function ChangeSheetBody({
               <span>
                 <Pill>{action}</Pill>
               </span>
-              <span className="truncate text-foreground">{summary}</span>
+              <span className="min-w-0 break-words text-foreground">{summary}</span>
               <span className="text-right">
                 {c.lines.length > 0 ? (
                   <button
@@ -717,10 +717,24 @@ function Old({ text }: { text: string }) {
   );
 }
 
-/** One edit's change: what came off muted, what went on plain; an added
- *  setting shows its value too (Yash, 2026-11-17). */
+/** One edit's change (Yash, 2026-11-27): BEFORE ON TOP, AFTER BELOW — the
+ *  old value muted, the new one plain, each wrapping onto its own lines
+ *  instead of truncating. An added setting shows its value too. */
 /** What changed's columns: Artifact · Action · Change · Records affected. */
-const WC_GRID = "grid grid-cols-[140px_110px_minmax(0,1fr)_auto] items-center gap-4 px-4";
+const WC_GRID = "grid grid-cols-[140px_110px_minmax(0,1fr)_auto] items-start gap-4 px-4";
+
+/** Labelled, since the arrow is gone (Yash, 2026-11-27): "Before" over
+ *  "After", the old value muted. */
+function BeforeAfter({ before, after }: { before: string; after: string }) {
+  return (
+    <span className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 break-words">
+      <span className="text-muted-foreground">Before</span>
+      <span className="text-muted-foreground">{before}</span>
+      <span className="text-muted-foreground">After</span>
+      <span className="text-foreground">{after}</span>
+    </span>
+  );
+}
 
 function EditChange({ e, lines, ents }: { e: Edit; lines: ImpactLine[]; ents: EntityMap }) {
   const name = (id: string) => {
@@ -733,39 +747,21 @@ function EditChange({ e, lines, ents }: { e: Edit; lines: ImpactLine[]; ents: En
   };
   const mine = lines.filter((l) => l.setting === e.setting);
   const off = uniq(mine.flatMap((l) => l.beforeIds.filter((id) => !l.afterIds.includes(id))));
-  const Arrow = () => <span className="text-muted-foreground">→</span>;
-  const row = (children: React.ReactNode) => <span className="flex min-w-0 items-center gap-1.5 truncate">{children}</span>;
-  if (e.field)
-    return row(
-      <>
-        <span className="shrink-0 text-foreground">{e.field === "name" ? "Name:" : `${name(e.entityIds[0])}: ${FIELD_LABEL[e.field].toLowerCase()}`}</span>
-        <span className="truncate text-muted-foreground">{e.from || NOT_SET}</span>
-        <Arrow />
-        <span className="truncate text-foreground">{e.to || NOT_SET}</span>
-      </>
-    );
-  if (e.operation === "add" || e.operation === "create" || e.configure) return row(<span className="truncate text-foreground">{e.entityIds.map(withValue).join(", ")}</span>);
-  if (e.operation === "remove") return row(<span className="truncate text-muted-foreground">{e.entityIds.map(withValue).join(", ")}</span>);
+  const one = (text: string, muted = false) => <span className={cn("min-w-0 break-words", muted ? "text-muted-foreground" : "text-foreground")}>{text}</span>;
+  if (e.field) {
+    /* "Name: …", else "Hazmat fee rate: …" — one colon, before the value. */
+    const label = e.field === "name" ? "Name" : `${name(e.entityIds[0])} ${FIELD_LABEL[e.field].toLowerCase()}`;
+    return <BeforeAfter before={`${label}: ${e.from || NOT_SET}`} after={`${label}: ${e.to || NOT_SET}`} />;
+  }
+  if (e.operation === "add" || e.operation === "create" || e.configure) return one(e.entityIds.map(withValue).join(", "));
+  if (e.operation === "remove") return one(e.entityIds.map(withValue).join(", "), true);
   if (e.operation === "edit") {
     const was = mine.find((l) => l.beforeIds.includes(e.entityIds[0]))?.before.split(" · ")[1];
-    return row(
-      <>
-        <span className="shrink-0 text-foreground">{name(e.entityIds[0])}:</span>
-        <span className="shrink-0 text-muted-foreground">{was ?? NOT_SET}</span>
-        <Arrow />
-        <span className="shrink-0 text-foreground">{money(e.amount ?? 0)}</span>
-      </>
-    );
+    return <BeforeAfter before={`${name(e.entityIds[0])}: ${was ?? NOT_SET}`} after={`${name(e.entityIds[0])}: ${money(e.amount ?? 0)}`} />;
   }
-  /* REPLACED: BEFORE → AFTER, "Not set" when there was none (Yash, 2026-11-25). */
+  /* REPLACED: BEFORE ON TOP, AFTER BELOW; "Not set" when there was none. */
   const show = IS_LIST[e.setting] ? withValue : name;
-  return row(
-    <>
-      <span className="truncate text-muted-foreground">{off.length ? off.map(show).join(", ") : NOT_SET}</span>
-      <Arrow />
-      <span className="truncate text-foreground">{e.entityIds.map(show).join(", ")}</span>
-    </>
-  );
+  return <BeforeAfter before={off.length ? off.map(show).join(", ") : NOT_SET} after={e.entityIds.map(show).join(", ")} />;
 }
 
 /** A figure with an ⓘ beside its label that opens what it means on click

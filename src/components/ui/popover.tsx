@@ -21,6 +21,8 @@ function PopoverContent({
   className,
   align = "center",
   sideOffset = 4,
+  onWheel,
+  onTouchMove,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
@@ -29,10 +31,26 @@ function PopoverContent({
         data-slot="popover-content"
         align={align}
         sideOffset={sideOffset}
+        /* NEVER TALLER THAN THE ROOM ON SCREEN (Yash, 2026-11-20) — a long
+           dropdown near the bottom hid its last options and its footer. A
+           command list shrinks and scrolls (search and footer stay); any
+           other content scrolls as a whole. */
         className={cn(
+          "max-h-(--radix-popover-content-available-height) overflow-y-auto has-[>[data-slot=command]]:flex has-[>[data-slot=command]]:flex-col has-[>[data-slot=command]]:overflow-hidden [&>[data-slot=command]]:min-h-0 [&_[data-slot=command-list]]:min-h-0",
           "z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           className
         )}
+        /* THE WHEEL SCROLLS A DROPDOWN INSIDE A SHEET (Yash, 2026-11-20) — the
+           sheet's scroll lock swallowed wheel and touch moves from popovers
+           portalled outside it, so long lists never reached their end. */
+        onWheel={(e) => {
+          e.stopPropagation()
+          onWheel?.(e)
+        }}
+        onTouchMove={(e) => {
+          e.stopPropagation()
+          onTouchMove?.(e)
+        }}
         {...props}
       />
     </PopoverPrimitive.Portal>

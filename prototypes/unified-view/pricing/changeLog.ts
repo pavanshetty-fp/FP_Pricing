@@ -252,7 +252,7 @@ const OP_ACTION: Record<Operation, Action> = {
    market renamed, re-described, its hubs or address moved, shown on or off
    Today's pricing, or switched off. Every such edit is a change in the
    Activity feed; it reaches the ship-tos that use the record. */
-export type SetupField = "name" | "desc" | "address" | "hubs" | "todays" | "active";
+export type SetupField = "name" | "desc" | "address" | "hubs" | "todays" | "active" | "code" | "erpId" | "applicable" | "application" | "rule" | "scope" | "rate";
 export const FIELD_LABEL: Record<SetupField, string> = {
   name: "Name",
   desc: "Description",
@@ -260,6 +260,14 @@ export const FIELD_LABEL: Record<SetupField, string> = {
   hubs: "Hubs",
   todays: "Today's pricing",
   active: "Status",
+  /* A fee's own fields (fee rule engine, Yash 2026-11-27). */
+  code: "Code",
+  erpId: "ERP ID",
+  applicable: "Applicable type",
+  application: "Application",
+  rule: "Rule",
+  scope: "Scope",
+  rate: "Rate",
 };
 export const editAction = (e: { operation: Operation; field?: SetupField; to?: string; configure?: boolean }): Action =>
   e.field === "active" ? (e.to === "Inactive" ? "Deactivated" : "Activated") : e.field ? "Updated" : e.configure ? "Assigned" : OP_ACTION[e.operation];
@@ -390,6 +398,9 @@ export interface ChangeRecord {
   rollbackOf?: string;
   /** A customer's own pricing, when no ship-to inherits it yet (no lines). */
   customerId?: string;
+  /** Kept by another store (the fee rule engine) and shown here: read-only —
+   *  never undone or rolled back from the log. */
+  external?: "fee";
 }
 
 export const scopeOf = (c: { edits: Edit[] }) => [...new Set(c.edits.flatMap((e) => e.rowIds))];
@@ -1088,6 +1099,10 @@ const T = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" 
 export const fmtDateTime = (t: number) => DT.format(t);
 export const fmtDate = (t: number) => D.format(t);
 export const fmtTime = (t: number) => T.format(t);
+const STAMP = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit" });
+/** THE CHANGE LOG'S TIME (Yash, 2026-11-27) — the date and the time to the
+ *  second, never Today or Yesterday: "Nov 26, 2026, 11:37:36 PM". */
+export const fmtStamp = (t: number) => STAMP.format(t);
 export const startOfDay = (t: number) => {
   const d = new Date(t);
   d.setHours(0, 0, 0, 0);

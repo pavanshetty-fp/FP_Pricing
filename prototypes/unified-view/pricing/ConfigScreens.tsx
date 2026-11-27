@@ -18,17 +18,22 @@ import { ShiptoCount } from "./customerShiptoParts";
 import { TERM_ICONS } from "@/components/ui/term-icons";
 import type { GroupDim } from "@/components/tables-layout";
 import { TwoLineCell, type ListColumn } from "../ListTable";
-import { customerOf, effectivePrice, fmtWhen, plural, productOf, readSetting, shiptoOf, uniq, type ConfigRow, type Setting } from "./changeLog";
+import { SOURCE_LABEL, changeSummary, customerOf, effectivePrice, fmtWhen, plural, productOf, readSetting, recordAction, shiptoOf, uniq, type ConfigRow, type ImpactLine, type Setting } from "./changeLog";
+import { HistorySheet, type HistoryItem } from "./HistorySheet";
 import { customerRecordFor, resetToCustomer, useChangeLog } from "./changeLogStore";
+import { bulkRunAlert, lockMessage, useBulkLock } from "./bulkRules";
 import { ConfigList } from "./ConfigList";
 import { PricingSheet } from "./PricingSheet";
-import { openFeedFor, takeReopen } from "./pricingNav";
+import { takeReopen } from "./pricingNav";
+import { FeeApplicationSheet, FeeCellButton, useRowFees, type FeeTarget } from "./FeeApplication";
+import { feeCell, feeGroupText, feesOnCustomer, isCharged, perGallon, useFees, useHubMap } from "./fees";
 import {
   APPLIED_LABEL,
   UNCONFIGURED,
   centsOf,
   customerPricing,
   factsOf,
+  historyOf,
   listCell,
   perGal,
   type CustomerPricing,
@@ -44,24 +49,51 @@ import {
   opens its pricing sheet (bulk and inline edits come later).
 */
 
-/** The trail a record's View all leaves for the Activity feed. */
-const feedFor = (t: PricingTarget) => {
-  if (t.kind === "row") {
-    const name = shiptoOf(t.shiptoId).name;
-    openFeedFor({ from: "pricing-config-shipto", fromLabel: "Ship-to", record: t, recordLabel: name, facet: `shipto:${name}` });
-  } else {
-    const name = customerOf(t.customerId).name;
-    openFeedFor({ from: "pricing-config-customer", fromLabel: "Customer", record: t, recordLabel: name, facet: `customer:${name}` });
-  }
-};
+/** A CUSTOMER'S OR SHIP-TO'S HISTORY AS A TIMELINE (Yash, 2026-11-27) — every
+ *  change that reached it, the way artifacts and Customer & ship-to read it. */
+function PricingHistory({ target, onClose, level }: { target: PricingTarget; onClose: () => void; level: 1 | 2 }) {
+  const log = useChangeLog();
+  const ents = log.entityMap;
+  const mine = (l: ImpactLine) => (target.kind === "row" ? l.shiptoId === target.shiptoId : l.customerId === target.customerId);
+  const items: HistoryItem[] = historyOf(log.changes, target).map((c) => {
+    const n = c.lines.filter(mine).length;
+    const text = changeSummary(c, ents);
+    return {
+      key: c.id,
+      at: c.effectiveAt,
+      action: recordAction(c),
+      change: text,
+      text,
+      by: c.by,
+      note: [SOURCE_LABEL[c.source], n ? plural(n, "record") : ""].filter(Boolean).join(" · "),
+      changeId: c.id,
+    };
+  });
+  const name = target.kind === "row" ? shiptoOf(target.shiptoId).name : customerOf(target.customerId).name;
+  return (
+    <HistorySheet
+      title={`${name} history`}
+      subtitle={target.kind === "row" ? "Ship-to" : "Customer"}
+      items={items}
+      onClose={onClose}
+      level={level}
+      historyKey={target.kind === "row" ? "pricing-config-shipto-history" : "pricing-config-customer-history"}
+    />
+  );
+}
 
-/** The pricing sheet a configuration page opens. Its history is the Activity
- *  feed, filtered to it (Yash, 2026-11-17); coming back by the path opens
- *  the sheet again. */
+/** The pricing sheet a configuration page opens, and the history behind its
+ *  View all and the row menu's History. */
 function useSheets() {
   const [pricing, setPricing] = React.useState<PricingTarget | null>(takeReopen);
-  const sheets = <PricingSheet target={pricing} onClose={() => setPricing(null)} onHistory={feedFor} />;
-  return { setPricing, setHistory: feedFor, sheets };
+  const [history, setHistory] = React.useState<PricingTarget | null>(null);
+  const sheets = (
+    <>
+      <PricingSheet target={pricing} onClose={() => setPricing(null)} onHistory={setHistory} />
+      {history && <PricingHistory target={history} onClose={() => setHistory(null)} level={pricing ? 2 : 1} />}
+    </>
+  );
+  return { setPricing, setHistory, sheets };
 }
 
 // ------------------------------------------------------------------ ship-to --
@@ -99,6 +131,9 @@ const SHIPTO_COLUMNS: ListColumn<SKey>[] = [
   { key: "adders", label: "Adders", width: 140, sortable: true },
   { key: "effective", label: "Effective price ($/gal)", width: 170, sortable: true },
   { key: "lastDelivery", label: "Last delivery", width: 170, sortable: true },
+  /* A HUB COLUMN OF ITS OWN (Yash, 2026-11-24) — every ship-to sits under a
+     hub (its market's), whatever it prices from. */
+  { key: "hub", label: "Hub", width: 170, sortable: true },
   { key: "applied", label: "Applied pricing", width: 150, sortable: true },
   { key: "actions", label: "", width: 44 },
 ];
@@ -145,7 +180,18 @@ export function ShiptoPricingScreen() {
   /* RESET TO CUSTOMER PRICING (Yash, 2026-11-17) — a ship-to priced on its
      own goes back to its customer's pricing. Asks first; logged as a change. */
   const [resetting, setResetting] = React.useState<ConfigRow | null>(null);
+  const bulkLock = useBulkLock();
   const facts = React.useMemo(() => new Map(log.rows.map((r) => [r.id, factsOf(r, ents)])), [log.rows, ents]);
+  /* FEES FROM THE FEE RULE ENGINE (Yash, 2026-11-24) — what reaches the price
+     by scope, less what was removed; the cell opens them. */
+  const rowFees = useRowFees();
+  const hubOfShipto = useHubMap(log.rows, ents);
+  const [feeTarget, setFeeTarget] = React.useState<FeeTarget | null>(null);
+  const feeOf = React.useCallback((r: ConfigRow) => feeCell(rowFees(r)), [rowFees]);
+  const effective = React.useCallback(
+    (r: ConfigRow) => effectivePrice(r, ents) - readSetting(r, "fee", ents).value + feeOf(r).perGal,
+    [ents, feeOf]
+  );
 
   const lines = React.useCallback(
     (r: ConfigRow, key: SKey): string[] => {
@@ -168,7 +214,7 @@ export function ShiptoPricingScreen() {
           return [f.county];
         case "applied":
           /* THE HUB UNDER "Hub" — the Hub column folded in (2026-11-17). */
-          return f.hub ? [appliedOf(r), f.hub] : [appliedOf(r)];
+          return [appliedOf(r)];
         case "base":
           return [perGal(r.base)];
         case "market":
@@ -176,8 +222,8 @@ export function ShiptoPricingScreen() {
           return [dash ? "—" : readSetting(r, key, ents).text];
         case "fee": {
           if (dash) return ["—"];
-          const c = listCell(r, "fee", ents, "fee", "fees");
-          return [c.values, c.count];
+          const c = feeOf(r);
+          return [perGal(c.perGal), c.groups];
         }
         case "margin": {
           if (dash) return ["—"];
@@ -195,19 +241,19 @@ export function ShiptoPricingScreen() {
           return [centsOf(c.value), c.count];
         }
         case "effective":
-          return [dash ? "—" : perGal(effectivePrice(r, ents))];
+          return [dash ? "—" : perGal(effective(r))];
         case "lastDelivery":
           return [f.lastDelivery ? fmtWhen(f.lastDelivery) : "—"];
         case "hub":
-          return [f.hub ?? "—"];
+          return [hubOfShipto(r.shiptoId)];
         default:
           return [""];
       }
     },
-    [facts, ents]
+    [facts, ents, feeOf, effective, hubOfShipto]
   );
   const sortValue = (r: ConfigRow, key: SKey) =>
-    key === "base" ? r.base : key === "effective" ? (r.configured ? effectivePrice(r, ents) : -1) : key === "lastDelivery" ? facts.get(r.id)!.lastDelivery ?? 0 : undefined;
+    key === "base" ? r.base : key === "fee" ? (r.configured ? feeOf(r).perGal : -1) : key === "effective" ? (r.configured ? effective(r) : -1) : key === "lastDelivery" ? facts.get(r.id)!.lastDelivery ?? 0 : undefined;
 
   const values: Record<string, (r: ConfigRow) => string[]> = {
     customer: (r) => [customerOf(r.customerId).name],
@@ -217,9 +263,9 @@ export function ShiptoPricingScreen() {
     rateType: (r) => (r.configured ? [readSetting(r, "rateType", ents).text] : []),
     market: (r) => (r.configured ? [readSetting(r, "market", ents).text] : []),
     margin: (r) => readSetting(r, "margin", ents).ids.map((id) => ents.get(id)?.name ?? ""),
-    fee: (r) => readSetting(r, "fee", ents).ids.map((id) => ents.get(id)?.name ?? ""),
+    fee: (r) => rowFees(r).filter((x) => x.state === "applied").map((x) => x.fee.name),
     tax: (r) => readSetting(r, "tax", ents).ids.map((id) => ents.get(id)?.name ?? ""),
-    hub: (r) => (facts.get(r.id)!.hub ? [facts.get(r.id)!.hub!] : []),
+    hub: (r) => [hubOfShipto(r.shiptoId)],
     state: (r) => [facts.get(r.id)!.state],
     county: (r) => [facts.get(r.id)!.county],
     applied: (r) => [appliedOf(r)],
@@ -237,6 +283,10 @@ export function ShiptoPricingScreen() {
 
   const renderCell = (r: ConfigRow, key: SKey) => {
     const l = lines(r, key);
+    if (key === "fee" && r.configured) {
+      const c = feeOf(r);
+      return <FeeCellButton perGal={c.perGal} count={c.count} groups={c.groups} label={`${productOf(r.productId).name} at ${shiptoOf(r.shiptoId).name}`} onOpen={() => setFeeTarget({ kind: "row", rowId: r.id })} />;
+    }
     const set = LIST_SETTING[key];
     if (set && r.configured) return <ListValueCell row={r} setting={set} title={l[0]} count={l[1]} />;
     switch (key) {
@@ -283,7 +333,7 @@ export function ShiptoPricingScreen() {
           { key: "rateType", label: "Rate type" },
           { key: "market", label: "Market", searchable: true },
           { key: "margin", label: "Margin", searchable: true },
-          { key: "fee", label: "Fee" },
+          { key: "fee", label: "Fee", searchable: true },
           { key: "tax", label: "Tax" },
           { key: "hub", label: "Hub" },
           { key: "state", label: "State" },
@@ -295,6 +345,7 @@ export function ShiptoPricingScreen() {
         one="price"
         searchPlaceholder="Search ship-tos, customers, products…"
         unconfigured={{ count: unconfigured, title: `${plural(unconfigured, "ship-to price")} not configured yet`, facet: `applied:${UNCONFIGURED}` }}
+        leadAlerts={bulkRunAlert(bulkLock)}
         configured={(r) => r.configured}
         nameOf={(r) => `${productOf(r.productId).name} at ${shiptoOf(r.shiptoId).name}`}
         onOpen={open}
@@ -316,6 +367,7 @@ export function ShiptoPricingScreen() {
         })}
       />
       {sheets}
+      <FeeApplicationSheet target={feeTarget} onClose={() => setFeeTarget(null)} />
       <AlertDialog open={!!resetting} onOpenChange={(o) => !o && setResetting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -330,6 +382,8 @@ export function ShiptoPricingScreen() {
             <AlertDialogAction
               onClick={() => {
                 if (!resetting) return;
+                /* ONE BULK RUN AT A TIME HOLDS CONFIGURATION (Yash, 2026-11-26). */
+                if (bulkLock) return void toast.warning(lockMessage(bulkLock.name));
                 const id = resetToCustomer(resetting.id);
                 toast.success(`Reset to customer pricing${id ? ` · ${id}` : ""}`);
                 setResetting(null);
@@ -368,6 +422,19 @@ export function CustomerPricingScreen() {
   const rows = React.useMemo(() => customerPricing(log.rows, log.customerOwn), [log.rows, log.customerOwn]);
   const rowById = React.useMemo(() => new Map(log.rows.map((r) => [r.id, r])), [log.rows]);
   const statusOf = (c: CustomerPricing) => (c.record ? CONFIGURED : UNCONFIGURED);
+  const feeStore = useFees();
+  const bulkLock = useBulkLock();
+  const hub = useHubMap(log.rows, ents);
+  const [feeTarget, setFeeTarget] = React.useState<FeeTarget | null>(null);
+  /* A customer's fees: those reaching prices that follow it, less its removals. */
+  const custFees = React.useCallback(
+    (customerId: string) => {
+      const all = feesOnCustomer(customerId, log.rows, (r) => hub(r.shiptoId), feeStore);
+      const on = all.filter((x) => x.state === "applied");
+      return { perGal: on.filter((x) => isCharged(x.fee)).reduce((t, x) => t + perGallon(x.fee), 0), count: on.length, groups: feeGroupText(all) };
+    },
+    [log.rows, hub, feeStore]
+  );
 
   const lines = React.useCallback(
     (c: CustomerPricing, key: CKey): string[] => {
@@ -387,8 +454,8 @@ export function CustomerPricingScreen() {
           return [r && r.discount ? perGal(r.discount) : "—"];
         case "fee": {
           if (!r) return ["—"];
-          const x = listCell(r, "fee", ents, "fee", "fees");
-          return [x.values, x.count];
+          const x = custFees(c.customerId);
+          return [perGal(x.perGal), x.groups];
         }
         case "margin": {
           if (!r) return ["—"];
@@ -409,7 +476,7 @@ export function CustomerPricingScreen() {
           return [""];
       }
     },
-    [ents]
+    [ents, custFees]
   );
   const values: Record<string, (c: CustomerPricing) => string[]> = {
     customer: (c) => [customerOf(c.customerId).name],
@@ -420,6 +487,10 @@ export function CustomerPricingScreen() {
   };
   const renderCell = (c: CustomerPricing, key: CKey) => {
     const l = lines(c, key);
+    if (key === "fee" && c.record) {
+      const x = custFees(c.customerId);
+      return <FeeCellButton perGal={x.perGal} count={x.count} groups={x.groups} label={customerOf(c.customerId).name} onOpen={() => setFeeTarget({ kind: "customer", customerId: c.customerId })} />;
+    }
     const set = LIST_SETTING[key];
     if (set && c.record) return <ListValueCell row={c.record} setting={set} title={l[0]} count={l[1]} />;
     switch (key) {
@@ -478,6 +549,7 @@ export function CustomerPricingScreen() {
         one="customer"
         searchPlaceholder="Search customers…"
         unconfigured={{ count: unconfigured, title: `${plural(unconfigured, "customer")} without customer pricing`, facet: `status:${UNCONFIGURED}` }}
+        leadAlerts={bulkRunAlert(bulkLock)}
         configured={(c) => !!c.record}
         nameOf={(c) => customerOf(c.customerId).name}
         onOpen={(c) => setPricing({ kind: "customer", customerId: c.customerId })}
@@ -491,6 +563,7 @@ export function CustomerPricingScreen() {
         })}
       />
       {sheets}
+      <FeeApplicationSheet target={feeTarget} onClose={() => setFeeTarget(null)} />
     </>
   );
 }
